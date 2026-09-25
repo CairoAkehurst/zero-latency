@@ -40,6 +40,7 @@ export default async function InboxPage() {
       category: category?.name || null,
       categoryColor: category?.color || 'gray',
       suggestedReply: meta?.suggested_reply,
+      hasAiMetadata: !!meta,
       timestamp: new Date(email.received_at).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
     };
   });

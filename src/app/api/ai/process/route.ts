@@ -15,10 +15,15 @@ export async function POST() {
   }
 
   // Find emails that already have a successful AI metadata category
-  const { data: processedIds } = await supabase
+  const { data: processedIds, error: excludeError } = await supabase
     .from('email_ai_metadata')
     .select('email_id')
     .not('category_id', 'is', null);
+    
+  if (excludeError) {
+    console.error("Exclude error:", excludeError);
+  }
+    
   const excludeIds = processedIds?.map(p => p.email_id) || [];
 
   let { data: allEmails, error: fetchError } = await supabase
@@ -34,7 +39,7 @@ export async function POST() {
     .order('received_at', { ascending: false })
     .limit(20);
 
-  let unprocessedEmails = allEmails?.filter(e => !excludeIds.includes(e.id))?.slice(0, 5) || [];
+  let unprocessedEmails = allEmails?.filter(e => !excludeIds.includes(e.id))?.slice(0, 10) || [];
 
   if (fetchError) {
     return NextResponse.json({ error: fetchError.message, details: fetchError }, { status: 500 });
@@ -108,9 +113,11 @@ export async function POST() {
       };
 
       if (existingMeta) {
-        await supabase.from('email_ai_metadata').update(payload).eq('id', existingMeta.id);
+        const { error: updateError } = await supabase.from('email_ai_metadata').update(payload).eq('id', existingMeta.id);
+        if (updateError) console.error("Metadata update error:", updateError);
       } else {
-        await supabase.from('email_ai_metadata').insert(payload);
+        const { error: insertError } = await supabase.from('email_ai_metadata').insert(payload);
+        if (insertError) console.error("Metadata insert error:", insertError);
       }
 
       processedCount++;

@@ -11,6 +11,7 @@ interface EmailRowProps {
     summary: string;
     category: string;
     categoryColor: string;
+    hasAiMetadata?: boolean;
     timestamp: string;
     is_unread: boolean;
   };
@@ -59,7 +60,7 @@ export function EmailRow({ email, isSelected }: EmailRowProps) {
       </div>
 
       {/* Category Badge */}
-      {email.category && (
+      {email.category ? (
         <div className="flex-shrink-0">
           <span className={clsx(
             "px-2.5 py-0.5 rounded-full text-xs font-medium border",
@@ -68,7 +69,13 @@ export function EmailRow({ email, isSelected }: EmailRowProps) {
             {email.category}
           </span>
         </div>
-      )}
+      ) : email.hasAiMetadata ? (
+        <div className="flex-shrink-0">
+          <span className="px-2.5 py-0.5 rounded-full text-xs font-medium border bg-gray-50 text-gray-500 border-gray-200">
+            Uncategorized
+          </span>
+        </div>
+      ) : null}
 
       {/* Timestamp */}
       <div className={clsx(
