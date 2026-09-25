@@ -13,7 +13,7 @@ export function InboxClient({ initialEmails }: { initialEmails: any[] }) {
   const [emails, setEmails] = useState(initialEmails);
   const [checkedEmailIds, setCheckedEmailIds] = useState<Set<string>>(new Set());
   const [selectedEmailId, setSelectedEmailId] = useState<string | null>(null);
-  const [fullViewEmailId, setFullViewEmailId] = useState<string | null>(null);
+  const [isFullView, setIsFullView] = useState(false);
   const [isComposing, setIsComposing] = useState(false);
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -24,12 +24,12 @@ export function InboxClient({ initialEmails }: { initialEmails: any[] }) {
     const handleOpenCompose = () => {
       setIsComposing(true);
       setSelectedEmailId(null);
-      setFullViewEmailId(null);
+      setIsFullView(false);
       setIsFiltersOpen(false);
     };
     const handleFilterCategory = (e: any) => {
       setActiveCategory(e.detail === 'Inbox' ? null : e.detail);
-      setFullViewEmailId(null);
+      setIsFullView(false);
       setSelectedEmailId(null);
       setIsComposing(false);
       setIsFiltersOpen(false);
@@ -45,10 +45,6 @@ export function InboxClient({ initialEmails }: { initialEmails: any[] }) {
   const selectedEmail = useMemo(() => 
     emails.find(e => e.id === selectedEmailId) || null
   , [emails, selectedEmailId]);
-
-  const fullViewEmail = useMemo(() => 
-    emails.find(e => e.id === fullViewEmailId) || null
-  , [emails, fullViewEmailId]);
 
   const filteredEmails = useMemo(() => {
     let result = emails;
@@ -138,29 +134,10 @@ export function InboxClient({ initialEmails }: { initialEmails: any[] }) {
     }
   };
 
-  // If full view is active, render only the full email
-  if (fullViewEmail) {
-    return (
-      <div className="flex-1 h-full bg-white relative rounded-tl-2xl border-t border-l border-gray-200/50 shadow-sm overflow-hidden flex flex-col">
-        <div className="w-full h-full flex-1">
-          <EmailDetailPeek 
-            email={fullViewEmail} 
-            onClose={() => setFullViewEmailId(null)} 
-            onExpand={() => {
-              setSelectedEmailId(fullViewEmail.id);
-              setFullViewEmailId(null);
-            }}
-            isFullView={true}
-          />
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="flex h-full bg-white relative rounded-tl-2xl border-t border-l border-gray-200/50 shadow-sm overflow-hidden min-h-0">
       {/* Left List Area */}
-      <div className="flex flex-col h-full flex-1 min-w-0">
+      <div className={`flex flex-col h-full transition-all duration-300 ease-in-out ${isFullView ? 'w-0 overflow-hidden opacity-0 flex-none border-0' : 'flex-1 min-w-0'}`}>
         <header className="px-6 py-4 flex items-center justify-between border-b border-gray-100 flex-shrink-0">
           {checkedEmailIds.size > 0 ? (
             <div className="flex items-center gap-4 flex-1">
@@ -267,8 +244,8 @@ export function InboxClient({ initialEmails }: { initialEmails: any[] }) {
                 onDoubleClick={() => {
                   setIsComposing(false);
                   setIsFiltersOpen(false);
-                  setSelectedEmailId(null);
-                  setFullViewEmailId(email.id);
+                  setSelectedEmailId(email.id);
+                  setIsFullView(true);
                 }}
               >
                 <EmailRow 
@@ -292,11 +269,12 @@ export function InboxClient({ initialEmails }: { initialEmails: any[] }) {
       ) : selectedEmailId ? (
         <EmailDetailPeek 
           email={selectedEmail} 
-          onClose={() => setSelectedEmailId(null)} 
-          onExpand={() => {
-            setFullViewEmailId(selectedEmailId);
+          onClose={() => {
             setSelectedEmailId(null);
-          }}
+            setIsFullView(false);
+          }} 
+          onExpand={() => setIsFullView(!isFullView)}
+          isFullView={isFullView}
         />
       ) : null}
     </div>
