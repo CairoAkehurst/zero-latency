@@ -144,7 +144,7 @@ export function InboxClient({ initialEmails }: { initialEmails: any[] }) {
         className={`flex flex-col h-full flex-shrink-0 transition-all duration-300 ease-in-out ${(isFullView || isComposeFullView) ? 'border-0 overflow-hidden opacity-0' : ''}`}
         style={{ width: (isFullView || isComposeFullView) ? '0px' : (isComposing || isFiltersOpen || selectedEmailId) ? 'calc(100% - 500px)' : '100%' }}
       >
-        <header className="px-6 py-4 flex items-center justify-between border-b border-gray-100 flex-shrink-0">
+        <header className="h-[68px] px-6 flex items-center justify-between border-b border-gray-100 flex-shrink-0">
           {checkedEmailIds.size > 0 ? (
             <div className="flex items-center gap-4 flex-1">
               <div 

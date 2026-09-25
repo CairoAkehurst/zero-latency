@@ -6,8 +6,8 @@ interface FiltersPeekProps {
 
 export function FiltersPeek({ onClose }: FiltersPeekProps) {
   return (
-    <div className="flex flex-col h-full bg-white z-10 relative overflow-hidden transition-all duration-300 ease-in-out flex-1 border-l border-gray-100">
-      <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+    <div className="flex flex-col h-full bg-white z-10 relative overflow-hidden transition-all duration-300 ease-in-out flex-1 border-l border-gray-100 rounded-tl-2xl">
+      <div className="h-[68px] px-5 flex items-center justify-between border-b border-gray-100 flex-shrink-0">
         <h2 className="font-semibold text-gray-900">View Options</h2>
         <button 
           onClick={onClose}
