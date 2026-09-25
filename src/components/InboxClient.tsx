@@ -15,6 +15,7 @@ export function InboxClient({ initialEmails }: { initialEmails: any[] }) {
   const [selectedEmailId, setSelectedEmailId] = useState<string | null>(null);
   const [isFullView, setIsFullView] = useState(false);
   const [isComposing, setIsComposing] = useState(false);
+  const [isComposeFullView, setIsComposeFullView] = useState(false);
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSyncing, setIsSyncing] = useState(false);
@@ -23,6 +24,7 @@ export function InboxClient({ initialEmails }: { initialEmails: any[] }) {
   useEffect(() => {
     const handleOpenCompose = () => {
       setIsComposing(true);
+      setIsComposeFullView(false);
       setSelectedEmailId(null);
       setIsFullView(false);
       setIsFiltersOpen(false);
@@ -30,6 +32,7 @@ export function InboxClient({ initialEmails }: { initialEmails: any[] }) {
     const handleFilterCategory = (e: any) => {
       setActiveCategory(e.detail === 'Inbox' ? null : e.detail);
       setIsFullView(false);
+      setIsComposeFullView(false);
       setSelectedEmailId(null);
       setIsComposing(false);
       setIsFiltersOpen(false);
@@ -137,16 +140,27 @@ export function InboxClient({ initialEmails }: { initialEmails: any[] }) {
   return (
     <div className="flex h-full bg-white relative rounded-tl-2xl border-t border-l border-gray-200/50 shadow-sm overflow-hidden min-h-0">
       {/* Left List Area */}
-      <div className={`flex flex-col h-full transition-all duration-300 ease-in-out ${isFullView ? 'w-0 overflow-hidden opacity-0 flex-none border-0' : 'flex-1 min-w-0'}`}>
+      <div 
+        className="flex flex-col h-full flex-shrink-0 transition-all duration-300 ease-in-out border-r border-gray-100"
+        style={{ width: (isFullView || isComposeFullView) ? '0px' : (isComposing || isFiltersOpen || selectedEmailId) ? 'calc(100% - 500px)' : '100%' }}
+      >
         <header className="px-6 py-4 flex items-center justify-between border-b border-gray-100 flex-shrink-0">
           {checkedEmailIds.size > 0 ? (
             <div className="flex items-center gap-4 flex-1">
-              <input 
-                type="checkbox" 
-                checked={checkedEmailIds.size === filteredEmails.length && filteredEmails.length > 0}
-                onChange={(e) => handleSelectAll(e.target.checked)}
-                className="w-4 h-4 rounded border-gray-300 accent-blue-600 bg-white cursor-pointer"
-              />
+              <div 
+                className="cursor-pointer text-gray-300 hover:text-gray-500 transition-colors flex items-center justify-center"
+                onClick={() => handleSelectAll(!(checkedEmailIds.size === filteredEmails.length && filteredEmails.length > 0))}
+              >
+                {checkedEmailIds.size === filteredEmails.length && filteredEmails.length > 0 ? (
+                  <svg className="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-9 14l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+                  </svg>
+                ) : (
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                  </svg>
+                )}
+              </div>
               <span className="text-sm font-medium text-gray-700 whitespace-nowrap">{checkedEmailIds.size} selected</span>
               
               <div className="h-4 w-px bg-gray-200 mx-2" />
@@ -262,7 +276,14 @@ export function InboxClient({ initialEmails }: { initialEmails: any[] }) {
 
       {/* Side Peek Panel */}
       {isComposing ? (
-        <ComposeEmail onClose={() => setIsComposing(false)} />
+        <ComposeEmail 
+          onClose={() => {
+            setIsComposing(false);
+            setIsComposeFullView(false);
+          }} 
+          onExpand={() => setIsComposeFullView(!isComposeFullView)}
+          isFullView={isComposeFullView}
+        />
       ) : isFiltersOpen ? (
         <FiltersPeek onClose={() => setIsFiltersOpen(false)} />
       ) : selectedEmailId ? (

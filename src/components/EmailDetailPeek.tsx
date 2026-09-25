@@ -73,7 +73,7 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
   };
 
   return (
-    <div className={`flex flex-col h-full bg-white z-10 relative overflow-hidden transition-all duration-300 ease-in-out ${isFullView ? 'w-full' : 'w-[500px] flex-shrink-0 border-l border-t border-gray-200 shadow-[-12px_0_40px_rgba(0,0,0,0.08)] rounded-tl-2xl'}`}>
+    <div className={`flex flex-col h-full bg-white z-10 relative overflow-hidden transition-all duration-300 ease-in-out flex-1 border-l border-t border-gray-200 shadow-[-12px_0_40px_rgba(0,0,0,0.08)] ${isFullView ? '' : 'rounded-tl-2xl'}`}>
       {/* Header */}
       <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
         <h2 className="font-semibold text-gray-900 truncate pr-4">{email.sender_name || email.sender_email}</h2>
@@ -101,12 +101,12 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
         
         {/* AI Summary Card */}
         {email.summary && (
-          <div className="bg-[#f7f7f5] rounded-xl p-4 border border-gray-200/60">
+          <div className="bg-blue-50/50 rounded-xl p-4 border border-blue-100">
             <div className="flex items-center gap-2 mb-2">
-              <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">AI Summary</span>
-              <div className="h-px flex-1 bg-gray-200" />
+              <span className="text-xs font-semibold text-blue-800 uppercase tracking-wider">AI Summary</span>
+              <div className="h-px flex-1 bg-blue-100" />
             </div>
-            <p className="text-sm text-gray-700 leading-relaxed">
+            <p className="text-sm text-blue-900 leading-relaxed">
               {email.summary}
             </p>
           </div>
@@ -178,10 +178,20 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
                 </div>
                 <div className="text-sm font-medium text-gray-800 mb-2">{email.subject}</div>
                 {/* Safe HTML rendering if needed, otherwise fallback to text */}
-                <div 
-                  className="text-sm text-gray-700 whitespace-pre-wrap overflow-x-auto"
-                  dangerouslySetInnerHTML={{ __html: email.body_html || email.body_text?.replace(/\n/g, '<br/>') || 'No content' }} 
-                />
+                {email.body_html ? (
+                  <iframe 
+                    sandbox="allow-popups allow-popups-to-escape-sandbox allow-same-origin"
+                    srcDoc={email.body_html} 
+                    className="w-full h-full min-h-[500px] border-none bg-white rounded-md mt-4" 
+                    title="Email Body"
+                  />
+                ) : (
+                  <div 
+                    className="text-sm text-gray-700 whitespace-pre-wrap overflow-x-auto p-4 bg-gray-50 rounded-md border border-gray-100 mt-2"
+                  >
+                    {email.body_text || 'No content'}
+                  </div>
+                )}
               </div>
             </div>
           </div>

@@ -1,13 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { X, Send, Loader2 } from "lucide-react";
+import { X, Send, Loader2, Maximize2, Minimize2 } from "lucide-react";
 
 interface ComposeEmailProps {
   onClose: () => void;
+  onExpand?: () => void;
+  isFullView?: boolean;
 }
 
-export function ComposeEmail({ onClose }: ComposeEmailProps) {
+export function ComposeEmail({ onClose, onExpand, isFullView = false }: ComposeEmailProps) {
   const [to, setTo] = useState("");
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
@@ -36,16 +38,27 @@ export function ComposeEmail({ onClose }: ComposeEmailProps) {
   };
 
   return (
-    <div className="w-[500px] flex-shrink-0 border-l border-t border-gray-200 bg-white flex flex-col h-full shadow-[-12px_0_40px_rgba(0,0,0,0.08)] rounded-tl-2xl z-10 relative overflow-hidden">
+    <div className={`flex flex-col h-full bg-white z-10 relative overflow-hidden transition-all duration-300 ease-in-out flex-1 border-l border-t border-gray-200 shadow-[-12px_0_40px_rgba(0,0,0,0.08)] ${isFullView ? '' : 'rounded-tl-2xl'}`}>
       {/* Header */}
       <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between bg-[#f7f7f5]">
         <h2 className="font-semibold text-gray-900">New Message</h2>
-        <button 
-          onClick={onClose}
-          className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-200 rounded-md transition-colors"
-        >
-          <X className="w-4 h-4" />
-        </button>
+        <div className="flex items-center gap-1">
+          {onExpand && (
+            <button 
+              onClick={onExpand}
+              className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-200 rounded-md transition-colors"
+              title={isFullView ? "Minimize" : "Full screen"}
+            >
+              {isFullView ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+            </button>
+          )}
+          <button 
+            onClick={onClose}
+            className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-200 rounded-md transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
       </div>
 
       {/* Content */}

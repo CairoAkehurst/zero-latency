@@ -40,18 +40,21 @@ export function EmailRow({ email, isSelected, isChecked, onToggleCheck }: EmailR
     )}>
       {/* Checkbox */}
       <div 
-        className="flex-shrink-0 flex items-center justify-center pt-0.5"
+        className="flex-shrink-0 flex items-center justify-center cursor-pointer text-gray-300 hover:text-gray-500 transition-colors"
         onClick={(e) => {
           e.stopPropagation();
           onToggleCheck?.(!isChecked, e);
         }}
       >
-        <input 
-          type="checkbox" 
-          checked={isChecked}
-          readOnly
-          className="w-4 h-4 rounded border-gray-300 accent-blue-600 bg-white cursor-pointer"
-        />
+        {isChecked ? (
+          <svg className="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-9 14l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+          </svg>
+        ) : (
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+          </svg>
+        )}
       </div>
 
       {/* Unread Indicator */}
