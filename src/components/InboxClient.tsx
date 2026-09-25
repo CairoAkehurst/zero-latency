@@ -45,6 +45,7 @@ export function InboxClient({ initialEmails }: { initialEmails: any[] }) {
   }, [emails, searchQuery]);
 
   const [syncStatus, setSyncStatus] = useState<string | null>(null);
+  const [isAutoLabeling, setIsAutoLabeling] = useState(false);
 
   const handleSync = async () => {
     setIsSyncing(true);
@@ -63,6 +64,25 @@ export function InboxClient({ initialEmails }: { initialEmails: any[] }) {
       setSyncStatus(`Sync error: ${String(err)}`);
     } finally {
       setIsSyncing(false);
+    }
+  };
+
+  const handleAutoLabel = async () => {
+    setIsAutoLabeling(true);
+    setSyncStatus(null);
+    try {
+      const res = await fetch("/api/ai/process", { method: "POST" });
+      const data = await res.json();
+      if (res.ok) {
+        setSyncStatus(`Auto-labeled ${data.processedCount || 0} emails!`);
+        setTimeout(() => window.location.reload(), 1500);
+      } else {
+        setSyncStatus(`AI error: ${data.error || data.message || res.statusText}`);
+      }
+    } catch (err) {
+      setSyncStatus(`AI error: ${String(err)}`);
+    } finally {
+      setIsAutoLabeling(false);
     }
   };
 
@@ -114,11 +134,12 @@ export function InboxClient({ initialEmails }: { initialEmails: any[] }) {
             </button>
 
             <button 
-              onClick={() => fetch("/api/ai/process", { method: "POST" }).then(() => window.location.reload())}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-50 text-blue-600 font-medium hover:bg-blue-100 transition-colors"
+              onClick={handleAutoLabel}
+              disabled={isAutoLabeling}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-50 text-blue-600 font-medium hover:bg-blue-100 transition-colors disabled:opacity-50"
             >
-              <Wand2 className="w-3.5 h-3.5" />
-              Auto label
+              <Wand2 className={`w-3.5 h-3.5 ${isAutoLabeling ? "animate-spin" : ""}`} />
+              {isAutoLabeling ? "Labeling..." : "Auto label"}
             </button>
             
             <div className="h-4 w-px bg-gray-200" />

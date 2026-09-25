@@ -18,7 +18,7 @@ export async function POST() {
   const { data: processedIds } = await supabase.from('email_ai_metadata').select('email_id');
   const excludeIds = processedIds?.map(p => p.email_id) || [];
 
-  let query = supabase
+  let { data: allEmails, error: fetchError } = await supabase
     .from('emails')
     .select(`
       id,
@@ -28,15 +28,16 @@ export async function POST() {
       sender_email
     `)
     .eq('user_id', user.id)
-    .limit(5);
+    .order('received_at', { ascending: false })
+    .limit(20);
 
-  if (excludeIds.length > 0) {
-    query = query.not('id', 'in', `(${excludeIds.join(',')})`);
+  let unprocessedEmails = allEmails?.filter(e => !excludeIds.includes(e.id))?.slice(0, 5) || [];
+
+  if (fetchError) {
+    return NextResponse.json({ error: fetchError.message, details: fetchError }, { status: 500 });
   }
 
-  const { data: unprocessedEmails, error: fetchError } = await query;
-
-  if (fetchError || !unprocessedEmails || unprocessedEmails.length === 0) {
+  if (!unprocessedEmails || unprocessedEmails.length === 0) {
     return NextResponse.json({ message: 'No emails to process', count: 0 });
   }
 
