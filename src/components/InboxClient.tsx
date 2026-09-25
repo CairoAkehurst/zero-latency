@@ -251,7 +251,6 @@ export function InboxClient({ initialEmails }: { initialEmails: any[] }) {
                 <EmailRow 
                   email={email} 
                   isSelected={selectedEmailId === email.id}
-                  isCompressed={isComposing || isFiltersOpen || !!selectedEmailId}
                   isChecked={checkedEmailIds.has(email.id)}
                   onToggleCheck={() => handleToggleCheck(email.id, !checkedEmailIds.has(email.id))}
                 />

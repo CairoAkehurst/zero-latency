@@ -32,10 +32,10 @@ const colorMap: Record<string, string> = {
   teal: "bg-teal-100 text-teal-700 border-teal-200",
 };
 
-export function EmailRow({ email, isSelected, isCompressed, isChecked, onToggleCheck }: EmailRowProps) {
+export function EmailRow({ email, isSelected, isChecked, onToggleCheck }: EmailRowProps) {
   return (
     <div className={clsx(
-      "flex items-center gap-4 px-6 py-3 border-b cursor-pointer transition-colors group",
+      "flex items-center gap-3 px-5 py-2.5 border-b cursor-pointer transition-colors group",
       isChecked ? "bg-blue-50/80 border-blue-100" : isSelected ? "bg-blue-50/40 border-blue-50" : "border-gray-100 hover:bg-gray-50/50"
     )}>
       {/* Checkbox */}
@@ -63,8 +63,7 @@ export function EmailRow({ email, isSelected, isCompressed, isChecked, onToggleC
 
       {/* Sender */}
       <div className={clsx(
-        isCompressed ? "w-24" : "w-32",
-        "flex-shrink-0 text-sm truncate",
+        "w-36 flex-shrink-0 text-sm truncate",
         email.is_unread ? "font-semibold text-gray-900" : "font-medium text-gray-600"
       )}>
         {email.sender_name || email.sender_email}
@@ -98,14 +97,12 @@ export function EmailRow({ email, isSelected, isCompressed, isChecked, onToggleC
       ) : null}
 
       {/* Timestamp */}
-      {!isCompressed && (
-        <div className={clsx(
-          "w-24 text-right text-xs flex-shrink-0",
-          email.is_unread ? "font-medium text-gray-900" : "text-gray-400"
-        )}>
-          {email.timestamp}
-        </div>
-      )}
+      <div className={clsx(
+        "w-20 text-right text-xs flex-shrink-0",
+        email.is_unread ? "font-medium text-gray-900" : "text-gray-400"
+      )}>
+        {email.timestamp}
+      </div>
     </div>
   );
 }
