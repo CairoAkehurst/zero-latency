@@ -32,6 +32,8 @@ const colorMap: Record<string, string> = {
   teal: "bg-teal-100 text-teal-700 border-teal-200",
 };
 
+import { formatEmailDate } from "@/utils/formatDate";
+
 export function EmailRow({ email, isSelected, isChecked, onToggleCheck }: EmailRowProps) {
   return (
     <div className={clsx(
@@ -104,7 +106,7 @@ export function EmailRow({ email, isSelected, isChecked, onToggleCheck }: EmailR
         "w-20 text-right text-xs flex-shrink-0",
         email.is_unread ? "font-medium text-gray-900" : "text-gray-400"
       )}>
-        {email.timestamp}
+        {formatEmailDate(email.timestamp)}
       </div>
     </div>
   );

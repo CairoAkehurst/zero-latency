@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { X, Reply, Check, Send, Loader2, Maximize2, Minimize2 } from "lucide-react";
+import { formatEmailDate } from "@/utils/formatDate";
 
 interface EmailDetailPeekProps {
   email: {
@@ -73,7 +74,7 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
   };
 
   return (
-    <div className={`flex flex-col h-full bg-white z-10 relative overflow-hidden transition-all duration-300 ease-in-out flex-1 border-l border-t border-gray-200 shadow-[-12px_0_40px_rgba(0,0,0,0.08)] ${isFullView ? '' : 'rounded-tl-2xl'}`}>
+    <div className={`flex flex-col h-full bg-white z-10 relative overflow-hidden transition-all duration-300 ease-in-out flex-1 ${isFullView ? '' : 'border-l border-gray-100'}`}>
       {/* Header */}
       <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
         <h2 className="font-semibold text-gray-900 truncate pr-4">{email.sender_name || email.sender_email}</h2>
@@ -174,7 +175,7 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
                   <span className="text-sm font-medium text-gray-900 truncate">{email.sender_name || email.sender_email}</span>
-                  <span className="text-xs text-gray-400 whitespace-nowrap">{email.timestamp}</span>
+                  <span className="text-xs text-gray-400 whitespace-nowrap">{formatEmailDate(email.timestamp)}</span>
                 </div>
                 <div className="text-sm font-medium text-gray-800 mb-2">{email.subject}</div>
                 {/* Safe HTML rendering if needed, otherwise fallback to text */}

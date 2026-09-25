@@ -141,7 +141,7 @@ export function InboxClient({ initialEmails }: { initialEmails: any[] }) {
     <div className="flex h-full bg-white relative rounded-tl-2xl border-t border-l border-gray-200/50 shadow-sm overflow-hidden min-h-0">
       {/* Left List Area */}
       <div 
-        className="flex flex-col h-full flex-shrink-0 transition-all duration-300 ease-in-out border-r border-gray-100"
+        className={`flex flex-col h-full flex-shrink-0 transition-all duration-300 ease-in-out ${(isFullView || isComposeFullView) ? 'border-0 overflow-hidden opacity-0' : ''}`}
         style={{ width: (isFullView || isComposeFullView) ? '0px' : (isComposing || isFiltersOpen || selectedEmailId) ? 'calc(100% - 500px)' : '100%' }}
       >
         <header className="px-6 py-4 flex items-center justify-between border-b border-gray-100 flex-shrink-0">

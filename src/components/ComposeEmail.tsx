@@ -38,7 +38,7 @@ export function ComposeEmail({ onClose, onExpand, isFullView = false }: ComposeE
   };
 
   return (
-    <div className={`flex flex-col h-full bg-white z-10 relative overflow-hidden transition-all duration-300 ease-in-out flex-1 border-l border-t border-gray-200 shadow-[-12px_0_40px_rgba(0,0,0,0.08)] ${isFullView ? '' : 'rounded-tl-2xl'}`}>
+    <div className={`flex flex-col h-full bg-white z-10 relative overflow-hidden transition-all duration-300 ease-in-out flex-1 ${isFullView ? '' : 'border-l border-gray-100'}`}>
       {/* Header */}
       <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between bg-[#f7f7f5]">
         <h2 className="font-semibold text-gray-900">New Message</h2>

@@ -6,7 +6,7 @@ interface FiltersPeekProps {
 
 export function FiltersPeek({ onClose }: FiltersPeekProps) {
   return (
-    <div className="w-[500px] flex-shrink-0 border-l border-t border-gray-200 bg-white flex flex-col h-full shadow-[-12px_0_40px_rgba(0,0,0,0.08)] rounded-tl-2xl z-10 relative overflow-hidden">
+    <div className="flex flex-col h-full bg-white z-10 relative overflow-hidden transition-all duration-300 ease-in-out flex-1 border-l border-gray-100">
       <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
         <h2 className="font-semibold text-gray-900">View Options</h2>
         <button 
