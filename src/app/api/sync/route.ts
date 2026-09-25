@@ -77,12 +77,28 @@ export async function POST() {
       let senderEmail = from;
       const match = from.match(/(.*)<(.*)>/);
       if (match) {
-        senderName = match[1].trim();
+        senderName = match[1].trim().replace(/^"|"$/g, '');
         senderEmail = match[2].trim();
       }
 
-      // Simple body extraction (can be expanded to handle multipart properly)
-      const bodyText = detail.data.snippet || '';
+      // Extract body properly
+      let bodyText = detail.data.snippet || '';
+      let bodyHtml = '';
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      function extractBody(payload: any) {
+        if (!payload) return;
+        if (payload.mimeType === 'text/plain' && payload.body?.data) {
+          bodyText = Buffer.from(payload.body.data, 'base64').toString('utf-8');
+        } else if (payload.mimeType === 'text/html' && payload.body?.data) {
+          bodyHtml = Buffer.from(payload.body.data, 'base64').toString('utf-8');
+        } else if (payload.parts) {
+          for (const part of payload.parts) {
+            extractBody(part);
+          }
+        }
+      }
+      extractBody(detail.data.payload);
 
       // Insert into Supabase
       const { error: insertError } = await supabase.from('emails').insert({
@@ -94,6 +110,7 @@ export async function POST() {
         subject: subject,
         snippet: detail.data.snippet,
         body_text: bodyText,
+        body_html: bodyHtml,
         is_unread: detail.data.labelIds?.includes('UNREAD') ?? false,
         received_at: dateHeader ? new Date(dateHeader).toISOString() : new Date().toISOString()
       });

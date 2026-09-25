@@ -5,13 +5,16 @@ import clsx from "clsx";
 interface EmailRowProps {
   email: {
     id: string;
-    sender: string;
+    sender_name: string;
+    sender_email: string;
+    subject: string;
     summary: string;
     category: string;
     categoryColor: string;
     timestamp: string;
-    isUnread: boolean;
+    is_unread: boolean;
   };
+  isSelected?: boolean;
 }
 
 const colorMap: Record<string, string> = {
@@ -23,12 +26,15 @@ const colorMap: Record<string, string> = {
   orange: "bg-orange-100 text-orange-700",
 };
 
-export function EmailRow({ email }: EmailRowProps) {
+export function EmailRow({ email, isSelected }: EmailRowProps) {
   return (
-    <div className="flex items-center gap-4 px-6 py-3 border-b border-gray-100 hover:bg-gray-50/50 cursor-pointer transition-colors group">
+    <div className={clsx(
+      "flex items-center gap-4 px-6 py-3 border-b cursor-pointer transition-colors group",
+      isSelected ? "bg-blue-50/50 border-blue-100" : "border-gray-100 hover:bg-gray-50/50"
+    )}>
       {/* Unread Indicator */}
       <div className="w-2 flex-shrink-0 flex justify-center">
-        {email.isUnread && (
+        {email.is_unread && (
           <div className="w-2 h-2 rounded-full bg-blue-500" />
         )}
       </div>
@@ -36,33 +42,36 @@ export function EmailRow({ email }: EmailRowProps) {
       {/* Sender */}
       <div className={clsx(
         "w-32 flex-shrink-0 text-sm truncate",
-        email.isUnread ? "font-semibold text-gray-900" : "font-medium text-gray-600"
+        email.is_unread ? "font-semibold text-gray-900" : "font-medium text-gray-600"
       )}>
-        {email.sender}
+        {email.sender_name || email.sender_email}
       </div>
 
-      {/* Summary */}
+      {/* Summary / Subject */}
       <div className={clsx(
         "flex-1 text-sm truncate",
-        email.isUnread ? "font-medium text-gray-800" : "text-gray-500"
+        email.is_unread ? "font-medium text-gray-800" : "text-gray-500"
       )}>
-        {email.summary}
+        <span className="text-gray-900 font-medium mr-2">{email.subject}</span>
+        <span className="text-gray-500 opacity-80">{email.summary}</span>
       </div>
 
       {/* Category Badge */}
-      <div className="flex-shrink-0">
-        <span className={clsx(
-          "px-2.5 py-0.5 rounded-full text-xs font-medium",
-          colorMap[email.categoryColor] || "bg-gray-100 text-gray-700"
-        )}>
-          {email.category}
-        </span>
-      </div>
+      {email.category && (
+        <div className="flex-shrink-0">
+          <span className={clsx(
+            "px-2.5 py-0.5 rounded-full text-xs font-medium",
+            colorMap[email.categoryColor] || "bg-gray-100 text-gray-700"
+          )}>
+            {email.category}
+          </span>
+        </div>
+      )}
 
       {/* Timestamp */}
       <div className={clsx(
-        "w-20 text-right text-xs flex-shrink-0",
-        email.isUnread ? "font-medium text-gray-900" : "text-gray-400"
+        "w-24 text-right text-xs flex-shrink-0",
+        email.is_unread ? "font-medium text-gray-900" : "text-gray-400"
       )}>
         {email.timestamp}
       </div>

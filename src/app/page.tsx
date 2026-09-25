@@ -1,77 +1,52 @@
-import { Wand2, SlidersHorizontal, Settings } from "lucide-react";
-import { EmailRow } from "@/components/EmailRow";
+import { createClient } from "@/utils/supabase/server";
+import { redirect } from "next/navigation";
+import { InboxClient } from "@/components/InboxClient";
 
-export default function InboxPage() {
-  // Temporary mock data for UI testing.
-  // In production, this will fetch from Supabase.
-  const emails = [
-    {
-      id: "1",
-      sender: "Luke D",
-      summary: "Can we review the Q3 roadmap together this afternoon? I've updated the key milestones.",
-      category: "Project",
-      categoryColor: "blue",
-      timestamp: "1:19 PM",
-      isUnread: true,
-    },
-    {
-      id: "2",
-      sender: "Jane Kim",
-      summary: "Found a great candidate for the senior frontend role. Attached her resume and portfolio.",
-      category: "Recruiting",
-      categoryColor: "pink",
-      timestamp: "11:30 AM",
-      isUnread: true,
-    },
-    {
-      id: "3",
-      sender: "Sarah Jenkins",
-      summary: "Client just signed the contract for the enterprise tier! Setting up onboarding.",
-      category: "Leads",
-      categoryColor: "purple",
-      timestamp: "Yesterday",
-      isUnread: false,
-    },
-    {
-      id: "4",
-      sender: "AWS Alerts",
-      summary: "URGENT: Database CPU utilization crossed 90% threshold in us-east-1.",
-      category: "Urgent",
-      categoryColor: "red",
-      timestamp: "Yesterday",
-      isUnread: false,
-    },
-  ];
+export default async function InboxPage() {
+  const supabase = await createClient();
+  
+  // Check auth
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) {
+    redirect('/login');
+  }
+
+  // Fetch emails with their AI metadata and categories
+  const { data: emails } = await supabase
+    .from('emails')
+    .select(`
+      *,
+      email_ai_metadata (
+        tldr,
+        action_required,
+        suggested_reply,
+        categories (
+          name,
+          color
+        )
+      )
+    `)
+    .eq('user_id', user.id)
+    .order('received_at', { ascending: false });
+
+  // Map the nested Supabase data into a flatter structure for the client
+  const mappedEmails = (emails || []).map(email => {
+    const meta = Array.isArray(email.email_ai_metadata) ? email.email_ai_metadata[0] : email.email_ai_metadata;
+    const category = meta?.categories;
+
+    return {
+      ...email,
+      summary: meta?.tldr || email.snippet,
+      category: category?.name || null,
+      categoryColor: category?.color || 'gray',
+      suggestedReply: meta?.suggested_reply,
+      timestamp: new Date(email.received_at).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+    };
+  });
 
   return (
-    <div className="flex flex-col h-full bg-white">
-      {/* Header */}
-      <header className="px-6 py-4 flex items-center justify-between border-b border-gray-100">
-        <h1 className="text-xl font-semibold text-gray-900">Inbox</h1>
-        
-        <div className="flex items-center gap-3 text-sm">
-          <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-50 text-blue-600 font-medium hover:bg-blue-100 transition-colors">
-            <Wand2 className="w-3.5 h-3.5" />
-            Auto label
-          </button>
-          
-          <div className="h-4 w-px bg-gray-200" />
-          
-          <button className="p-1.5 text-gray-400 hover:text-gray-600 transition-colors rounded">
-            <SlidersHorizontal className="w-4 h-4" />
-          </button>
-          <button className="p-1.5 text-gray-400 hover:text-gray-600 transition-colors rounded">
-            <Settings className="w-4 h-4" />
-          </button>
-        </div>
-      </header>
-
-      {/* Email List */}
-      <div className="flex-1 overflow-y-auto">
-        {emails.map((email) => (
-          <EmailRow key={email.id} email={email} />
-        ))}
-      </div>
+    <div className="flex-1 h-full overflow-hidden">
+      <InboxClient initialEmails={mappedEmails} />
     </div>
   );
 }
