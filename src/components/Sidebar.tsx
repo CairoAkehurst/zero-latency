@@ -92,7 +92,7 @@ export function Sidebar() {
 
   return (
     <aside className="w-64 flex-shrink-0 flex flex-col h-full bg-[#f7f7f5] text-sm text-gray-700 relative z-10">
-      <div className="p-4 flex items-center justify-between relative">
+      <div className="h-[68px] px-4 flex items-center justify-between relative flex-shrink-0">
         <div 
           onClick={() => setShowDropdown(!showDropdown)}
           className="flex items-center gap-2 font-medium cursor-pointer hover:bg-gray-200/50 px-2 py-1 rounded-md transition-colors"
