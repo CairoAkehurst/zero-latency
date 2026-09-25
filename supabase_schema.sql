@@ -78,6 +78,16 @@ create policy "Categories are viewable by all authenticated users"
   to authenticated
   using (true);
 
+create policy "Categories can be created by authenticated users"
+  on public.categories for insert
+  to authenticated
+  with check (true);
+
+create policy "Categories can be deleted by authenticated users"
+  on public.categories for delete
+  to authenticated
+  using (true);
+
 create policy "Users can view and manage their own emails"
   on public.emails for all
   using (auth.uid() = user_id);

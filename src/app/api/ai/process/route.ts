@@ -14,8 +14,11 @@ export async function POST() {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  // Find emails that don't have AI metadata yet
-  const { data: processedIds } = await supabase.from('email_ai_metadata').select('email_id');
+  // Find emails that already have a successful AI metadata category
+  const { data: processedIds } = await supabase
+    .from('email_ai_metadata')
+    .select('email_id')
+    .not('category_id', 'is', null);
   const excludeIds = processedIds?.map(p => p.email_id) || [];
 
   let { data: allEmails, error: fetchError } = await supabase
@@ -88,14 +91,27 @@ export async function POST() {
         c.name.toLowerCase() === aiResult.category?.toLowerCase()
       );
 
-      await supabase.from('email_ai_metadata').insert({
+      const { data: existingMeta } = await supabase
+        .from('email_ai_metadata')
+        .select('id')
+        .eq('email_id', email.id)
+        .maybeSingle();
+
+      const payload = {
         email_id: email.id,
-        category_id: matchedCategory?.id || null, // Might be null if category doesn't exist
+        category_id: matchedCategory?.id || null,
         tldr: aiResult.tldr,
         action_required: aiResult.action_required,
         suggested_reply: aiResult.suggested_reply,
-        action_payload: aiResult.action_type ? { type: aiResult.action_type } : null
-      });
+        action_payload: aiResult.action_type ? { type: aiResult.action_type } : null,
+        processed_at: new Date().toISOString()
+      };
+
+      if (existingMeta) {
+        await supabase.from('email_ai_metadata').update(payload).eq('id', existingMeta.id);
+      } else {
+        await supabase.from('email_ai_metadata').insert(payload);
+      }
 
       processedCount++;
     } catch (error) {

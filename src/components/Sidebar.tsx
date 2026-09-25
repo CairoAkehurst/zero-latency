@@ -47,15 +47,33 @@ export function Sidebar() {
     const randomColor = colors[Math.floor(Math.random() * colors.length)];
     const slug = newLabelName.toLowerCase().replace(/[^a-z0-9]+/g, '-');
     
-    await supabase.from('categories').insert({
+    const { error } = await supabase.from('categories').insert({
       name: newLabelName.trim(),
       color: randomColor,
       slug
     });
-    
-    setNewLabelName("");
-    setIsAddingLabel(false);
-    fetchCategories();
+
+    if (error) {
+      console.error("Failed to save label:", error);
+      alert("Failed to save label. Did you run the updated SQL policies?");
+    } else {
+      setNewLabelName("");
+      setIsAddingLabel(false);
+      fetchCategories();
+    }
+  };
+
+  const handleDeleteLabel = async (e: React.MouseEvent, folder: any) => {
+    e.preventDefault();
+    if (confirm(`Are you sure you want to delete the "${folder.name}" label?`)) {
+      const { error } = await supabase.from('categories').delete().eq('name', folder.name);
+      if (error) {
+        console.error("Failed to delete label:", error);
+        alert("Failed to delete label. Check RLS policies.");
+      } else {
+        fetchCategories();
+      }
+    }
   };
 
   useEffect(() => {
@@ -135,7 +153,9 @@ export function Sidebar() {
             <div 
               key={folder.name} 
               onClick={() => window.dispatchEvent(new CustomEvent('filter-category', { detail: folder.name }))}
+              onContextMenu={(e) => handleDeleteLabel(e, folder)}
               className="sidebar-link group cursor-pointer hover:bg-gray-200/50"
+              title="Right-click to delete"
             >
               <div className={clsx("w-2 h-2 rounded-full flex-shrink-0", folder.color)} />
               <span className="truncate">{folder.name}</span>
