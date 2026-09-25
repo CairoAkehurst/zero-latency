@@ -1,15 +1,17 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
-import { Wand2, SlidersHorizontal, Settings, RefreshCw, Search, PenSquare } from "lucide-react";
+import { Wand2, SlidersHorizontal, Settings, RefreshCw, Search, PenSquare, Trash2, Tag } from "lucide-react";
 import { EmailRow } from "@/components/EmailRow";
 import { EmailDetailPeek } from "@/components/EmailDetailPeek";
 import { ComposeEmail } from "@/components/ComposeEmail";
 import { FiltersPeek } from "@/components/FiltersPeek";
+import { createClient } from "@/utils/supabase/client";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function InboxClient({ initialEmails }: { initialEmails: any[] }) {
-  const [emails] = useState(initialEmails);
+  const [emails, setEmails] = useState(initialEmails);
+  const [checkedEmailIds, setCheckedEmailIds] = useState<Set<string>>(new Set());
   const [selectedEmailId, setSelectedEmailId] = useState<string | null>(null);
   const [fullViewEmailId, setFullViewEmailId] = useState<string | null>(null);
   const [isComposing, setIsComposing] = useState(false);
@@ -64,6 +66,35 @@ export function InboxClient({ initialEmails }: { initialEmails: any[] }) {
     }
     return result;
   }, [emails, searchQuery, activeCategory]);
+
+  const handleToggleCheck = (id: string, checked: boolean) => {
+    const newSet = new Set(checkedEmailIds);
+    if (checked) newSet.add(id);
+    else newSet.delete(id);
+    setCheckedEmailIds(newSet);
+  };
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setCheckedEmailIds(new Set(filteredEmails.map(e => e.id)));
+    } else {
+      setCheckedEmailIds(new Set());
+    }
+  };
+
+  const handleDeleteSelected = async () => {
+    if (checkedEmailIds.size === 0) return;
+    const supabase = createClient();
+    const idsToDelete = Array.from(checkedEmailIds);
+    
+    setEmails(prev => prev.filter(e => !idsToDelete.includes(e.id)));
+    setCheckedEmailIds(new Set());
+    
+    const { error } = await supabase.from('emails').delete().in('id', idsToDelete);
+    if (error) {
+      alert("Failed to delete emails: " + error.message);
+    }
+  };
 
   const [syncStatus, setSyncStatus] = useState<string | null>(null);
   const [isAutoLabeling, setIsAutoLabeling] = useState(false);
@@ -127,9 +158,38 @@ export function InboxClient({ initialEmails }: { initialEmails: any[] }) {
       {/* Left List Area */}
       <div className="flex flex-col h-full flex-1 min-w-0">
         <header className="px-6 py-4 flex items-center justify-between border-b border-gray-100 flex-shrink-0">
-          <div className="flex items-center gap-4">
-            <h1 className="text-xl font-semibold text-gray-900 leading-none">{activeCategory || "Inbox"}</h1>
-          </div>
+          {checkedEmailIds.size > 0 ? (
+            <div className="flex items-center gap-4 flex-1">
+              <input 
+                type="checkbox" 
+                checked={checkedEmailIds.size === filteredEmails.length && filteredEmails.length > 0}
+                onChange={(e) => handleSelectAll(e.target.checked)}
+                className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+              />
+              <span className="text-sm font-medium text-gray-700">{checkedEmailIds.size} selected</span>
+              
+              <div className="h-4 w-px bg-gray-200 mx-2" />
+              
+              <button 
+                onClick={handleDeleteSelected}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-red-50 text-red-600 font-medium hover:bg-red-100 transition-colors"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                Delete
+              </button>
+
+              <button 
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-100 text-gray-700 font-medium hover:bg-gray-200 transition-colors"
+              >
+                <Tag className="w-3.5 h-3.5" />
+                Label
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-4">
+              <h1 className="text-xl font-semibold text-gray-900 leading-none">{activeCategory || "Inbox"}</h1>
+            </div>
+          )}
           
           <div className="flex items-center gap-3 text-sm ml-4">
             <button 
@@ -207,6 +267,8 @@ export function InboxClient({ initialEmails }: { initialEmails: any[] }) {
                   email={email} 
                   isSelected={selectedEmailId === email.id}
                   isCompressed={isComposing || isFiltersOpen || !!selectedEmailId}
+                  isChecked={checkedEmailIds.has(email.id)}
+                  onToggleCheck={() => handleToggleCheck(email.id, !checkedEmailIds.has(email.id))}
                 />
               </div>
             ))

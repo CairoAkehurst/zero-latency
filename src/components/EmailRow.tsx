@@ -17,6 +17,8 @@ interface EmailRowProps {
   };
   isSelected?: boolean;
   isCompressed?: boolean;
+  isChecked?: boolean;
+  onToggleCheck?: (checked: boolean, e: React.MouseEvent) => void;
 }
 
 const colorMap: Record<string, string> = {
@@ -30,12 +32,28 @@ const colorMap: Record<string, string> = {
   teal: "bg-teal-100 text-teal-700 border-teal-200",
 };
 
-export function EmailRow({ email, isSelected, isCompressed }: EmailRowProps) {
+export function EmailRow({ email, isSelected, isCompressed, isChecked, onToggleCheck }: EmailRowProps) {
   return (
     <div className={clsx(
       "flex items-center gap-4 px-6 py-3 border-b cursor-pointer transition-colors group",
-      isSelected ? "bg-blue-50/50 border-blue-100" : "border-gray-100 hover:bg-gray-50/50"
+      isChecked ? "bg-blue-50/80 border-blue-100" : isSelected ? "bg-blue-50/40 border-blue-50" : "border-gray-100 hover:bg-gray-50/50"
     )}>
+      {/* Checkbox */}
+      <div 
+        className="flex-shrink-0 flex items-center justify-center pt-0.5"
+        onClick={(e) => {
+          e.stopPropagation();
+          onToggleCheck?.(!isChecked, e);
+        }}
+      >
+        <input 
+          type="checkbox" 
+          checked={isChecked}
+          readOnly
+          className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+        />
+      </div>
+
       {/* Unread Indicator */}
       <div className="w-2 flex-shrink-0 flex justify-center">
         {email.is_unread && (
