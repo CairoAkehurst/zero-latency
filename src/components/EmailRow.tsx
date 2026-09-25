@@ -50,7 +50,7 @@ export function EmailRow({ email, isSelected, isCompressed, isChecked, onToggleC
           type="checkbox" 
           checked={isChecked}
           readOnly
-          className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+          className="w-4 h-4 rounded border-gray-300 accent-blue-600 bg-white cursor-pointer"
         />
       </div>
 

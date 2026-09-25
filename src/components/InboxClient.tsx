@@ -168,22 +168,22 @@ export function InboxClient({ initialEmails }: { initialEmails: any[] }) {
                 type="checkbox" 
                 checked={checkedEmailIds.size === filteredEmails.length && filteredEmails.length > 0}
                 onChange={(e) => handleSelectAll(e.target.checked)}
-                className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                className="w-4 h-4 rounded border-gray-300 accent-blue-600 bg-white cursor-pointer"
               />
-              <span className="text-sm font-medium text-gray-700">{checkedEmailIds.size} selected</span>
+              <span className="text-sm font-medium text-gray-700 whitespace-nowrap">{checkedEmailIds.size} selected</span>
               
               <div className="h-4 w-px bg-gray-200 mx-2" />
               
               <button 
                 onClick={handleDeleteSelected}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-red-50 text-red-600 font-medium hover:bg-red-100 transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-red-50 text-red-600 font-medium hover:bg-red-100 transition-colors whitespace-nowrap"
               >
                 <Trash2 className="w-3.5 h-3.5" />
                 Delete
               </button>
 
               <button 
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-100 text-gray-700 font-medium hover:bg-gray-200 transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-100 text-gray-700 font-medium hover:bg-gray-200 transition-colors whitespace-nowrap"
               >
                 <Tag className="w-3.5 h-3.5" />
                 Label
@@ -196,23 +196,27 @@ export function InboxClient({ initialEmails }: { initialEmails: any[] }) {
           )}
           
           <div className="flex items-center gap-3 text-sm ml-4">
-            <button 
-              onClick={handleSync}
-              disabled={isSyncing}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-50 text-gray-700 font-medium hover:bg-gray-100 transition-colors disabled:opacity-50"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? "animate-spin" : ""}`} />
-              {isSyncing ? "Syncing..." : "Sync emails"}
-            </button>
+            {checkedEmailIds.size === 0 && (
+              <>
+                <button 
+                  onClick={handleSync}
+                  disabled={isSyncing}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-50 text-gray-700 font-medium hover:bg-gray-100 transition-colors disabled:opacity-50 whitespace-nowrap"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? "animate-spin" : ""}`} />
+                  {isSyncing ? "Syncing..." : "Sync emails"}
+                </button>
 
-            <button 
-              onClick={handleAutoLabel}
-              disabled={isAutoLabeling}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-50 text-blue-600 font-medium hover:bg-blue-100 transition-colors disabled:opacity-50"
-            >
-              <Wand2 className={`w-3.5 h-3.5 ${isAutoLabeling ? "animate-spin" : ""}`} />
-              {isAutoLabeling ? "Labeling..." : "Auto label"}
-            </button>
+                <button 
+                  onClick={handleAutoLabel}
+                  disabled={isAutoLabeling}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-50 text-blue-600 font-medium hover:bg-blue-100 transition-colors disabled:opacity-50 whitespace-nowrap"
+                >
+                  <Wand2 className={`w-3.5 h-3.5 ${isAutoLabeling ? "animate-spin" : ""}`} />
+                  {isAutoLabeling ? "Labeling..." : "Auto label"}
+                </button>
+              </>
+            )}
             
             <div className="relative w-64 flex items-center">
               <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
