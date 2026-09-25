@@ -27,20 +27,25 @@ export function InboxClient({ initialEmails }: { initialEmails: any[] }) {
     );
   }, [emails, searchQuery]);
 
+  const [syncStatus, setSyncStatus] = useState<string | null>(null);
+
   const handleSync = async () => {
     setIsSyncing(true);
+    setSyncStatus(null);
     try {
       const res = await fetch("/api/sync", { method: "POST" });
+      const data = await res.json();
       if (res.ok) {
+        setSyncStatus(`Synced ${data.syncedCount} new emails!`);
         // Trigger AI processing in background
         fetch("/api/ai/process", { method: "POST" });
-        // Refresh page to get new data
-        window.location.reload();
+        // Refresh page to get new data after a short delay
+        setTimeout(() => window.location.reload(), 1500);
       } else {
-        console.error("Sync failed");
+        setSyncStatus(`Sync error: ${data.error || res.statusText}`);
       }
     } catch (err) {
-      console.error(err);
+      setSyncStatus(`Sync error: ${String(err)}`);
     } finally {
       setIsSyncing(false);
     }
@@ -95,6 +100,13 @@ export function InboxClient({ initialEmails }: { initialEmails: any[] }) {
             </button>
           </div>
         </header>
+
+        {/* Sync Status Banner */}
+        {syncStatus && (
+          <div className={`px-6 py-2 text-sm ${syncStatus.includes('error') ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'}`}>
+            {syncStatus}
+          </div>
+        )}
 
         {/* Email List */}
         <div className="flex-1 overflow-y-auto">
