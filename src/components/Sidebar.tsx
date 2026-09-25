@@ -60,6 +60,7 @@ export function Sidebar() {
             >
               <LogOut className="w-4 h-4" />
               Sign Out
+            </button>
           </div>
         )}
 
