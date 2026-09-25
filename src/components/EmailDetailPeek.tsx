@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { X, Reply, Check, Send, Loader2, Maximize2, Minimize2, Archive, Trash2, Mail, Clock, MoreVertical, CornerUpLeft, CornerUpRight, ChevronDown, Sparkles } from "lucide-react";
+import { X, Reply, Check, Send, Loader2, Maximize2, Minimize2, Archive, Trash2, Mail, Clock, MoreVertical, CornerUpLeft, CornerUpRight, ChevronDown, Sparkles, Type, Paperclip, Link as LinkIcon, Image as ImageIcon } from "lucide-react";
 import { formatEmailDate } from "@/utils/formatDate";
 
 interface EmailDetailPeekProps {
@@ -198,14 +198,13 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
           </div>
         </div>
 
-        {/* AI Overview Callout */}
+        {/* AI Summary Box */}
         {email.summary && (
-          <div className="w-full my-4 bg-blue-50/80 border-l-[3px] border-blue-500 p-4 md:p-5 rounded-r-xl">
-            <div className="text-sm font-semibold text-blue-800 mb-2 flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-blue-600" />
-              AI Overview
+          <div className="w-full my-2 bg-white border border-blue-200 rounded-xl px-5 py-4">
+            <div className="text-sm font-semibold text-blue-600 mb-1">
+              AI Summary
             </div>
-            <p className="text-sm text-blue-950/90 leading-relaxed">
+            <p className="text-sm text-gray-800 leading-relaxed">
               {email.summary}
             </p>
           </div>
@@ -214,7 +213,7 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
         {/* Email Body */}
         <div className="w-full">
           {email.body_html ? (
-            <div className="w-full pr-2">
+            <div className="w-full pr-2 max-h-[50vh] overflow-y-auto">
               <iframe 
                 sandbox="allow-popups allow-popups-to-escape-sandbox allow-same-origin"
                 srcDoc={email.body_html} 
@@ -223,7 +222,6 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
                 onLoad={(e) => {
                   const iframe = e.target as HTMLIFrameElement;
                   try {
-                    // Temporarily set height to 0 to accurately measure scrollHeight without min-height interference
                     iframe.style.height = '0px';
                     iframe.style.height = (iframe.contentWindow?.document.documentElement.scrollHeight || 60) + 'px';
                   } catch (e) {
@@ -233,7 +231,7 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
               />
             </div>
           ) : (
-            <div className="text-sm text-gray-800 whitespace-pre-wrap font-sans leading-relaxed pr-2">
+            <div className="text-sm text-gray-800 whitespace-pre-wrap font-sans leading-relaxed pr-2 max-h-[50vh] overflow-y-auto">
               {email.body_text || 'No content'}
             </div>
           )}
@@ -242,10 +240,17 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
         {/* Permanent Reply Section */}
         <div className="w-full mt-2 pb-12">
           <div className="bg-white rounded-xl border border-gray-300 shadow-sm overflow-hidden flex flex-col transition-all">
-            <div className="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <CornerUpLeft className="w-4 h-4 text-gray-500" />
-                <span className="text-sm font-medium text-gray-700">Replying to {email.sender_name || email.sender_email}</span>
+            {/* Header / Recipients Bar */}
+            <div className="bg-white px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+              <div className="flex items-center gap-3 w-full">
+                <CornerUpLeft className="w-4 h-4 text-gray-500 flex-shrink-0" />
+                <div className="flex items-center flex-1 gap-2 flex-wrap">
+                  <span className="text-sm text-gray-500 font-medium mr-1">To</span>
+                  <div className="px-2 py-1 bg-white border border-gray-200 rounded-md text-sm text-gray-700 flex items-center gap-1 shadow-sm">
+                    {email.sender_name || email.sender_email}
+                  </div>
+                  <button className="text-xs font-medium text-gray-500 hover:text-gray-800 ml-auto transition-colors">Cc / Bcc</button>
+                </div>
               </div>
             </div>
             
@@ -257,11 +262,11 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
               className="w-full p-4 min-h-[200px] resize-y text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none"
             />
             
-            <div className="p-3 bg-gray-50 flex justify-between items-center border-t border-gray-200">
+            <div className="p-3 bg-white flex justify-between items-center border-t border-gray-100">
               <div className="flex items-center gap-2">
                 <button 
                   onClick={() => setDraftText("")}
-                  className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-200 rounded-md transition-colors" 
+                  className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors" 
                   title="Discard draft"
                 >
                   <Trash2 className="w-4 h-4" />
@@ -270,22 +275,35 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
                 {email.suggestedReply && (
                   <button 
                     onClick={() => setDraftText(email.suggestedReply!)}
-                    className="flex items-center gap-2 px-3 py-1.5 ml-1 rounded-md bg-white border border-gray-300 hover:bg-gray-100 text-gray-700 text-sm font-medium transition-colors"
+                    className="flex items-center gap-2 px-3 py-1.5 ml-1 rounded-md bg-white border border-gray-200 shadow-sm hover:bg-gray-50 text-blue-600 text-sm font-medium transition-colors"
                   >
-                    <Sparkles className="w-3.5 h-3.5 text-blue-500" />
-                    Use AI Draft
+                    Help me write
                   </button>
                 )}
               </div>
 
-              <button 
-                onClick={handleSend}
-                disabled={isSending || !draftText.trim()}
-                className="flex items-center gap-2 px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-md transition-colors disabled:opacity-50 shadow-sm"
-              >
-                {isSending ? <Loader2 className="w-4 h-4 animate-spin" /> : sendSuccess ? <Check className="w-4 h-4" /> : <Send className="w-4 h-4" />}
-                {isSending ? "Sending..." : sendSuccess ? "Sent!" : "Send"}
-              </button>
+              <div className="flex items-center gap-1">
+                <button 
+                  onClick={handleSend}
+                  disabled={isSending || !draftText.trim()}
+                  className="flex items-center gap-2 px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-md transition-colors disabled:opacity-50 shadow-sm mr-2"
+                >
+                  {isSending ? <Loader2 className="w-4 h-4 animate-spin" /> : sendSuccess ? <Check className="w-4 h-4" /> : <Send className="w-4 h-4" />}
+                  {isSending ? "Sending..." : sendSuccess ? "Sent!" : "Send"}
+                </button>
+                <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md transition-colors" title="Formatting options">
+                  <Type className="w-4 h-4" />
+                </button>
+                <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md transition-colors" title="Attach files">
+                  <Paperclip className="w-4 h-4" />
+                </button>
+                <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md transition-colors" title="Insert link">
+                  <LinkIcon className="w-4 h-4" />
+                </button>
+                <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md transition-colors" title="Insert photo">
+                  <ImageIcon className="w-4 h-4" />
+                </button>
+              </div>
             </div>
           </div>
         </div>
