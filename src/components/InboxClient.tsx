@@ -205,7 +205,8 @@ export function InboxClient({ initialEmails }: { initialEmails: any[] }) {
               >
                 <EmailRow 
                   email={email} 
-                  isSelected={selectedEmailId === email.id} 
+                  isSelected={selectedEmailId === email.id}
+                  isCompressed={isComposing || isFiltersOpen || !!selectedEmailId}
                 />
               </div>
             ))

@@ -16,6 +16,7 @@ interface EmailRowProps {
     is_unread: boolean;
   };
   isSelected?: boolean;
+  isCompressed?: boolean;
 }
 
 const colorMap: Record<string, string> = {
@@ -29,7 +30,7 @@ const colorMap: Record<string, string> = {
   teal: "bg-teal-100 text-teal-700 border-teal-200",
 };
 
-export function EmailRow({ email, isSelected }: EmailRowProps) {
+export function EmailRow({ email, isSelected, isCompressed }: EmailRowProps) {
   return (
     <div className={clsx(
       "flex items-center gap-4 px-6 py-3 border-b cursor-pointer transition-colors group",
@@ -44,7 +45,8 @@ export function EmailRow({ email, isSelected }: EmailRowProps) {
 
       {/* Sender */}
       <div className={clsx(
-        "w-32 flex-shrink-0 text-sm truncate",
+        isCompressed ? "w-24" : "w-32",
+        "flex-shrink-0 text-sm truncate",
         email.is_unread ? "font-semibold text-gray-900" : "font-medium text-gray-600"
       )}>
         {email.sender_name || email.sender_email}
@@ -78,12 +80,14 @@ export function EmailRow({ email, isSelected }: EmailRowProps) {
       ) : null}
 
       {/* Timestamp */}
-      <div className={clsx(
-        "w-24 text-right text-xs flex-shrink-0",
-        email.is_unread ? "font-medium text-gray-900" : "text-gray-400"
-      )}>
-        {email.timestamp}
-      </div>
+      {!isCompressed && (
+        <div className={clsx(
+          "w-24 text-right text-xs flex-shrink-0",
+          email.is_unread ? "font-medium text-gray-900" : "text-gray-400"
+        )}>
+          {email.timestamp}
+        </div>
+      )}
     </div>
   );
 }

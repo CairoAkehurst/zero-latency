@@ -36,7 +36,7 @@ export function ComposeEmail({ onClose }: ComposeEmailProps) {
   };
 
   return (
-    <div className="w-[500px] flex-shrink-0 border-l border-gray-100 bg-white flex flex-col h-full shadow-[-4px_0_24px_rgba(0,0,0,0.02)] z-10">
+    <div className="w-[500px] flex-shrink-0 border-l border-t border-gray-200 bg-white flex flex-col h-full shadow-[-12px_0_40px_rgba(0,0,0,0.08)] rounded-tl-2xl z-10 relative overflow-hidden">
       {/* Header */}
       <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between bg-[#f7f7f5]">
         <h2 className="font-semibold text-gray-900">New Message</h2>

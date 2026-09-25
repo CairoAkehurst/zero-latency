@@ -72,7 +72,7 @@ export function EmailDetailPeek({ email, onClose, isFullView = false }: EmailDet
   };
 
   return (
-    <div className={`flex flex-col h-full bg-white ${isFullView ? 'w-full' : 'w-[500px] flex-shrink-0 border-l border-gray-100 shadow-[-4px_0_24px_rgba(0,0,0,0.02)]'}`}>
+    <div className={`flex flex-col h-full bg-white z-10 relative overflow-hidden ${isFullView ? 'w-full' : 'w-[500px] flex-shrink-0 border-l border-t border-gray-200 shadow-[-12px_0_40px_rgba(0,0,0,0.08)] rounded-tl-2xl'}`}>
       {/* Header */}
       <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
         <h2 className="font-semibold text-gray-900 truncate pr-4">{email.sender_name || email.sender_email}</h2>
