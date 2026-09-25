@@ -5,6 +5,8 @@ import { Wand2, SlidersHorizontal, Settings, RefreshCw, Search, PenSquare } from
 import { EmailRow } from "@/components/EmailRow";
 import { EmailDetailPeek } from "@/components/EmailDetailPeek";
 import { ComposeEmail } from "@/components/ComposeEmail";
+import { SettingsPeek } from "@/components/SettingsPeek";
+import { FiltersPeek } from "@/components/FiltersPeek";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function InboxClient({ initialEmails }: { initialEmails: any[] }) {
@@ -12,6 +14,8 @@ export function InboxClient({ initialEmails }: { initialEmails: any[] }) {
   const [selectedEmailId, setSelectedEmailId] = useState<string | null>(null);
   const [fullViewEmailId, setFullViewEmailId] = useState<string | null>(null);
   const [isComposing, setIsComposing] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSyncing, setIsSyncing] = useState(false);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
@@ -21,12 +25,16 @@ export function InboxClient({ initialEmails }: { initialEmails: any[] }) {
       setIsComposing(true);
       setSelectedEmailId(null);
       setFullViewEmailId(null);
+      setIsSettingsOpen(false);
+      setIsFiltersOpen(false);
     };
     const handleFilterCategory = (e: any) => {
       setActiveCategory(e.detail === 'Inbox' ? null : e.detail);
       setFullViewEmailId(null);
       setSelectedEmailId(null);
       setIsComposing(false);
+      setIsSettingsOpen(false);
+      setIsFiltersOpen(false);
     };
     window.addEventListener('open-compose', handleOpenCompose);
     window.addEventListener('filter-category', handleFilterCategory);
@@ -161,10 +169,26 @@ export function InboxClient({ initialEmails }: { initialEmails: any[] }) {
             
             <div className="h-4 w-px bg-gray-200" />
             
-            <button className="p-1.5 text-gray-400 hover:text-gray-600 transition-colors rounded">
+            <button 
+              onClick={() => {
+                setIsFiltersOpen(true);
+                setIsSettingsOpen(false);
+                setIsComposing(false);
+                setSelectedEmailId(null);
+              }}
+              className={`p-1.5 transition-colors rounded ${isFiltersOpen ? "bg-gray-100 text-gray-900" : "text-gray-400 hover:text-gray-600"}`}
+            >
               <SlidersHorizontal className="w-4 h-4" />
             </button>
-            <button className="p-1.5 text-gray-400 hover:text-gray-600 transition-colors rounded">
+            <button 
+              onClick={() => {
+                setIsSettingsOpen(true);
+                setIsFiltersOpen(false);
+                setIsComposing(false);
+                setSelectedEmailId(null);
+              }}
+              className={`p-1.5 transition-colors rounded ${isSettingsOpen ? "bg-gray-100 text-gray-900" : "text-gray-400 hover:text-gray-600"}`}
+            >
               <Settings className="w-4 h-4" />
             </button>
           </div>
@@ -187,10 +211,14 @@ export function InboxClient({ initialEmails }: { initialEmails: any[] }) {
                 key={email.id} 
                 onClick={() => {
                   setIsComposing(false);
+                  setIsSettingsOpen(false);
+                  setIsFiltersOpen(false);
                   setSelectedEmailId(email.id);
                 }}
                 onDoubleClick={() => {
                   setIsComposing(false);
+                  setIsSettingsOpen(false);
+                  setIsFiltersOpen(false);
                   setSelectedEmailId(null);
                   setFullViewEmailId(email.id);
                 }}
@@ -208,6 +236,10 @@ export function InboxClient({ initialEmails }: { initialEmails: any[] }) {
       {/* Side Peek Panel */}
       {isComposing ? (
         <ComposeEmail onClose={() => setIsComposing(false)} />
+      ) : isSettingsOpen ? (
+        <SettingsPeek onClose={() => setIsSettingsOpen(false)} />
+      ) : isFiltersOpen ? (
+        <FiltersPeek onClose={() => setIsFiltersOpen(false)} />
       ) : selectedEmailId ? (
         <EmailDetailPeek 
           email={selectedEmail} 
