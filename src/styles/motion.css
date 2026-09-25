@@ -1,0 +1,93 @@
+/*
+ * Motion layer: short, quiet transitions on top of the design system.
+ * Enter-only animations (keyframes play when an element mounts); durations and easing come from the DS tokens,
+ * and tokens.css already cuts everything to ~0 under prefers-reduced-motion.
+ */
+
+@keyframes zl-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes zl-pop-in { from { opacity: 0; transform: translateY(-4px) scale(0.98); } to { opacity: 1; transform: none; } }
+@keyframes zl-pop-up { from { opacity: 0; transform: translateY(4px) scale(0.98); } to { opacity: 1; transform: none; } }
+@keyframes zl-rise-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+@keyframes zl-modal-in { from { opacity: 0; transform: translateY(8px) scale(0.985); } to { opacity: 1; transform: none; } }
+@keyframes zl-slide-in-right { from { opacity: 0; transform: translateX(24px); } 40% { opacity: 1; } to { opacity: 1; transform: none; } }
+@keyframes zl-slide-in-left { from { transform: translateX(-100%); } to { transform: none; } }
+@keyframes zl-content-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+@keyframes zl-row-in { from { opacity: 0; } to { opacity: 1; } }
+
+/* ---------- Interactive surfaces: smooth hover / press ---------- */
+.zl-nav-item, .zl-menu-item, .zl-panel-row, .zl-option, .zl-row, .zl-tag, .zl-google-btn, .zl-recipient {
+  transition: background-color var(--duration-base) var(--ease-standard), color var(--duration-base) var(--ease-standard), box-shadow var(--duration-base) var(--ease-standard), opacity var(--duration-base) var(--ease-standard);
+}
+.zl-btn { transition: background-color var(--duration-base) var(--ease-standard), color var(--duration-base) var(--ease-standard), box-shadow var(--duration-base) var(--ease-standard), transform var(--duration-fast) var(--ease-standard); }
+.zl-btn:active:not(:disabled) { transform: scale(0.97); }
+.zl-nav-item:active { transform: scale(0.99); }
+.zl-nav-item { transition: background-color var(--duration-base) var(--ease-standard), color var(--duration-base) var(--ease-standard), transform var(--duration-fast) var(--ease-standard); }
+.zl-nav-item > .zl-icon, .zl-nav-item > .zl-glyph { transition: color var(--duration-base) var(--ease-standard), opacity var(--duration-fast) var(--ease-standard); }
+.zl-check-box { transition: background-color var(--duration-fast) var(--ease-standard), border-color var(--duration-fast) var(--ease-standard), box-shadow var(--duration-fast) var(--ease-standard); }
+.zl-check-box svg { transition: transform var(--duration-base) var(--ease-standard), opacity var(--duration-fast) var(--ease-standard); }
+.zl-toggle { transition: background-color var(--duration-base) var(--ease-standard); }
+.zl-input, .zl-select-trigger { transition: box-shadow var(--duration-base) var(--ease-standard), border-color var(--duration-base) var(--ease-standard), background-color var(--duration-base) var(--ease-standard); }
+
+/* Row hover actions and group actions fade in instead of snapping. */
+.zl-row:hover .zl-row-actions, .zl-row.is-hover .zl-row-actions, .zl-row:focus-within .zl-row-actions { animation: zl-fade-in var(--duration-base) var(--ease-enter); }
+.zl-row:hover .zl-check, .zl-row.is-checked .zl-check { animation: zl-fade-in var(--duration-base) var(--ease-enter); }
+
+/* ---------- Lists ---------- */
+/* Rows fade in when a view loads; the first dozen are lightly staggered. */
+.zl-row { animation: zl-row-in var(--duration-slower) var(--ease-enter) both; }
+.zl-list > li:nth-child(2) { animation-delay: 15ms; } .zl-list > li:nth-child(3) { animation-delay: 30ms; }
+.zl-list > li:nth-child(4) { animation-delay: 45ms; } .zl-list > li:nth-child(5) { animation-delay: 60ms; }
+.zl-list > li:nth-child(6) { animation-delay: 75ms; } .zl-list > li:nth-child(7) { animation-delay: 90ms; }
+.zl-list > li:nth-child(8) { animation-delay: 105ms; } .zl-list > li:nth-child(9) { animation-delay: 120ms; }
+.zl-list > li:nth-child(n+10) { animation-delay: 135ms; }
+.zl-group { animation: zl-fade-in var(--duration-slower) var(--ease-enter) both; }
+.zl-empty { animation: zl-content-in var(--duration-slower) var(--ease-enter) both; }
+.zl-viewbar-title { animation: zl-fade-in var(--duration-slow) var(--ease-enter); }
+
+/* ---------- Thread ---------- */
+.zl-full .zl-peek-body, .zl-center-scrim .zl-peek-body { animation: zl-content-in var(--duration-slow) var(--ease-enter) both; }
+/* Moving between threads inside the tab: a quick content fade (the card itself stays put). */
+.zl-sidepane-layer .zl-peek-body { animation: zl-fade-in 220ms var(--ease-standard) both; }
+.zl-message { transition: box-shadow var(--duration-base) var(--ease-standard), background-color var(--duration-base) var(--ease-standard); }
+.zl-message-body { animation: zl-fade-in var(--duration-slow) var(--ease-enter); }
+.zl-ai-card { animation: zl-content-in var(--duration-slower) var(--ease-enter) both; }
+
+/* ---------- Overlays ---------- */
+.zl-popover { animation: zl-pop-in var(--duration-slow) var(--ease-enter); transform-origin: top left; }
+.zl-tooltip[role="tooltip"] { animation: zl-fade-in var(--duration-base) var(--ease-enter) 80ms both; }
+.zl-toast { animation: zl-pop-up var(--duration-slower) var(--ease-enter); }
+.zl-composer-dock .zl-composer { animation: zl-rise-in var(--duration-slower) var(--ease-enter); transition: height var(--duration-slower) var(--ease-standard); }
+.zl-composer.is-inline { animation: zl-content-in var(--duration-slow) var(--ease-enter); }
+/* Right tab: the column widens smoothly (see .zl-workspace) while the card glides in behind it. */
+.zl-sidepane { animation: zl-slide-in-right 420ms var(--ease-glide) both; }
+/* Switching tabs: the new content fades up just after the old one starts fading out. */
+.zl-sidepane-layer { animation: zl-layer-in 320ms var(--ease-glide) 80ms both; }
+.zl-sidepane-layer.is-leaving { animation: zl-fade-out 200ms var(--ease-standard) both; }
+/* Closing: the card fades and drifts right while its column collapses. */
+.zl-sidepane.is-closing { animation: zl-slide-out-right 360ms var(--ease-glide) both; pointer-events: none; }
+@keyframes zl-layer-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+@keyframes zl-fade-out { from { opacity: 1; } to { opacity: 0; } }
+@keyframes zl-slide-out-right { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateX(24px); } }
+.zl-modal-host .zl-scrim, .zl-dialog-scrim, .zl-palette-scrim { animation: zl-fade-in var(--duration-slow) var(--ease-enter); }
+.zl-modal-host .zl-modal, .zl-dialog { animation: zl-modal-in var(--duration-slower) var(--ease-enter); }
+.zl-palette { animation: zl-pop-in var(--duration-slow) var(--ease-enter); }
+.zl-onboard-left > * { animation: zl-content-in var(--duration-slower) var(--ease-enter) both; }
+.zl-onboard-left > *:nth-child(2) { animation-delay: 40ms; } .zl-onboard-left > *:nth-child(3) { animation-delay: 80ms; } .zl-onboard-left > *:nth-child(n+4) { animation-delay: 120ms; }
+.zl-auth-card { animation: zl-content-in var(--duration-slower) var(--ease-enter) both; }
+@media (max-width: 767px) { .zl-app-root.show-sidebar > .zl-sidebar { animation: zl-slide-in-left var(--duration-slower) var(--ease-enter); } }
+
+/* Theme switches cross-fade colours instead of flashing. Scoped to the switch itself (set briefly by the app). */
+:root.zl-theme-switching, :root.zl-theme-switching * { transition: background-color var(--duration-slower) var(--ease-standard), color var(--duration-slower) var(--ease-standard), border-color var(--duration-slower) var(--ease-standard) !important; }
+
+@media (prefers-reduced-motion: reduce) {
+  .zl-btn:active:not(:disabled), .zl-nav-item:active { transform: none; }
+  .zl-list > li { animation-delay: 0ms !important; }
+}
+
+/* Summary cards fade in with the same light stagger as rows. */
+.zl-card-grid > li { animation: zl-content-in var(--duration-slower) var(--ease-enter) both; }
+.zl-card-grid > li:nth-child(2) { animation-delay: 25ms; } .zl-card-grid > li:nth-child(3) { animation-delay: 50ms; }
+.zl-card-grid > li:nth-child(4) { animation-delay: 75ms; } .zl-card-grid > li:nth-child(5) { animation-delay: 100ms; }
+.zl-card-grid > li:nth-child(n+6) { animation-delay: 125ms; }
+.zl-mail-card-summary, .zl-mail-card-replies { animation: zl-fade-in var(--duration-slower) var(--ease-enter); }
+@media (prefers-reduced-motion: reduce) { .zl-mail-card:hover { transform: none; } .zl-card-grid > li { animation-delay: 0ms !important; } }

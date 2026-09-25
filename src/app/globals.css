@@ -1,22 +1,13 @@
-@import "tailwindcss";
+/*
+ * ZeroLatency design system (copied from ZeroLatency-Claude/design-system) + Tailwind utilities.
+ * Tailwind's preflight reset is left out on purpose so it does not restyle the design-system components;
+ * its theme and utilities load in cascade layers, so the design-system CSS (unlayered) always wins.
+ */
+@layer theme, base, components, utilities;
+@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/utilities.css' layer(utilities);
 
-@theme {
-  --color-background: #f7f7f5;
-  --color-foreground: #111111;
-  --font-sans: ui-sans-serif, system-ui, sans-serif;
-  --font-mono: ui-monospace, monospace;
-}
-
-body {
-  background: var(--color-background);
-  color: var(--color-foreground);
-}
-
-@layer utilities {
-  .sidebar-link {
-    @apply flex items-center gap-3 px-3 py-1.5 rounded-md text-sm text-gray-600 hover:bg-gray-200/50 transition-colors cursor-pointer;
-  }
-  .sidebar-link-active {
-    @apply bg-gray-200/80 text-gray-900 font-medium;
-  }
-}
+@import '../styles/tokens.css';
+@import '../styles/components.css';
+@import '../styles/app.css';
+@import '../styles/motion.css';

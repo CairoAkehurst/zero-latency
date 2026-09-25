@@ -101,3 +101,30 @@ create policy "Users can view metadata of their own emails"
       and emails.user_id = auth.uid()
     )
   );
+
+-- ==============================================================================
+-- ZeroLatency Mail (XavierV2) additions. Safe to run more than once.
+-- The mail UI reads Gmail live through the Gmail API; the emails / categories /
+-- email_ai_metadata tables above are no longer used by the app.
+-- ==============================================================================
+
+-- 8. Google token bookkeeping on users (filled in by /auth/callback, refreshed by the server)
+alter table public.users add column if not exists google_token_expires_at timestamp with time zone;
+alter table public.users add column if not exists google_scopes text[];
+
+-- 9. Per-user preferences: settings, views, custom properties, snippets, auto labels, reminders
+create table if not exists public.user_prefs (
+  user_id uuid primary key references auth.users on delete cascade,
+  settings jsonb not null default '{}'::jsonb,
+  account_data jsonb not null default '{}'::jsonb,
+  updated_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+alter table public.user_prefs enable row level security;
+
+drop policy if exists "Users manage their own preferences" on public.user_prefs;
+create policy "Users manage their own preferences"
+  on public.user_prefs for all
+  to authenticated
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);

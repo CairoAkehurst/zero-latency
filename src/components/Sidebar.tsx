@@ -1,207 +1,198 @@
-"use client";
+'use client';
+import { useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { api } from '@/lib/client/api';
+import { updateAccount, updateView, useAccountData } from '@/lib/client/store';
+import type { View } from '@/lib/shared/views';
+import { Glyph, Icon } from './icons';
+import { IconButton, Popover, useMenuKeys } from './ui';
+import { FOLDERS, useMail } from './mail-context';
+import { GlyphPicker, NewViewMenu } from './NewViewMenu';
+import { DeleteViewDialog, ViewContextMenu } from './ViewMenu';
 
-import { useEffect, useState } from "react";
-import { Edit, Inbox, Send, File, ChevronDown, LogOut, Plus } from "lucide-react";
-import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import clsx from "clsx";
-import { createClient } from "@/utils/supabase/client";
+function Avatar({ name, picture }: { name: string; picture: string | null }) {
+  if (picture) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img className="zl-avatar" src={picture} alt="" referrerPolicy="no-referrer" style={{ objectFit: 'cover' }} />;
+  }
+  return <span className="zl-avatar" aria-hidden>{(name[0] ?? '?').toUpperCase()}</span>;
+}
 
-const DEFAULT_FOLDERS = [
-  { name: "Project updates", color: "bg-blue-400" },
-  { name: "Leadership updates", color: "bg-orange-400" },
-  { name: "Sales leads", color: "bg-purple-400" },
-  { name: "Hiring leads", color: "bg-pink-400" },
-  { name: "Meeting requests", color: "bg-green-400" },
-  { name: "Urgent", color: "bg-red-400" },
-];
-
-export function Sidebar() {
-  const pathname = usePathname();
+function AccountMenu({ anchor, onClose }: { anchor: HTMLElement; onClose: () => void }) {
+  const { session, account, openSettings } = useMail();
   const router = useRouter();
-  const supabase = createClient();
-  const [user, setUser] = useState<import("@supabase/supabase-js").User | null>(null);
-  const [showDropdown, setShowDropdown] = useState(false);
-  const [categories, setCategories] = useState<any[]>(DEFAULT_FOLDERS);
-  const [isAddingLabel, setIsAddingLabel] = useState(false);
-  const [newLabelName, setNewLabelName] = useState("");
+  const ref = useRef<HTMLDivElement>(null);
+  useMenuKeys(ref);
+  return (
+    <Popover anchor={anchor} onClose={onClose} label="Account">
+      <div className="zl-menu" ref={ref} style={{ width: 280 }}>
+        <div className="zl-menu-label">Account</div>
+        {session.accounts.map((a) => (
+          <button key={a.id} className="zl-menu-item zl-menu-item--2line" onClick={onClose}>
+            <Avatar name={a.name} picture={a.picture} />
+            <span className="zl-menu-item-text">{a.name}<small>{a.email}</small></span>
+            {a.id === account.id ? <Icon name="check" className="zl-menu-item-check" /> : null}
+          </button>
+        ))}
+        <div className="zl-menu-sep" />
+        <button className="zl-menu-item" onClick={() => { onClose(); openSettings('inbox'); }}><Icon name="gear" />Settings</button>
+        <button className="zl-menu-item" onClick={() => { onClose(); openSettings('account'); }}><Icon name="user" />Manage account</button>
+        {!session.demo ? (
+          <button className="zl-menu-item" onClick={async () => { await api.logout(); router.replace('/login'); }}>
+            <Icon name="logout" />Sign out of {account.email}
+          </button>
+        ) : null}
+      </div>
+    </Popover>
+  );
+}
 
-  const fetchCategories = async () => {
-    const { data } = await supabase.from('categories').select('*');
-    if (data && data.length > 0) {
-      setCategories(data.map(c => ({
-        name: c.name,
-        color: `bg-${c.color}-400`,
-        slug: c.slug
-      })));
-    }
-  };
+export function Sidebar({ onSearch }: { onSearch: () => void }) {
+  const { account, nav, navigate, counts, compose, openSettings } = useMail();
+  const data = useAccountData();
+  const [accountAnchor, setAccountAnchor] = useState<HTMLElement | null>(null);
+  const [newViewAnchor, setNewViewAnchor] = useState<HTMLElement | null>(null);
+  const [showAllFolders, setShowAllFolders] = useState(false);
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [collapsedViews, setCollapsedViews] = useState(false);
+  const [menu, setMenu] = useState<{ view: View; at: DOMRect; el: HTMLElement } | null>(null);
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [iconFor, setIconFor] = useState<{ view: View; el: HTMLElement } | null>(null);
+  const [deleting, setDeleting] = useState<View | null>(null);
 
-  const handleAddLabel = async () => {
-    if (!newLabelName.trim()) {
-      setIsAddingLabel(false);
-      return;
-    }
-    
-    const colors = ["blue", "red", "green", "purple", "pink", "orange", "yellow", "teal"];
-    const randomColor = colors[Math.floor(Math.random() * colors.length)];
-    const slug = newLabelName.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-    
-    const { error } = await supabase.from('categories').insert({
-      name: newLabelName.trim(),
-      color: randomColor,
-      slug
+  const [pinnedView, ...otherViews] = data.views;
+  const scrollViews = collapsedViews ? otherViews.slice(0, 5) : otherViews;
+  const folders = showAllFolders ? FOLDERS : FOLDERS.filter((f) => ['all', 'sent', 'drafts', 'reminders'].includes(f.id));
+
+  const reorder = (targetId: string) => {
+    if (!dragId || dragId === targetId) return;
+    updateAccount((d) => {
+      const views = [...d.views];
+      const from = views.findIndex((v) => v.id === dragId);
+      const to = views.findIndex((v) => v.id === targetId);
+      if (from < 0 || to < 0) return d;
+      const [moved] = views.splice(from, 1);
+      views.splice(to, 0, moved!);
+      return { ...d, views };
     });
-
-    if (error) {
-      console.error("Failed to save label:", error);
-      alert("Failed to save label. Did you run the updated SQL policies?");
-    } else {
-      setNewLabelName("");
-      setIsAddingLabel(false);
-      fetchCategories();
-    }
   };
 
-  const handleDeleteLabel = async (e: React.MouseEvent, folder: any) => {
+  const openMenu = (v: View, e: React.MouseEvent<HTMLElement>) => {
     e.preventDefault();
-    if (confirm(`Are you sure you want to delete the "${folder.name}" label?`)) {
-      const { error } = await supabase.from('categories').delete().eq('name', folder.name);
-      if (error) {
-        console.error("Failed to delete label:", error);
-        alert("Failed to delete label. Check RLS policies.");
-      } else {
-        fetchCategories();
-      }
-    }
+    const el = e.currentTarget;
+    // Keyboard (context-menu key / Shift+F10) reports 0,0: anchor to the item instead of the pointer.
+    const at = e.clientX || e.clientY ? new DOMRect(e.clientX, e.clientY, 0, 0) : el.getBoundingClientRect();
+    setMenu({ view: v, at, el });
   };
 
-  useEffect(() => {
-    fetchCategories();
-    supabase.auth.getUser().then(({ data }) => {
-      if (data?.user) {
-        setUser(data.user);
-      }
-    });
-  }, [supabase.auth]);
-
-  const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    router.push("/login");
+  const renderView = (v: View, i: number, pinned = false) => {
+    const active = nav.kind === 'view' && nav.id === v.id;
+    const count = counts[`view:${v.id}`];
+    if (renamingId === v.id) {
+      const done = (name: string | null) => {
+        const trimmed = name?.trim();
+        if (trimmed && trimmed !== v.name) updateView(v.id, (x) => ({ ...x, name: trimmed.slice(0, 80) }));
+        setRenamingId(null);
+      };
+      return (
+        <div key={v.id} className="zl-nav-rename">
+          <Glyph name={v.glyph} ink={v.ink} />
+          <input autoFocus defaultValue={v.name} aria-label="View name" maxLength={80}
+            onFocus={(e) => e.currentTarget.select()}
+            onBlur={(e) => done(e.currentTarget.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); if (e.key === 'Escape') { e.preventDefault(); done(null); } }} />
+        </div>
+      );
+    }
+    return (
+      <button
+        key={v.id}
+        className={`zl-nav-item${dragId === v.id ? ' is-dragging' : ''}${menu?.view.id === v.id ? ' is-hover' : ''}`}
+        aria-current={active ? 'page' : undefined}
+        onClick={() => navigate({ kind: 'view', id: v.id })}
+        onContextMenu={(e) => openMenu(v, e)}
+        onDoubleClick={() => setRenamingId(v.id)}
+        draggable={!pinned}
+        onDragStart={() => setDragId(v.id)}
+        onDragOver={(e) => e.preventDefault()}
+        onDrop={() => { if (!pinned) reorder(v.id); setDragId(null); }}
+        onDragEnd={() => setDragId(null)}
+        aria-label={`${v.name}${count ? `, ${count} unread` : ''}${i < 9 ? `, shortcut ${i + 1}` : ''}`}
+        aria-haspopup="menu"
+      >
+        <Glyph name={v.glyph} ink={v.ink} />
+        <span>{v.name}</span>
+        {count ? <span className="zl-nav-count">{count >= 100 ? '99+' : count}</span> : null}
+      </button>
+    );
   };
 
   return (
-    <aside className="w-64 flex-shrink-0 flex flex-col h-full bg-[#f7f7f5] text-sm text-gray-700 relative z-10">
-      <div className="h-[68px] px-4 flex items-center justify-between relative flex-shrink-0 pt-[6px]">
-        <div 
-          onClick={() => setShowDropdown(!showDropdown)}
-          className="flex items-center gap-2 font-medium cursor-pointer hover:bg-gray-200/50 px-2 py-1 rounded-md transition-colors"
-        >
-          {user?.user_metadata?.avatar_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={user.user_metadata.avatar_url} alt="Avatar" className="w-5 h-5 rounded-full shrink-0" />
-          ) : (
-            <div className="w-5 h-5 rounded-full bg-gradient-to-tr from-gray-300 to-gray-400 shrink-0" />
-          )}
-          <span className="truncate max-w-[120px]">{user?.user_metadata?.full_name || user?.email || "Account"}</span>
-          <ChevronDown className="w-3 h-3 text-gray-500" />
-        </div>
-
-        {showDropdown && (
-          <div className="absolute top-12 left-4 w-48 bg-white border border-gray-100 rounded-lg shadow-lg py-1 z-50">
-            <button 
-              onClick={handleSignOut}
-              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors text-left"
-            >
-              <LogOut className="w-4 h-4" />
-              Sign Out
-            </button>
-          </div>
-        )}
-
-        <button 
-          onClick={() => window.dispatchEvent(new CustomEvent('open-compose'))}
-          className="p-1.5 hover:bg-gray-200/50 rounded-md text-gray-500 transition-colors"
-          title="Compose"
-        >
-          <Edit className="w-4 h-4" />
+    <nav className="zl-sidebar" aria-label="Mailbox">
+      <div className="zl-account">
+        <button className="zl-btn zl-btn--ghost" style={{ flex: 1, justifyContent: 'flex-start', padding: '0 4px', height: 36, minWidth: 0, gap: 8 }} onClick={(e) => setAccountAnchor(e.currentTarget)} aria-haspopup="menu" aria-label="Switch account">
+          <Avatar name={account.name} picture={account.picture} />
+          <span className="zl-account-id" style={{ textAlign: 'left' }}><strong>{account.name}</strong><small>{account.email}</small></span>
+          <Icon name="chevDown" size={12} />
         </button>
+        <IconButton icon="compose" label="Compose a new email" shortcut="C" onClick={() => compose({ mode: 'new' })} />
+      </div>
+      <button className="zl-nav-item" onClick={onSearch}><Icon name="search" className="zl-icon--lg" /><span>Search</span></button>
+
+      {/* The primary Inbox sits on its own above the Views list, which scrolls independently. */}
+      {pinnedView ? renderView(pinnedView, 0, true) : null}
+      <button className="zl-nav-item" aria-current={nav.kind === 'summary' ? 'page' : undefined} onClick={() => navigate({ kind: 'summary', id: 'inbox' })}>
+        <Glyph name="layers" ink="purple" />
+        <span>Summary</span>
+      </button>
+      <div className="zl-nav-section">
+        <span className="zl-section-label">Views</span>
+        <IconButton icon="plus" label="New view" size="sm" onClick={(e) => setNewViewAnchor(e.currentTarget)} />
+      </div>
+      <div className="zl-nav-scroll">
+        {scrollViews.map((v, i) => renderView(v, i + 1))}
+      </div>
+      {/* Outside the scroll area so it is always reachable. */}
+      {data.views.length > 6 ? (
+        <button className="zl-nav-item" onClick={() => setCollapsedViews((c) => !c)}><Icon name={collapsedViews ? 'chevDown' : 'chevUp'} className="zl-icon--lg" /><span>{collapsedViews ? 'More' : 'Less'}</span></button>
+      ) : null}
+
+      <div className="zl-nav-section"><span className="zl-section-label">Mail</span></div>
+      {folders.map((f) => {
+        const active = nav.kind === 'folder' && nav.id === f.id;
+        const count = f.id === 'drafts' || f.id === 'reminders' ? counts[`folder:${f.id}`] : undefined;
+        if (f.id === 'reminders' && !count && !active) return null;
+        return (
+          <button key={f.id} className="zl-nav-item" aria-current={active ? 'page' : undefined} onClick={() => navigate({ kind: 'folder', id: f.id })}>
+            <Icon name={f.icon} className="zl-icon--lg" /><span>{f.name}</span>
+            {count ? <span className="zl-nav-count">{count >= 100 ? '99+' : count}</span> : null}
+          </button>
+        );
+      })}
+      <button className="zl-nav-item" onClick={() => setShowAllFolders((s) => !s)}>
+        <Icon name={showAllFolders ? 'chevUp' : 'chevDown'} className="zl-icon--lg" /><span>{showAllFolders ? 'Less' : 'More'}</span>
+      </button>
+
+      <div className="zl-sidebar-foot">
+        <IconButton icon="gear" label="Settings" placement="top" onClick={() => openSettings('inbox')} />
+        <IconButton icon="keyboard" label="Keyboard shortcuts" shortcut="?" placement="top" onClick={() => openSettings('shortcuts')} />
+        <IconButton icon="help" label="Help & feedback" placement="top" onClick={() => window.open('https://github.com/Dead-Zone27/ZeroLatency-Claude/issues', '_blank', 'noopener')} />
       </div>
 
-      <div className="flex-1 overflow-y-auto px-2 space-y-6 mt-4">
-        <div className="space-y-0.5">
-          <div
-            onClick={() => window.dispatchEvent(new CustomEvent('filter-category', { detail: 'Inbox' }))}
-            className={clsx(
-              "sidebar-link cursor-pointer hover:bg-gray-200/50"
-            )}
-          >
-            <Inbox className="w-4 h-4" />
-            <span>Inbox</span>
-          </div>
-          
-          <div className="pt-2 pb-1 px-3 flex items-center justify-between text-xs font-semibold text-gray-400 tracking-wider">
-            <span>LABELS</span>
-            <button 
-              onClick={() => setIsAddingLabel(true)}
-              className="p-1 hover:bg-gray-200/50 rounded transition-colors text-gray-400 hover:text-gray-600"
-            >
-              <Plus className="w-3.5 h-3.5" />
-            </button>
-          </div>
-          {categories.map((folder) => (
-            <div 
-              key={folder.name} 
-              onClick={() => window.dispatchEvent(new CustomEvent('filter-category', { detail: folder.name }))}
-              onContextMenu={(e) => handleDeleteLabel(e, folder)}
-              className="sidebar-link group cursor-pointer hover:bg-gray-200/50"
-              title="Right-click to delete"
-            >
-              <div className={clsx("w-2 h-2 rounded-full flex-shrink-0", folder.color)} />
-              <span className="truncate">{folder.name}</span>
-            </div>
-          ))}
-          {isAddingLabel && (
-            <div className="sidebar-link px-3">
-              <div className="w-2 h-2 rounded-full flex-shrink-0 bg-gray-300" />
-              <input 
-                autoFocus
-                type="text" 
-                value={newLabelName}
-                onChange={(e) => setNewLabelName(e.target.value)}
-                onBlur={handleAddLabel}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleAddLabel();
-                  if (e.key === 'Escape') {
-                    setIsAddingLabel(false);
-                    setNewLabelName("");
-                  }
-                }}
-                className="w-full bg-transparent border-none outline-none text-sm text-gray-700"
-                placeholder="New label..."
-              />
-            </div>
-          )}
-        </div>
-
-        <div className="space-y-0.5">
-          <div className="pt-2 pb-1 px-3 text-xs font-semibold text-gray-400 tracking-wider">
-            MAIL
-          </div>
-          <div className="sidebar-link">
-            <Inbox className="w-4 h-4" />
-            <span>All Mail</span>
-          </div>
-          <div className="sidebar-link">
-            <Send className="w-4 h-4" />
-            <span>Sent</span>
-          </div>
-          <div className="sidebar-link">
-            <File className="w-4 h-4" />
-            <span>Drafts</span>
-          </div>
-        </div>
-      </div>
-    </aside>
+      {accountAnchor ? <AccountMenu anchor={accountAnchor} onClose={() => setAccountAnchor(null)} /> : null}
+      {newViewAnchor ? <NewViewMenu anchor={newViewAnchor} onClose={() => setNewViewAnchor(null)} /> : null}
+      {menu ? (
+        <ViewContextMenu
+          view={menu.view}
+          at={menu.at}
+          onRename={() => setRenamingId(menu.view.id)}
+          onChangeIcon={() => setIconFor({ view: menu.view, el: menu.el })}
+          onDelete={() => setDeleting(menu.view)}
+          onClose={() => setMenu(null)}
+        />
+      ) : null}
+      {iconFor ? <GlyphPicker anchor={iconFor.el} glyph={iconFor.view.glyph} ink={iconFor.view.ink} onPick={(g, ink) => updateView(iconFor.view.id, (x) => ({ ...x, glyph: g, ink }))} onClose={() => setIconFor(null)} /> : null}
+      {deleting ? <DeleteViewDialog view={deleting} onClose={() => setDeleting(null)} /> : null}
+    </nav>
   );
 }
