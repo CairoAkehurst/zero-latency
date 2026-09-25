@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { X, Reply, Check, Send, Loader2, Maximize2, Minimize2, Archive, Trash2, Mail, Clock, MoreVertical, CornerUpLeft, CornerUpRight, ChevronDown, Sparkles } from "lucide-react";
 import { formatEmailDate } from "@/utils/formatDate";
 
@@ -36,8 +36,17 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
   const [isSending, setIsSending] = useState(false);
   const [sendSuccess, setSendSuccess] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
+  
+  const replyRef = useRef<HTMLTextAreaElement>(null);
 
   if (!email) return null;
+
+  const handleScrollToReply = () => {
+    replyRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setTimeout(() => {
+      replyRef.current?.focus();
+    }, 300);
+  };
 
   const handleSend = async () => {
     setIsSending(true);
@@ -174,10 +183,14 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
             </div>
           </div>
 
-          <div className="flex items-center gap-2 text-gray-400">
-            <span className="text-xs mr-4">{formatEmailDate(email.timestamp)}</span>
-            <button className="p-2 hover:bg-gray-100 rounded-full transition-colors" title="Reply">
-              <CornerUpLeft className="w-4 h-4" />
+          <div className="flex items-center gap-3 text-gray-400">
+            <span className="text-xs mr-2">{formatEmailDate(email.timestamp)}</span>
+            <button 
+              onClick={handleScrollToReply}
+              className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium transition-colors flex items-center gap-2 shadow-sm"
+            >
+              <Reply className="w-3.5 h-3.5" />
+              Reply
             </button>
             <button className="p-2 hover:bg-gray-100 rounded-full transition-colors" title="More">
               <MoreVertical className="w-4 h-4" />
@@ -185,23 +198,26 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
           </div>
         </div>
 
-        {/* AI Summary Card (White with blue glow) */}
+        {/* Minimal AI Overview (No box) */}
         {email.summary && (
-          <div className="bg-white rounded-xl p-4 border border-blue-100 shadow-[0_0_20px_rgba(59,130,246,0.12)] w-full">
-            <div className="flex items-center gap-2 mb-2">
-              <Sparkles className="w-4 h-4 text-blue-500" />
-              <span className="text-xs font-semibold text-blue-700 uppercase tracking-wider">AI Summary</span>
+          <div className="w-full py-4 border-y border-gray-100 flex items-stretch gap-4">
+            <div className="w-1 bg-blue-400 rounded-full opacity-60"></div>
+            <div className="flex-1">
+              <div className="text-sm font-medium text-gray-900 mb-1 flex items-center gap-2">
+                <Sparkles className="w-3.5 h-3.5 text-blue-500" />
+                AI overview
+              </div>
+              <p className="text-sm text-gray-700 leading-relaxed">
+                {email.summary}
+              </p>
             </div>
-            <p className="text-sm text-gray-800 leading-relaxed">
-              {email.summary}
-            </p>
           </div>
         )}
 
         {/* Email Body */}
         <div className="w-full">
           {email.body_html ? (
-            <div className="w-full pr-2 max-h-[60vh] overflow-y-auto">
+            <div className="w-full pr-2">
               <iframe 
                 sandbox="allow-popups allow-popups-to-escape-sandbox allow-same-origin"
                 srcDoc={email.body_html} 
@@ -218,7 +234,7 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
               />
             </div>
           ) : (
-            <div className="text-sm text-gray-800 whitespace-pre-wrap font-sans leading-relaxed pr-2 max-h-[60vh] overflow-y-auto">
+            <div className="text-sm text-gray-800 whitespace-pre-wrap font-sans leading-relaxed pr-2">
               {email.body_text || 'No content'}
             </div>
           )}
@@ -235,6 +251,7 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
             </div>
             
             <textarea 
+              ref={replyRef}
               value={draftText}
               onChange={(e) => setDraftText(e.target.value)}
               placeholder="Write your reply..."
