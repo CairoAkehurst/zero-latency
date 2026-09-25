@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { X, Reply, Check, Send, Loader2 } from "lucide-react";
+import { X, Reply, Check, Send, Loader2, Maximize2, Minimize2 } from "lucide-react";
 
 interface EmailDetailPeekProps {
   email: {
@@ -21,10 +21,11 @@ interface EmailDetailPeekProps {
     suggestedReply?: string;
   } | null;
   onClose: () => void;
+  onExpand?: () => void;
   isFullView?: boolean;
 }
 
-export function EmailDetailPeek({ email, onClose, isFullView = false }: EmailDetailPeekProps) {
+export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }: EmailDetailPeekProps) {
   const [isDrafting, setIsDrafting] = useState(false);
   const [draftText, setDraftText] = useState("");
   const [isSending, setIsSending] = useState(false);
@@ -76,12 +77,23 @@ export function EmailDetailPeek({ email, onClose, isFullView = false }: EmailDet
       {/* Header */}
       <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
         <h2 className="font-semibold text-gray-900 truncate pr-4">{email.sender_name || email.sender_email}</h2>
-        <button 
-          onClick={onClose}
-          className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md transition-colors"
-        >
-          <X className="w-4 h-4" />
-        </button>
+        <div className="flex items-center gap-1">
+          {onExpand && (
+            <button 
+              onClick={onExpand}
+              className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md transition-colors"
+              title={isFullView ? "Minimize" : "Full screen"}
+            >
+              {isFullView ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+            </button>
+          )}
+          <button 
+            onClick={onClose}
+            className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
       </div>
 
       {/* Content */}

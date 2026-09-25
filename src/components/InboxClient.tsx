@@ -146,6 +146,10 @@ export function InboxClient({ initialEmails }: { initialEmails: any[] }) {
           <EmailDetailPeek 
             email={fullViewEmail} 
             onClose={() => setFullViewEmailId(null)} 
+            onExpand={() => {
+              setSelectedEmailId(fullViewEmail.id);
+              setFullViewEmailId(null);
+            }}
             isFullView={true}
           />
         </div>
@@ -285,6 +289,10 @@ export function InboxClient({ initialEmails }: { initialEmails: any[] }) {
         <EmailDetailPeek 
           email={selectedEmail} 
           onClose={() => setSelectedEmailId(null)} 
+          onExpand={() => {
+            setFullViewEmailId(selectedEmailId);
+            setSelectedEmailId(null);
+          }}
         />
       ) : null}
     </div>
