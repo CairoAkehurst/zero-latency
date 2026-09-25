@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { X, Reply, Check, Send, Loader2, Maximize2, Minimize2, Archive, Trash2, Mail, Clock, MoreVertical, CornerUpLeft, CornerUpRight, ChevronDown } from "lucide-react";
+import { X, Reply, Check, Send, Loader2, Maximize2, Minimize2, Archive, Trash2, Mail, Clock, MoreVertical, CornerUpLeft, CornerUpRight, ChevronDown, Sparkles } from "lucide-react";
 import { formatEmailDate } from "@/utils/formatDate";
 
 interface EmailDetailPeekProps {
@@ -42,7 +42,7 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
 
   const handleStartDraft = () => {
     setIsDrafting(true);
-    if (email.suggestedReply) {
+    if (email.suggestedReply && !draftText) {
       setDraftText(email.suggestedReply);
     }
   };
@@ -83,17 +83,18 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
   const formattedFullDate = isNaN(fullDate.getTime()) ? email.timestamp : fullDate.toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
 
   return (
-    <div className={`flex flex-col h-full bg-white z-10 relative overflow-hidden transition-all duration-300 ease-in-out flex-1 rounded-tl-2xl ${isFullView ? 'border-l-0' : 'border-l border-gray-100'}`}>
-      {/* Header Toolbar */}
-      <div className="h-[68px] px-5 flex items-center justify-between border-b border-gray-100 flex-shrink-0 bg-white">
+    <div className={`flex flex-col h-full z-10 relative overflow-hidden transition-all duration-300 ease-in-out flex-1 rounded-tl-2xl ${isFullView ? 'border-l-0' : 'border-l border-gray-200'}`}>
+      
+      {/* Header Toolbar (White) */}
+      <div className="h-[68px] px-5 flex items-center justify-between border-b border-gray-200 bg-white flex-shrink-0">
         <div className="flex items-center gap-4">
-          <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors" title="Archive">
+          <button className="p-2 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-full transition-colors" title="Archive">
             <Archive className="w-4 h-4" />
           </button>
-          <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors" title="Delete">
+          <button className="p-2 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-full transition-colors" title="Delete">
             <Trash2 className="w-4 h-4" />
           </button>
-          <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors" title="Mark unread">
+          <button className="p-2 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-full transition-colors" title="Mark unread">
             <Mail className="w-4 h-4" />
           </button>
         </div>
@@ -101,7 +102,7 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
           {onExpand && (
             <button 
               onClick={onExpand}
-              className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+              className="p-2 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-full transition-colors"
               title={isFullView ? "Minimize" : "Full screen"}
             >
               {isFullView ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
@@ -109,44 +110,45 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
           )}
           <button 
             onClick={onClose}
-            className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+            className="p-2 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-full transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
       </div>
 
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto bg-white">
+      {/* Main Reading Pane (Light Grey background like Gmail) */}
+      <div className="flex-1 overflow-y-auto bg-[#f2f6fc] p-6 lg:p-10 flex flex-col gap-6">
         
-        {/* AI Summary Banner (if exists) */}
-        {email.summary && (
-          <div className="bg-blue-50/50 px-6 py-4 border-b border-blue-100">
-            <div className="flex items-center gap-2 mb-1.5">
-              <span className="text-xs font-bold text-blue-800 uppercase tracking-wider flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-blue-600 inline-block" />
-                AI Summary
+        {/* Subject (outside card) */}
+        <div className="flex items-center justify-between px-2 max-w-5xl mx-auto w-full">
+          <h1 className="text-2xl font-normal text-gray-900 leading-snug">
+            {email.subject}
+            {email.category && (
+              <span className="ml-4 align-middle inline-block px-2.5 py-0.5 rounded-sm text-xs font-medium border bg-gray-200/50 text-gray-700 border-gray-300/50">
+                {email.category}
               </span>
+            )}
+          </h1>
+        </div>
+
+        {/* AI Summary Card */}
+        {email.summary && (
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200/60 rounded-2xl p-5 max-w-5xl mx-auto w-full shadow-sm">
+            <div className="flex items-center gap-2 mb-2">
+              <Sparkles className="w-4 h-4 text-blue-600" />
+              <span className="text-sm font-semibold text-blue-900">AI Summary</span>
             </div>
-            <p className="text-sm text-blue-900/90 leading-relaxed max-w-4xl">
+            <p className="text-sm text-blue-900/80 leading-relaxed">
               {email.summary}
             </p>
           </div>
         )}
 
-        <div className="p-8 max-w-5xl mx-auto">
-          {/* Email Subject */}
-          <h1 className="text-2xl font-normal text-gray-900 mb-8 leading-snug">
-            {email.subject}
-            {email.category && (
-              <span className="ml-4 align-middle inline-block px-2.5 py-0.5 rounded-full text-xs font-medium border bg-gray-100 text-gray-700 border-gray-200">
-                {email.category}
-              </span>
-            )}
-          </h1>
-
+        {/* Email Content Card */}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200/60 overflow-hidden max-w-5xl mx-auto w-full flex flex-col">
           {/* Sender Header Row */}
-          <div className="flex items-start justify-between mb-8">
+          <div className="p-6 border-b border-gray-100 flex items-start justify-between">
             <div className="flex gap-4">
               <div className="w-10 h-10 rounded-full bg-indigo-100 flex-shrink-0 flex items-center justify-center text-indigo-700 font-semibold text-lg">
                 {email.sender_name?.charAt(0) || email.sender_email?.charAt(0) || "?"}
@@ -168,7 +170,7 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
                 
                 {/* Details Dropdown */}
                 {showDetails && (
-                  <div className="mt-3 p-4 rounded-lg border border-gray-200 bg-gray-50 text-sm grid grid-cols-[max-content_1fr] gap-x-4 gap-y-2 text-gray-600">
+                  <div className="mt-4 p-4 rounded-xl border border-gray-200 bg-gray-50 text-sm grid grid-cols-[max-content_1fr] gap-x-4 gap-y-2 text-gray-600">
                     <div className="text-right text-gray-400">From:</div>
                     <div className="font-medium text-gray-900">{email.sender_name} &lt;{email.sender_email}&gt;</div>
                     
@@ -210,53 +212,57 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
           </div>
 
           {/* Email Body */}
-          <div className="mb-12">
+          <div className="p-6 overflow-x-auto">
             {email.body_html ? (
-              <iframe 
-                sandbox="allow-popups allow-popups-to-escape-sandbox allow-same-origin"
-                srcDoc={email.body_html} 
-                className="w-full min-h-[400px] border-none bg-transparent" 
-                title="Email Body"
-                onLoad={(e) => {
-                  const iframe = e.target as HTMLIFrameElement;
-                  try {
-                    iframe.style.height = iframe.contentWindow?.document.documentElement.scrollHeight + 'px';
-                  } catch (e) {
-                    // Ignore cross-origin errors if any
-                  }
-                }}
-              />
+              <div className="relative w-full max-h-[65vh] overflow-y-auto">
+                <iframe 
+                  sandbox="allow-popups allow-popups-to-escape-sandbox allow-same-origin"
+                  srcDoc={email.body_html} 
+                  className="w-full min-h-[400px] border-none bg-transparent" 
+                  title="Email Body"
+                  onLoad={(e) => {
+                    const iframe = e.target as HTMLIFrameElement;
+                    try {
+                      iframe.style.height = iframe.contentWindow?.document.documentElement.scrollHeight + 'px';
+                    } catch (e) {
+                      // Ignore cross-origin errors if any
+                    }
+                  }}
+                />
+              </div>
             ) : (
-              <div className="text-sm text-gray-800 whitespace-pre-wrap font-sans leading-relaxed">
+              <div className="text-sm text-gray-800 whitespace-pre-wrap font-sans leading-relaxed max-h-[65vh] overflow-y-auto">
                 {email.body_text || 'No content'}
               </div>
             )}
           </div>
+        </div>
 
-          {/* Footer Actions / Drafting */}
-          <div className="pt-6 mt-6">
-            {isDrafting ? (
-              <div className="bg-white rounded-xl border border-gray-300 shadow-[0_2px_12px_rgba(0,0,0,0.08)] overflow-hidden flex flex-col focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500 transition-all">
-                <div className="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <CornerUpLeft className="w-4 h-4 text-gray-500" />
-                    <span className="text-sm font-medium text-gray-700">{email.sender_name || email.sender_email}</span>
-                  </div>
-                  <button onClick={() => setIsDrafting(false)} className="text-gray-400 hover:text-gray-600">
-                    <X className="w-4 h-4" />
-                  </button>
+        {/* Reply Section Card */}
+        <div className="max-w-5xl mx-auto w-full mb-12">
+          {isDrafting ? (
+            <div className="bg-white rounded-2xl border border-gray-200 shadow-[0_4px_20px_rgba(0,0,0,0.05)] overflow-hidden flex flex-col transition-all">
+              <div className="bg-gray-50 px-5 py-3 border-b border-gray-200 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <CornerUpLeft className="w-4 h-4 text-gray-500" />
+                  <span className="text-sm font-medium text-gray-700">{email.sender_name || email.sender_email}</span>
                 </div>
-                <textarea 
-                  value={draftText}
-                  onChange={(e) => setDraftText(e.target.value)}
-                  placeholder="Write your reply..."
-                  className="w-full p-4 min-h-[200px] resize-y text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none"
-                  autoFocus
-                />
-                <div className="p-3 bg-white border-t border-gray-100 flex justify-between items-center">
-                  <button className="p-2 text-gray-400 hover:text-gray-600 rounded-md transition-colors">
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                <button onClick={() => setIsDrafting(false)} className="text-gray-400 hover:text-gray-600">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <textarea 
+                value={draftText}
+                onChange={(e) => setDraftText(e.target.value)}
+                placeholder="Write your reply..."
+                className="w-full p-5 min-h-[200px] resize-y text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none"
+                autoFocus
+              />
+              <div className="p-4 bg-white border-t border-gray-100 flex justify-between items-center">
+                <button className="p-2 text-gray-400 hover:text-gray-600 rounded-md transition-colors" title="Discard draft">
+                  <Trash2 className="w-4 h-4" />
+                </button>
+                <div className="flex items-center gap-3">
                   <button 
                     onClick={handleSend}
                     disabled={isSending || !draftText.trim()}
@@ -267,35 +273,52 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
                   </button>
                 </div>
               </div>
-            ) : (
-              <div className="flex items-center gap-3">
+            </div>
+          ) : (
+            <div 
+              onClick={handleStartDraft}
+              className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 flex flex-col gap-4 cursor-text hover:shadow-md transition-shadow"
+            >
+              <div className="flex items-center gap-4">
+                <div className="w-8 h-8 rounded-full bg-gray-200 flex-shrink-0" />
+                <span className="text-sm text-gray-500">Reply to {email.sender_name || email.sender_email}...</span>
+              </div>
+              
+              <div className="flex items-center gap-3 pt-2">
                 <button 
-                  onClick={handleStartDraft}
-                  className="flex items-center gap-2 px-6 py-2.5 rounded-full border border-gray-300 hover:bg-gray-50 text-gray-700 text-sm font-medium transition-colors"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleStartDraft();
+                  }}
+                  className="flex items-center gap-2 px-5 py-2 rounded-full border border-gray-300 hover:bg-gray-50 text-gray-700 text-sm font-medium transition-colors"
                 >
                   <CornerUpLeft className="w-4 h-4" />
                   Reply
                 </button>
-                <button className="flex items-center gap-2 px-6 py-2.5 rounded-full border border-gray-300 hover:bg-gray-50 text-gray-700 text-sm font-medium transition-colors">
+                <button 
+                  onClick={(e) => e.stopPropagation()}
+                  className="flex items-center gap-2 px-5 py-2 rounded-full border border-gray-300 hover:bg-gray-50 text-gray-700 text-sm font-medium transition-colors"
+                >
                   <CornerUpRight className="w-4 h-4" />
                   Forward
                 </button>
                 
                 {email.suggestedReply && (
                   <button 
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.stopPropagation();
                       setDraftText(email.suggestedReply!);
                       setIsDrafting(true);
                     }}
-                    className="flex items-center gap-2 px-6 py-2.5 rounded-full bg-blue-50 border border-blue-100 hover:bg-blue-100 text-blue-700 text-sm font-medium transition-colors ml-auto"
+                    className="flex items-center gap-2 px-5 py-2 rounded-full bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200/60 hover:from-blue-100 hover:to-indigo-100 text-blue-700 text-sm font-medium transition-all ml-auto shadow-sm"
                   >
-                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500 inline-block" />
+                    <Sparkles className="w-3.5 h-3.5" />
                     AI Draft Ready
                   </button>
                 )}
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

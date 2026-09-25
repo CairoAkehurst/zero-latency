@@ -138,7 +138,7 @@ export function InboxClient({ initialEmails }: { initialEmails: any[] }) {
   };
 
   return (
-    <div className="flex h-full bg-white relative rounded-tl-2xl border-t border-l border-gray-200/50 shadow-sm overflow-hidden min-h-0">
+    <div className="flex h-full relative overflow-hidden min-h-0">
       {/* Left List Area */}
       <div 
         className={`flex flex-col h-full flex-shrink-0 transition-all duration-300 ease-in-out ${(isFullView || isComposeFullView) ? 'border-0 overflow-hidden opacity-0' : ''}`}
