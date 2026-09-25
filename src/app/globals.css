@@ -1,0 +1,22 @@
+@import "tailwindcss";
+
+@theme {
+  --color-background: #f7f7f5;
+  --color-foreground: #111111;
+  --font-sans: ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, monospace;
+}
+
+body {
+  background: var(--color-background);
+  color: var(--color-foreground);
+}
+
+@layer utilities {
+  .sidebar-link {
+    @apply flex items-center gap-3 px-3 py-1.5 rounded-md text-sm text-gray-600 hover:bg-gray-200/50 transition-colors cursor-pointer;
+  }
+  .sidebar-link-active {
+    @apply bg-gray-200/80 text-gray-900 font-medium;
+  }
+}
