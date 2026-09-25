@@ -198,19 +198,16 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
           </div>
         </div>
 
-        {/* Minimal AI Overview (No box) */}
+        {/* AI Overview Callout */}
         {email.summary && (
-          <div className="w-full py-4 border-y border-gray-100 flex items-stretch gap-4">
-            <div className="w-1 bg-blue-400 rounded-full opacity-60"></div>
-            <div className="flex-1">
-              <div className="text-sm font-medium text-gray-900 mb-1 flex items-center gap-2">
-                <Sparkles className="w-3.5 h-3.5 text-blue-500" />
-                AI overview
-              </div>
-              <p className="text-sm text-gray-700 leading-relaxed">
-                {email.summary}
-              </p>
+          <div className="w-full my-4 bg-blue-50/80 border-l-[3px] border-blue-500 p-4 md:p-5 rounded-r-xl">
+            <div className="text-sm font-semibold text-blue-800 mb-2 flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-blue-600" />
+              AI Overview
             </div>
+            <p className="text-sm text-blue-950/90 leading-relaxed">
+              {email.summary}
+            </p>
           </div>
         )}
 
