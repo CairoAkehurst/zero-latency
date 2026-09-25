@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useRef } from "react";
-import { X, Reply, Check, Send, Loader2, Maximize2, Minimize2, Archive, Trash2, Mail, Clock, MoreVertical, CornerUpLeft, CornerUpRight, ChevronDown, Sparkles, Type, Paperclip, Link as LinkIcon, Image as ImageIcon } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { X, Reply, Check, Send, Loader2, Maximize2, Minimize2, Archive, Trash2, Mail, Clock, MoreVertical, CornerUpLeft, CornerUpRight, ChevronDown, Sparkles, Type, Paperclip, Link as LinkIcon, Image as ImageIcon, Bold, Italic, Underline, Highlighter } from "lucide-react";
 import { formatEmailDate } from "@/utils/formatDate";
 
 interface EmailDetailPeekProps {
@@ -20,7 +20,7 @@ interface EmailDetailPeekProps {
     hasAiMetadata: boolean;
     summary?: string;
     category?: string;
-    categoryColor?: "blue" | "green" | "yellow" | "red" | "purple" | "gray" | "pink" | "indigo" | "teal";
+    categoryColor?: string;
     suggestedReply?: string;
     to_email?: string;
     cc?: string;
@@ -34,13 +34,30 @@ interface EmailDetailPeekProps {
 export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }: EmailDetailPeekProps) {
   const [draftText, setDraftText] = useState("");
   const [showCcBcc, setShowCcBcc] = useState(false);
+  const [showFormatting, setShowFormatting] = useState(false);
+  const [toText, setToText] = useState("");
   const [ccText, setCcText] = useState("");
   const [bccText, setBccText] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [sendSuccess, setSendSuccess] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
   
-  const replyRef = useRef<HTMLTextAreaElement>(null);
+  const replyRef = useRef<HTMLDivElement>(null);
+
+  // Initialize the "To" field whenever a new email is opened
+  useEffect(() => {
+    if (email) {
+      setToText(email.sender_email || "");
+      if (replyRef.current) {
+        replyRef.current.innerHTML = "";
+      }
+      setDraftText("");
+      setCcText("");
+      setBccText("");
+      setShowCcBcc(false);
+      setShowFormatting(false);
+    }
+  }, [email]);
 
   if (!email) return null;
 
@@ -53,9 +70,18 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
 
   const handleDiscard = () => {
     setDraftText("");
+    if (replyRef.current) replyRef.current.innerHTML = "";
+    setToText(email.sender_email || "");
     setCcText("");
     setBccText("");
     setShowCcBcc(false);
+    setShowFormatting(false);
+  };
+
+  const applyFormat = (command: string, value?: string) => {
+    document.execCommand(command, false, value);
+    replyRef.current?.focus();
+    if (replyRef.current) setDraftText(replyRef.current.innerHTML);
   };
 
   const handleSend = async () => {
@@ -65,11 +91,11 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          toEmail: email.sender_email,
+          toEmail: toText,
           ccEmail: ccText,
           bccEmail: bccText,
           subject: email.subject,
-          body: draftText,
+          body: draftText, // now sends raw HTML
           threadId: email.google_thread_id,
           messageId: email.google_message_id
         }),
@@ -94,6 +120,17 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
 
   const fullDate = new Date(email.timestamp);
   const formattedFullDate = isNaN(fullDate.getTime()) ? email.timestamp : fullDate.toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
+
+  const colorMap: Record<string, string> = {
+    blue: "bg-blue-100 text-blue-700 border border-blue-200",
+    pink: "bg-pink-100 text-pink-700 border border-pink-200",
+    purple: "bg-purple-100 text-purple-700 border border-purple-200",
+    red: "bg-red-100 text-red-700 border border-red-200",
+    green: "bg-green-100 text-green-700 border border-green-200",
+    orange: "bg-orange-100 text-orange-700 border border-orange-200",
+    yellow: "bg-yellow-100 text-yellow-700 border border-yellow-200",
+    teal: "bg-teal-100 text-teal-700 border border-teal-200",
+  };
 
   return (
     <div className={`flex flex-col h-full bg-white z-10 relative overflow-hidden transition-all duration-300 ease-in-out flex-1 rounded-tl-2xl ${isFullView ? 'border-l-0' : 'border-l border-gray-200'}`}>
@@ -137,7 +174,7 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
         <h1 className="text-2xl font-normal text-gray-900 leading-snug w-full">
           {email.subject}
           {email.category && (
-            <span className="ml-4 align-middle inline-block px-2.5 py-0.5 rounded-sm text-xs font-medium border bg-gray-100 text-gray-600 border-gray-200">
+            <span className={`ml-4 align-middle inline-block px-3 py-1 rounded-full text-xs font-semibold ${email.categoryColor ? colorMap[email.categoryColor] : 'bg-gray-100 text-gray-700 border border-gray-200'}`}>
               {email.category}
             </span>
           )}
@@ -210,14 +247,13 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
           </div>
         </div>
 
-        {/* AI Overview Callout */}
+        {/* AI Overview Box */}
         {email.summary && (
-          <div className="w-full my-4 bg-blue-50/80 border-l-[3px] border-blue-500 p-4 md:p-5 rounded-r-xl">
-            <div className="text-sm font-semibold text-blue-800 mb-2 flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-blue-600" />
-              AI Overview
+          <div className="w-full my-2 bg-white border border-blue-200 rounded-xl px-5 py-4">
+            <div className="text-sm font-semibold text-blue-600 mb-1">
+              AI Summary
             </div>
-            <p className="text-sm text-blue-950/90 leading-relaxed">
+            <p className="text-sm text-gray-800 leading-relaxed">
               {email.summary}
             </p>
           </div>
@@ -255,29 +291,30 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
           <div className="bg-white rounded-xl border border-gray-300 shadow-sm overflow-hidden flex flex-col transition-all">
             {/* Header / Recipients Bar */}
             <div className="bg-white px-4 py-3 border-b border-gray-200 flex flex-col gap-2 transition-all">
-              <div className="flex items-center justify-between w-full">
-                <div className="flex items-center gap-3 w-full">
-                  <CornerUpLeft className="w-4 h-4 text-gray-500 flex-shrink-0" />
-                  <div className="flex items-center flex-1 gap-2 flex-wrap">
-                    <span className="text-sm text-gray-500 font-medium mr-1 w-6">To</span>
-                    <div className="px-2 py-1 bg-white border border-gray-200 rounded-md text-sm text-gray-700 flex items-center gap-1 shadow-sm">
-                      {email.sender_name || email.sender_email}
-                    </div>
-                    {!showCcBcc && (
-                      <button 
-                        onClick={() => setShowCcBcc(true)}
-                        className="text-xs font-medium text-gray-500 hover:text-gray-800 ml-auto transition-colors"
-                      >
-                        Cc / Bcc
-                      </button>
-                    )}
-                  </div>
-                </div>
+              
+              <div className="flex items-center gap-3 w-full mt-1">
+                <CornerUpLeft className="w-4 h-4 text-gray-500 flex-shrink-0" />
+                <span className="text-sm text-gray-500 font-medium mr-1 w-6">To</span>
+                <input 
+                  type="text" 
+                  value={toText}
+                  onChange={(e) => setToText(e.target.value)}
+                  placeholder="Recipients"
+                  className="flex-1 px-2 py-1 border-none focus:outline-none text-sm text-gray-900 placeholder:text-gray-400"
+                />
+                {!showCcBcc && (
+                  <button 
+                    onClick={() => setShowCcBcc(true)}
+                    className="text-xs font-medium text-gray-500 hover:text-gray-800 ml-auto transition-colors"
+                  >
+                    Cc / Bcc
+                  </button>
+                )}
               </div>
 
               {showCcBcc && (
                 <>
-                  <div className="flex items-center gap-3 w-full mt-1">
+                  <div className="flex items-center gap-3 w-full mt-1 border-t border-gray-50 pt-2">
                     <div className="w-4 h-4 flex-shrink-0" />
                     <span className="text-sm text-gray-500 font-medium mr-1 w-6">Cc</span>
                     <input 
@@ -288,7 +325,7 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
                       className="flex-1 px-2 py-1 border-none focus:outline-none text-sm text-gray-900 placeholder:text-gray-400"
                     />
                   </div>
-                  <div className="flex items-center gap-3 w-full border-t border-gray-100 pt-2 mt-1">
+                  <div className="flex items-center gap-3 w-full border-t border-gray-50 pt-2 mt-1">
                     <div className="w-4 h-4 flex-shrink-0" />
                     <span className="text-sm text-gray-500 font-medium mr-1 w-6">Bcc</span>
                     <input 
@@ -303,15 +340,21 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
               )}
             </div>
             
-            <textarea 
-              ref={replyRef}
-              value={draftText}
-              onChange={(e) => setDraftText(e.target.value)}
-              placeholder="Write your reply..."
-              className="w-full p-4 min-h-[200px] resize-y text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none"
-            />
+            <div className="relative w-full bg-white">
+              {draftText.length === 0 && (
+                <div className="absolute top-4 left-4 text-gray-400 pointer-events-none text-sm">
+                  Write your reply...
+                </div>
+              )}
+              <div 
+                ref={replyRef}
+                contentEditable
+                onInput={(e) => setDraftText(e.currentTarget.innerHTML)}
+                className="w-full p-4 min-h-[200px] text-sm text-gray-900 focus:outline-none overflow-y-auto"
+              />
+            </div>
             
-            <div className="p-3 bg-white flex justify-between items-center border-t border-gray-100">
+            <div className="p-3 bg-white flex justify-between items-center border-t border-gray-100 relative">
               <div className="flex items-center gap-2">
                 <button 
                   onClick={handleDiscard}
@@ -323,7 +366,12 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
                 
                 {email.suggestedReply && (
                   <button 
-                    onClick={() => setDraftText(email.suggestedReply!)}
+                    onClick={() => {
+                      if (replyRef.current) {
+                        replyRef.current.innerHTML = email.suggestedReply!;
+                        setDraftText(email.suggestedReply!);
+                      }
+                    }}
                     className="flex items-center gap-2 px-3 py-1.5 ml-1 rounded-md bg-white border border-gray-200 shadow-sm hover:bg-gray-50 text-blue-600 text-sm font-medium transition-colors"
                   >
                     Help me write
@@ -332,8 +380,31 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
               </div>
 
               <div className="flex items-center gap-4">
-                <div className="flex items-center gap-1">
-                  <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md transition-colors" title="Formatting options">
+                <div className="flex items-center gap-1 relative">
+                  
+                  {/* Formatting Expanded Toolbar */}
+                  {showFormatting && (
+                    <div className="flex items-center gap-1 bg-gray-50 border border-gray-200 rounded-md p-1 mr-2 animate-in fade-in slide-in-from-right-4 absolute right-full top-1/2 -translate-y-1/2">
+                      <button onClick={() => applyFormat('bold')} className="p-1 text-gray-600 hover:bg-gray-200 rounded transition-colors" title="Bold">
+                        <Bold className="w-4 h-4" />
+                      </button>
+                      <button onClick={() => applyFormat('italic')} className="p-1 text-gray-600 hover:bg-gray-200 rounded transition-colors" title="Italic">
+                        <Italic className="w-4 h-4" />
+                      </button>
+                      <button onClick={() => applyFormat('underline')} className="p-1 text-gray-600 hover:bg-gray-200 rounded transition-colors" title="Underline">
+                        <Underline className="w-4 h-4" />
+                      </button>
+                      <button onClick={() => applyFormat('hiliteColor', 'yellow')} className="p-1 text-gray-600 hover:bg-gray-200 rounded transition-colors" title="Highlight">
+                        <Highlighter className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
+
+                  <button 
+                    onClick={() => setShowFormatting(!showFormatting)}
+                    className={`p-2 rounded-md transition-colors ${showFormatting ? 'bg-blue-50 text-blue-600' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'}`} 
+                    title="Formatting options"
+                  >
                     <Type className="w-4 h-4" />
                   </button>
                   <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md transition-colors" title="Attach files">
@@ -346,10 +417,11 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
                     <ImageIcon className="w-4 h-4" />
                   </button>
                 </div>
+                
                 <button 
                   onClick={handleSend}
                   disabled={isSending || !draftText.trim()}
-                  className="flex items-center gap-2 px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-md transition-colors disabled:opacity-50 shadow-sm"
+                  className="flex items-center gap-2 px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-md transition-colors disabled:opacity-50 shadow-sm mr-2"
                 >
                   {isSending ? <Loader2 className="w-4 h-4 animate-spin" /> : sendSuccess ? <Check className="w-4 h-4" /> : <Send className="w-4 h-4" />}
                   {isSending ? "Sending..." : sendSuccess ? "Sent!" : "Send"}
