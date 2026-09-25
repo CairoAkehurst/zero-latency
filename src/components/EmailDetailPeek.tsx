@@ -118,7 +118,7 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 overflow-y-auto bg-white p-6 lg:p-10 flex flex-col gap-6">
+      <div className="flex-1 overflow-y-auto bg-white p-6 lg:p-10 flex flex-col gap-6 relative">
         
         {/* Email Subject */}
         <h1 className="text-2xl font-normal text-gray-900 leading-snug w-full">
@@ -207,7 +207,7 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
         )}
 
         {/* Email Body */}
-        <div className="w-full">
+        <div className="w-full pb-8">
           {email.body_html ? (
             <div className="w-full pr-2">
               <iframe 
@@ -231,87 +231,87 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
             </div>
           )}
         </div>
+      </div>
 
-        {/* Reply Section */}
-        <div className="w-full mt-4 pb-8">
-          {isDrafting ? (
-            <div className="bg-white rounded-lg border border-gray-300 overflow-hidden flex flex-col transition-all shadow-sm">
-              <div className="bg-gray-50/50 px-4 py-2 border-b border-gray-200 flex items-center">
-                <div className="flex items-center gap-2 w-full">
-                  <CornerUpLeft className="w-4 h-4 text-gray-500 flex-shrink-0" />
-                  <div className="flex items-center flex-1 gap-2 flex-wrap">
-                    <span className="text-sm text-gray-500">To</span>
-                    <div className="px-2 py-1 bg-white border border-gray-200 rounded-md text-sm text-gray-700 flex items-center gap-1 shadow-sm">
-                      {email.sender_name || email.sender_email} <span className="text-gray-400 text-xs font-normal ml-1">x</span>
-                    </div>
-                    <button className="text-xs font-medium text-gray-500 hover:text-gray-800 ml-auto transition-colors">Cc / Bcc</button>
+      {/* Sticky Reply Section (Fixed at bottom) */}
+      <div className="w-full bg-white/95 backdrop-blur-sm border-t border-gray-100 p-5 lg:px-10 z-20 flex-shrink-0 shadow-[0_-10px_30px_rgba(0,0,0,0.03)]">
+        {isDrafting ? (
+          <div className="bg-white rounded-lg border border-gray-300 overflow-hidden flex flex-col transition-all shadow-sm max-h-[50vh]">
+            <div className="bg-gray-50/50 px-4 py-2 border-b border-gray-200 flex items-center">
+              <div className="flex items-center gap-2 w-full">
+                <CornerUpLeft className="w-4 h-4 text-gray-500 flex-shrink-0" />
+                <div className="flex items-center flex-1 gap-2 flex-wrap">
+                  <span className="text-sm text-gray-500">To</span>
+                  <div className="px-2 py-1 bg-white border border-gray-200 rounded-md text-sm text-gray-700 flex items-center gap-1 shadow-sm">
+                    {email.sender_name || email.sender_email} <span className="text-gray-400 text-xs font-normal ml-1">x</span>
                   </div>
-                  <button onClick={() => setIsDrafting(false)} className="text-gray-400 hover:text-gray-600 ml-2">
-                    <X className="w-4 h-4" />
-                  </button>
+                  <button className="text-xs font-medium text-gray-500 hover:text-gray-800 ml-auto transition-colors">Cc / Bcc</button>
                 </div>
-              </div>
-              <textarea 
-                value={draftText}
-                onChange={(e) => setDraftText(e.target.value)}
-                placeholder="Write your reply..."
-                className="w-full p-4 min-h-[250px] resize-y text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none"
-                autoFocus
-              />
-              <div className="p-3 bg-white flex justify-between items-center border-t border-gray-100">
-                <div className="flex items-center gap-1">
-                  <button 
-                    onClick={handleSend}
-                    disabled={isSending || !draftText.trim()}
-                    className="flex items-center gap-2 px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-md transition-colors disabled:opacity-50 mr-2"
-                  >
-                    {isSending ? <Loader2 className="w-4 h-4 animate-spin" /> : sendSuccess ? <Check className="w-4 h-4" /> : <Send className="w-4 h-4" />}
-                    {isSending ? "Sending..." : sendSuccess ? "Sent!" : "Send"}
-                  </button>
-                  <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md transition-colors" title="Formatting options">
-                    <Type className="w-4 h-4" />
-                  </button>
-                  <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md transition-colors" title="Attach files">
-                    <Paperclip className="w-4 h-4" />
-                  </button>
-                  <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md transition-colors" title="Insert link">
-                    <LinkIcon className="w-4 h-4" />
-                  </button>
-                  <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md transition-colors" title="Insert photo">
-                    <ImageIcon className="w-4 h-4" />
-                  </button>
-                </div>
-                <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md transition-colors" title="Discard draft" onClick={() => setIsDrafting(false)}>
-                  <Trash2 className="w-4 h-4" />
+                <button onClick={() => setIsDrafting(false)} className="text-gray-400 hover:text-gray-600 ml-2">
+                  <X className="w-4 h-4" />
                 </button>
               </div>
             </div>
-          ) : (
-            <div className="flex flex-col gap-3">
-              <div 
-                onClick={handleStartDraft}
-                className="bg-white rounded-lg border border-gray-300 p-3 flex items-center gap-3 cursor-text hover:border-gray-400 transition-colors shadow-sm"
-              >
-                <div className="w-8 h-8 rounded-full bg-gray-100 flex-shrink-0" />
-                <span className="text-sm text-gray-500 font-medium">Reply to {email.sender_name || email.sender_email}...</span>
-              </div>
-              
-              {email.suggestedReply && (
+            <textarea 
+              value={draftText}
+              onChange={(e) => setDraftText(e.target.value)}
+              placeholder="Write your reply..."
+              className="w-full p-4 flex-1 min-h-[150px] resize-y text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none overflow-y-auto"
+              autoFocus
+            />
+            <div className="p-3 bg-white flex justify-between items-center border-t border-gray-100 flex-shrink-0">
+              <div className="flex items-center gap-1">
                 <button 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setDraftText(email.suggestedReply!);
-                    setIsDrafting(true);
-                  }}
-                  className="flex items-center gap-2 px-4 py-2 w-fit rounded-md bg-white border border-gray-200 shadow-[0_0_10px_rgba(59,130,246,0.1)] hover:shadow-[0_0_15px_rgba(59,130,246,0.2)] text-blue-600 text-sm font-medium transition-all"
+                  onClick={handleSend}
+                  disabled={isSending || !draftText.trim()}
+                  className="flex items-center gap-2 px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-md transition-colors disabled:opacity-50 mr-2"
                 >
-                  <Sparkles className="w-3.5 h-3.5" />
-                  Use AI Draft
+                  {isSending ? <Loader2 className="w-4 h-4 animate-spin" /> : sendSuccess ? <Check className="w-4 h-4" /> : <Send className="w-4 h-4" />}
+                  {isSending ? "Sending..." : sendSuccess ? "Sent!" : "Send"}
                 </button>
-              )}
+                <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md transition-colors" title="Formatting options">
+                  <Type className="w-4 h-4" />
+                </button>
+                <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md transition-colors" title="Attach files">
+                  <Paperclip className="w-4 h-4" />
+                </button>
+                <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md transition-colors" title="Insert link">
+                  <LinkIcon className="w-4 h-4" />
+                </button>
+                <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md transition-colors" title="Insert photo">
+                  <ImageIcon className="w-4 h-4" />
+                </button>
+              </div>
+              <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md transition-colors" title="Discard draft" onClick={() => setIsDrafting(false)}>
+                <Trash2 className="w-4 h-4" />
+              </button>
             </div>
-          )}
-        </div>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-3">
+            <div 
+              onClick={handleStartDraft}
+              className="bg-white rounded-lg border border-gray-300 p-3 flex items-center gap-3 cursor-text hover:border-gray-400 transition-colors shadow-sm"
+            >
+              <div className="w-8 h-8 rounded-full bg-gray-100 flex-shrink-0" />
+              <span className="text-sm text-gray-500 font-medium">Reply to {email.sender_name || email.sender_email}...</span>
+            </div>
+            
+            {email.suggestedReply && (
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setDraftText(email.suggestedReply!);
+                  setIsDrafting(true);
+                }}
+                className="flex items-center gap-2 px-4 py-2 w-fit rounded-md bg-white border border-gray-200 shadow-[0_0_10px_rgba(59,130,246,0.1)] hover:shadow-[0_0_15px_rgba(59,130,246,0.2)] text-blue-600 text-sm font-medium transition-all"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                Use AI Draft
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
