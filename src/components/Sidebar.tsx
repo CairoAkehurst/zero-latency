@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Edit, Inbox, Send, File, ChevronDown, LogOut } from "lucide-react";
+import { Edit, Inbox, Send, File, ChevronDown, LogOut, Plus } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import clsx from "clsx";
@@ -23,17 +23,43 @@ export function Sidebar() {
   const [user, setUser] = useState<import("@supabase/supabase-js").User | null>(null);
   const [showDropdown, setShowDropdown] = useState(false);
   const [categories, setCategories] = useState<any[]>(DEFAULT_FOLDERS);
+  const [isAddingLabel, setIsAddingLabel] = useState(false);
+  const [newLabelName, setNewLabelName] = useState("");
+
+  const fetchCategories = async () => {
+    const { data } = await supabase.from('categories').select('*');
+    if (data && data.length > 0) {
+      setCategories(data.map(c => ({
+        name: c.name,
+        color: `bg-${c.color}-400`,
+        slug: c.slug
+      })));
+    }
+  };
+
+  const handleAddLabel = async () => {
+    if (!newLabelName.trim()) {
+      setIsAddingLabel(false);
+      return;
+    }
+    
+    const colors = ["blue", "red", "green", "purple", "pink", "orange", "yellow", "teal"];
+    const randomColor = colors[Math.floor(Math.random() * colors.length)];
+    const slug = newLabelName.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    
+    await supabase.from('categories').insert({
+      name: newLabelName.trim(),
+      color: randomColor,
+      slug
+    });
+    
+    setNewLabelName("");
+    setIsAddingLabel(false);
+    fetchCategories();
+  };
 
   useEffect(() => {
-    supabase.from('categories').select('*').then(({ data }) => {
-      if (data && data.length > 0) {
-        setCategories(data.map(c => ({
-          name: c.name,
-          color: `bg-${c.color}-400`,
-          slug: c.slug
-        })));
-      }
-    });
+    fetchCategories();
     supabase.auth.getUser().then(({ data }) => {
       if (data?.user) {
         setUser(data.user);
@@ -96,8 +122,14 @@ export function Sidebar() {
             <span>Inbox</span>
           </div>
           
-          <div className="pt-2 pb-1 px-3 text-xs font-semibold text-gray-400 tracking-wider">
-            VIEWS
+          <div className="pt-2 pb-1 px-3 flex items-center justify-between text-xs font-semibold text-gray-400 tracking-wider">
+            <span>LABELS</span>
+            <button 
+              onClick={() => setIsAddingLabel(true)}
+              className="p-1 hover:bg-gray-200/50 rounded transition-colors text-gray-400 hover:text-gray-600"
+            >
+              <Plus className="w-3.5 h-3.5" />
+            </button>
           </div>
           {categories.map((folder) => (
             <div 
@@ -109,6 +141,27 @@ export function Sidebar() {
               <span className="truncate">{folder.name}</span>
             </div>
           ))}
+          {isAddingLabel && (
+            <div className="sidebar-link px-3">
+              <div className="w-2 h-2 rounded-full flex-shrink-0 bg-gray-300" />
+              <input 
+                autoFocus
+                type="text" 
+                value={newLabelName}
+                onChange={(e) => setNewLabelName(e.target.value)}
+                onBlur={handleAddLabel}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleAddLabel();
+                  if (e.key === 'Escape') {
+                    setIsAddingLabel(false);
+                    setNewLabelName("");
+                  }
+                }}
+                className="w-full bg-transparent border-none outline-none text-sm text-gray-700"
+                placeholder="New label..."
+              />
+            </div>
+          )}
         </div>
 
         <div className="space-y-0.5">

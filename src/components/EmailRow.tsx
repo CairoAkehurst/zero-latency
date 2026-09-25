@@ -18,12 +18,14 @@ interface EmailRowProps {
 }
 
 const colorMap: Record<string, string> = {
-  blue: "bg-blue-100 text-blue-700",
-  pink: "bg-pink-100 text-pink-700",
-  purple: "bg-purple-100 text-purple-700",
-  red: "bg-red-100 text-red-700",
-  green: "bg-green-100 text-green-700",
-  orange: "bg-orange-100 text-orange-700",
+  blue: "bg-blue-100 text-blue-700 border-blue-200",
+  pink: "bg-pink-100 text-pink-700 border-pink-200",
+  purple: "bg-purple-100 text-purple-700 border-purple-200",
+  red: "bg-red-100 text-red-700 border-red-200",
+  green: "bg-green-100 text-green-700 border-green-200",
+  orange: "bg-orange-100 text-orange-700 border-orange-200",
+  yellow: "bg-yellow-100 text-yellow-700 border-yellow-200",
+  teal: "bg-teal-100 text-teal-700 border-teal-200",
 };
 
 export function EmailRow({ email, isSelected }: EmailRowProps) {
@@ -60,8 +62,8 @@ export function EmailRow({ email, isSelected }: EmailRowProps) {
       {email.category && (
         <div className="flex-shrink-0">
           <span className={clsx(
-            "px-2.5 py-0.5 rounded-full text-xs font-medium",
-            colorMap[email.categoryColor] || "bg-gray-100 text-gray-700"
+            "px-2.5 py-0.5 rounded-full text-xs font-medium border",
+            colorMap[email.categoryColor] || "bg-gray-100 text-gray-700 border-gray-200"
           )}>
             {email.category}
           </span>

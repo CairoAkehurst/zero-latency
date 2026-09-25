@@ -41,6 +41,14 @@ export async function POST() {
     return NextResponse.json({ message: 'No emails to process', count: 0 });
   }
 
+  // Fetch available categories dynamically
+  const { data: dbCategories } = await supabase.from('categories').select('id, name');
+  const availableCategories = dbCategories || [];
+  const categoryNames = availableCategories.map(c => c.name);
+  const categoryPromptOptions = categoryNames.length > 0 
+    ? categoryNames.map(name => `"${name}"`).join(" | ") 
+    : '"General"';
+
   let processedCount = 0;
 
   for (const email of unprocessedEmails) {
@@ -53,7 +61,7 @@ export async function POST() {
 
       Please provide a JSON response with the following structure:
       {
-        "category": "Project" | "Leadership" | "Sales" | "Recruiting" | "Meeting" | "Urgent" | "General",
+        "category": ${categoryPromptOptions},
         "tldr": "A 1-sentence summary of the email",
         "action_required": boolean,
         "suggested_reply": "A short suggested reply if applicable, otherwise null",
@@ -75,17 +83,14 @@ export async function POST() {
       
       const aiResult = JSON.parse(responseText);
 
-      // Find category ID in Supabase based on name
-      const { data: category } = await supabase
-        .from('categories')
-        .select('id')
-        .ilike('name', `%${aiResult.category}%`)
-        .limit(1)
-        .single();
+      // Find category ID based on exact name matched from AI response
+      const matchedCategory = availableCategories.find(c => 
+        c.name.toLowerCase() === aiResult.category?.toLowerCase()
+      );
 
       await supabase.from('email_ai_metadata').insert({
         email_id: email.id,
-        category_id: category?.id || null, // Might be null if category doesn't exist
+        category_id: matchedCategory?.id || null, // Might be null if category doesn't exist
         tldr: aiResult.tldr,
         action_required: aiResult.action_required,
         suggested_reply: aiResult.suggested_reply,
