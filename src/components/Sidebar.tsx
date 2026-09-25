@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Edit, Inbox, Send, File, ChevronDown, LogOut, Plus } from "lucide-react";
+import { Edit, Inbox, Send, File, ChevronDown, LogOut, Plus, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import clsx from "clsx";
@@ -130,6 +130,13 @@ export function Sidebar() {
 
       <div className="flex-1 overflow-y-auto px-2 space-y-6 mt-4">
         <div className="space-y-0.5">
+          <div
+            onClick={() => window.dispatchEvent(new CustomEvent('open-summary'))}
+            className="sidebar-link cursor-pointer hover:bg-gray-200/50"
+          >
+            <Sparkles className="w-4 h-4" />
+            <span>Summery</span>
+          </div>
           <div
             onClick={() => window.dispatchEvent(new CustomEvent('filter-category', { detail: 'Inbox' }))}
             className={clsx(

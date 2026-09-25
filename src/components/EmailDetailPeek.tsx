@@ -21,12 +21,13 @@ interface EmailDetailPeekProps {
     suggestedReply?: string;
   } | null;
   onClose: () => void;
+  initialDraftText?: string;
   isFullView?: boolean;
 }
 
-export function EmailDetailPeek({ email, onClose, isFullView = false }: EmailDetailPeekProps) {
-  const [isDrafting, setIsDrafting] = useState(false);
-  const [draftText, setDraftText] = useState("");
+export function EmailDetailPeek({ email, onClose, initialDraftText = "", isFullView = false }: EmailDetailPeekProps) {
+  const [isDrafting, setIsDrafting] = useState(Boolean(initialDraftText));
+  const [draftText, setDraftText] = useState(initialDraftText);
   const [isSending, setIsSending] = useState(false);
   const [sendSuccess, setSendSuccess] = useState(false);
 

@@ -7,6 +7,7 @@ import { EmailDetailPeek } from "@/components/EmailDetailPeek";
 import { ComposeEmail } from "@/components/ComposeEmail";
 import { SettingsPeek } from "@/components/SettingsPeek";
 import { FiltersPeek } from "@/components/FiltersPeek";
+import { SummaryView } from "@/components/SummaryView";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function InboxClient({ initialEmails }: { initialEmails: any[] }) {
@@ -19,6 +20,8 @@ export function InboxClient({ initialEmails }: { initialEmails: any[] }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [isSyncing, setIsSyncing] = useState(false);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [isSummaryView, setIsSummaryView] = useState(false);
+  const [quickReplyText, setQuickReplyText] = useState<string | undefined>();
 
   useEffect(() => {
     const handleOpenCompose = () => {
@@ -29,7 +32,17 @@ export function InboxClient({ initialEmails }: { initialEmails: any[] }) {
       setIsFiltersOpen(false);
     };
     const handleFilterCategory = (e: any) => {
+      setIsSummaryView(false);
       setActiveCategory(e.detail === 'Inbox' ? null : e.detail);
+      setFullViewEmailId(null);
+      setSelectedEmailId(null);
+      setIsComposing(false);
+      setIsSettingsOpen(false);
+      setIsFiltersOpen(false);
+    };
+    const handleOpenSummary = () => {
+      setIsSummaryView(true);
+      setActiveCategory(null);
       setFullViewEmailId(null);
       setSelectedEmailId(null);
       setIsComposing(false);
@@ -38,9 +51,11 @@ export function InboxClient({ initialEmails }: { initialEmails: any[] }) {
     };
     window.addEventListener('open-compose', handleOpenCompose);
     window.addEventListener('filter-category', handleFilterCategory);
+    window.addEventListener('open-summary', handleOpenSummary);
     return () => {
       window.removeEventListener('open-compose', handleOpenCompose);
       window.removeEventListener('filter-category', handleFilterCategory);
+      window.removeEventListener('open-summary', handleOpenSummary);
     };
   }, []);
 
@@ -133,7 +148,7 @@ export function InboxClient({ initialEmails }: { initialEmails: any[] }) {
         {/* Header */}
         <header className="px-6 py-4 flex items-center justify-between border-b border-gray-100 flex-shrink-0">
           <div className="flex items-center gap-4 flex-1">
-            <h1 className="text-xl font-semibold text-gray-900 leading-none">{activeCategory || "Inbox"}</h1>
+            <h1 className="text-xl font-semibold text-gray-900 leading-none">{isSummaryView ? "Summery" : activeCategory || "Inbox"}</h1>
             
             <div className="relative flex-1 max-w-md ml-4 flex items-center">
               <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -201,21 +216,37 @@ export function InboxClient({ initialEmails }: { initialEmails: any[] }) {
           </div>
         )}
 
-        {/* Email List */}
+        {/* Email List / Summary Cards */}
         <div className="flex-1 overflow-y-auto">
-          {filteredEmails.length === 0 ? (
+          {isSummaryView ? (
+            <SummaryView
+              emails={filteredEmails}
+              onOpenEmail={(emailId) => {
+                setQuickReplyText(undefined);
+                setIsSummaryView(false);
+                setSelectedEmailId(emailId);
+              }}
+              onQuickReply={(emailId, reply) => {
+                setQuickReplyText(reply);
+                setIsSummaryView(false);
+                setSelectedEmailId(emailId);
+              }}
+            />
+          ) : filteredEmails.length === 0 ? (
             <div className="p-8 text-center text-gray-500 text-sm">No emails found. Try syncing or adjusting your search.</div>
           ) : (
             filteredEmails.map((email) => (
               <div 
                 key={email.id} 
                 onClick={() => {
+                  setQuickReplyText(undefined);
                   setIsComposing(false);
                   setIsSettingsOpen(false);
                   setIsFiltersOpen(false);
                   setSelectedEmailId(email.id);
                 }}
                 onDoubleClick={() => {
+                  setQuickReplyText(undefined);
                   setIsComposing(false);
                   setIsSettingsOpen(false);
                   setIsFiltersOpen(false);
@@ -243,6 +274,7 @@ export function InboxClient({ initialEmails }: { initialEmails: any[] }) {
       ) : selectedEmailId ? (
         <EmailDetailPeek 
           email={selectedEmail} 
+          initialDraftText={quickReplyText}
           onClose={() => setSelectedEmailId(null)} 
         />
       ) : null}
