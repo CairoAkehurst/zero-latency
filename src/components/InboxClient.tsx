@@ -1,14 +1,16 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Wand2, SlidersHorizontal, Settings, RefreshCw, Search } from "lucide-react";
+import { Wand2, SlidersHorizontal, Settings, RefreshCw, Search, PenSquare } from "lucide-react";
 import { EmailRow } from "@/components/EmailRow";
 import { EmailDetailPeek } from "@/components/EmailDetailPeek";
+import { ComposeEmail } from "@/components/ComposeEmail";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function InboxClient({ initialEmails }: { initialEmails: any[] }) {
   const [emails] = useState(initialEmails);
   const [selectedEmailId, setSelectedEmailId] = useState<string | null>(null);
+  const [isComposing, setIsComposing] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSyncing, setIsSyncing] = useState(false);
 
@@ -74,6 +76,17 @@ export function InboxClient({ initialEmails }: { initialEmails: any[] }) {
           
           <div className="flex items-center gap-3 text-sm ml-4">
             <button 
+              onClick={() => {
+                setSelectedEmailId(null);
+                setIsComposing(true);
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-600 text-white font-medium hover:bg-blue-700 transition-colors"
+            >
+              <PenSquare className="w-3.5 h-3.5" />
+              Compose
+            </button>
+
+            <button 
               onClick={handleSync}
               disabled={isSyncing}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-50 text-gray-700 font-medium hover:bg-gray-100 transition-colors disabled:opacity-50"
@@ -114,7 +127,13 @@ export function InboxClient({ initialEmails }: { initialEmails: any[] }) {
             <div className="p-8 text-center text-gray-500 text-sm">No emails found. Try syncing or adjusting your search.</div>
           ) : (
             filteredEmails.map((email) => (
-              <div key={email.id} onClick={() => setSelectedEmailId(email.id)}>
+              <div 
+                key={email.id} 
+                onClick={() => {
+                  setIsComposing(false);
+                  setSelectedEmailId(email.id);
+                }}
+              >
                 <EmailRow 
                   email={email} 
                   isSelected={selectedEmailId === email.id} 
@@ -126,12 +145,14 @@ export function InboxClient({ initialEmails }: { initialEmails: any[] }) {
       </div>
 
       {/* Side Peek Panel */}
-      {selectedEmailId && (
+      {isComposing ? (
+        <ComposeEmail onClose={() => setIsComposing(false)} />
+      ) : selectedEmailId ? (
         <EmailDetailPeek 
           email={selectedEmail} 
           onClose={() => setSelectedEmailId(null)} 
         />
-      )}
+      ) : null}
     </div>
   );
 }
