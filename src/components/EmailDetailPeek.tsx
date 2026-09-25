@@ -221,12 +221,14 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
               <iframe 
                 sandbox="allow-popups allow-popups-to-escape-sandbox allow-same-origin"
                 srcDoc={email.body_html} 
-                className="w-full min-h-[400px] border-none bg-white" 
+                className="w-full min-h-[60px] border-none bg-white" 
                 title="Email Body"
                 onLoad={(e) => {
                   const iframe = e.target as HTMLIFrameElement;
                   try {
-                    iframe.style.height = (iframe.contentWindow?.document.documentElement.scrollHeight || 400) + 'px';
+                    // Temporarily set height to 0 to accurately measure scrollHeight without min-height interference
+                    iframe.style.height = '0px';
+                    iframe.style.height = (iframe.contentWindow?.document.documentElement.scrollHeight || 60) + 'px';
                   } catch (e) {
                     // Ignore cross-origin errors if any
                   }
@@ -241,7 +243,7 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
         </div>
 
         {/* Permanent Reply Section */}
-        <div className="w-full mt-6 pb-12">
+        <div className="w-full mt-2 pb-12">
           <div className="bg-white rounded-xl border border-gray-300 shadow-sm overflow-hidden flex flex-col transition-all">
             <div className="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
               <div className="flex items-center gap-2">
