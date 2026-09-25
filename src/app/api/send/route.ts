@@ -21,7 +21,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const { toEmail, subject, body, threadId, messageId } = await request.json();
+    const { toEmail, ccEmail, bccEmail, subject, body, threadId, messageId } = await request.json();
 
     if (!toEmail || !body) {
       return NextResponse.json({ error: 'Missing toEmail or body' }, { status: 400 });
@@ -46,6 +46,9 @@ export async function POST(request: Request) {
       'Content-Type: text/plain; charset="UTF-8"',
       'MIME-Version: 1.0',
     ];
+
+    if (ccEmail) messageParts.push(`Cc: ${ccEmail}`);
+    if (bccEmail) messageParts.push(`Bcc: ${bccEmail}`);
 
     if (threadId) {
       messageParts.push(`In-Reply-To: ${messageId || ''}`);

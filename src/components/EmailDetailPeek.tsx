@@ -33,6 +33,9 @@ interface EmailDetailPeekProps {
 
 export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }: EmailDetailPeekProps) {
   const [draftText, setDraftText] = useState("");
+  const [showCcBcc, setShowCcBcc] = useState(false);
+  const [ccText, setCcText] = useState("");
+  const [bccText, setBccText] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [sendSuccess, setSendSuccess] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
@@ -48,6 +51,13 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
     }, 300);
   };
 
+  const handleDiscard = () => {
+    setDraftText("");
+    setCcText("");
+    setBccText("");
+    setShowCcBcc(false);
+  };
+
   const handleSend = async () => {
     setIsSending(true);
     try {
@@ -56,6 +66,8 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           toEmail: email.sender_email,
+          ccEmail: ccText,
+          bccEmail: bccText,
           subject: email.subject,
           body: draftText,
           threadId: email.google_thread_id,
@@ -66,7 +78,7 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
         setSendSuccess(true);
         setTimeout(() => {
           setSendSuccess(false);
-          setDraftText("");
+          handleDiscard();
           onClose();
         }, 2000);
       } else {
@@ -198,13 +210,14 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
           </div>
         </div>
 
-        {/* AI Summary Box */}
+        {/* AI Overview Callout */}
         {email.summary && (
-          <div className="w-full my-2 bg-white border border-blue-200 rounded-xl px-5 py-4">
-            <div className="text-sm font-semibold text-blue-600 mb-1">
-              AI Summary
+          <div className="w-full my-4 bg-blue-50/80 border-l-[3px] border-blue-500 p-4 md:p-5 rounded-r-xl">
+            <div className="text-sm font-semibold text-blue-800 mb-2 flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-blue-600" />
+              AI Overview
             </div>
-            <p className="text-sm text-gray-800 leading-relaxed">
+            <p className="text-sm text-blue-950/90 leading-relaxed">
               {email.summary}
             </p>
           </div>
@@ -241,17 +254,53 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
         <div className="w-full mt-2 pb-12">
           <div className="bg-white rounded-xl border border-gray-300 shadow-sm overflow-hidden flex flex-col transition-all">
             {/* Header / Recipients Bar */}
-            <div className="bg-white px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-              <div className="flex items-center gap-3 w-full">
-                <CornerUpLeft className="w-4 h-4 text-gray-500 flex-shrink-0" />
-                <div className="flex items-center flex-1 gap-2 flex-wrap">
-                  <span className="text-sm text-gray-500 font-medium mr-1">To</span>
-                  <div className="px-2 py-1 bg-white border border-gray-200 rounded-md text-sm text-gray-700 flex items-center gap-1 shadow-sm">
-                    {email.sender_name || email.sender_email}
+            <div className="bg-white px-4 py-3 border-b border-gray-200 flex flex-col gap-2 transition-all">
+              <div className="flex items-center justify-between w-full">
+                <div className="flex items-center gap-3 w-full">
+                  <CornerUpLeft className="w-4 h-4 text-gray-500 flex-shrink-0" />
+                  <div className="flex items-center flex-1 gap-2 flex-wrap">
+                    <span className="text-sm text-gray-500 font-medium mr-1 w-6">To</span>
+                    <div className="px-2 py-1 bg-white border border-gray-200 rounded-md text-sm text-gray-700 flex items-center gap-1 shadow-sm">
+                      {email.sender_name || email.sender_email}
+                    </div>
+                    {!showCcBcc && (
+                      <button 
+                        onClick={() => setShowCcBcc(true)}
+                        className="text-xs font-medium text-gray-500 hover:text-gray-800 ml-auto transition-colors"
+                      >
+                        Cc / Bcc
+                      </button>
+                    )}
                   </div>
-                  <button className="text-xs font-medium text-gray-500 hover:text-gray-800 ml-auto transition-colors">Cc / Bcc</button>
                 </div>
               </div>
+
+              {showCcBcc && (
+                <>
+                  <div className="flex items-center gap-3 w-full mt-1">
+                    <div className="w-4 h-4 flex-shrink-0" />
+                    <span className="text-sm text-gray-500 font-medium mr-1 w-6">Cc</span>
+                    <input 
+                      type="text" 
+                      value={ccText}
+                      onChange={(e) => setCcText(e.target.value)}
+                      placeholder="Add Cc recipients"
+                      className="flex-1 px-2 py-1 border-none focus:outline-none text-sm text-gray-900 placeholder:text-gray-400"
+                    />
+                  </div>
+                  <div className="flex items-center gap-3 w-full border-t border-gray-100 pt-2 mt-1">
+                    <div className="w-4 h-4 flex-shrink-0" />
+                    <span className="text-sm text-gray-500 font-medium mr-1 w-6">Bcc</span>
+                    <input 
+                      type="text" 
+                      value={bccText}
+                      onChange={(e) => setBccText(e.target.value)}
+                      placeholder="Add Bcc recipients"
+                      className="flex-1 px-2 py-1 border-none focus:outline-none text-sm text-gray-900 placeholder:text-gray-400"
+                    />
+                  </div>
+                </>
+              )}
             </div>
             
             <textarea 
@@ -265,7 +314,7 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
             <div className="p-3 bg-white flex justify-between items-center border-t border-gray-100">
               <div className="flex items-center gap-2">
                 <button 
-                  onClick={() => setDraftText("")}
+                  onClick={handleDiscard}
                   className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors" 
                   title="Discard draft"
                 >
@@ -282,26 +331,28 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
                 )}
               </div>
 
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-1">
+                  <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md transition-colors" title="Formatting options">
+                    <Type className="w-4 h-4" />
+                  </button>
+                  <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md transition-colors" title="Attach files">
+                    <Paperclip className="w-4 h-4" />
+                  </button>
+                  <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md transition-colors" title="Insert link">
+                    <LinkIcon className="w-4 h-4" />
+                  </button>
+                  <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md transition-colors" title="Insert photo">
+                    <ImageIcon className="w-4 h-4" />
+                  </button>
+                </div>
                 <button 
                   onClick={handleSend}
                   disabled={isSending || !draftText.trim()}
-                  className="flex items-center gap-2 px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-md transition-colors disabled:opacity-50 shadow-sm mr-2"
+                  className="flex items-center gap-2 px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-md transition-colors disabled:opacity-50 shadow-sm"
                 >
                   {isSending ? <Loader2 className="w-4 h-4 animate-spin" /> : sendSuccess ? <Check className="w-4 h-4" /> : <Send className="w-4 h-4" />}
                   {isSending ? "Sending..." : sendSuccess ? "Sent!" : "Send"}
-                </button>
-                <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md transition-colors" title="Formatting options">
-                  <Type className="w-4 h-4" />
-                </button>
-                <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md transition-colors" title="Attach files">
-                  <Paperclip className="w-4 h-4" />
-                </button>
-                <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md transition-colors" title="Insert link">
-                  <LinkIcon className="w-4 h-4" />
-                </button>
-                <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md transition-colors" title="Insert photo">
-                  <ImageIcon className="w-4 h-4" />
                 </button>
               </div>
             </div>
