@@ -5,7 +5,6 @@ import { Wand2, SlidersHorizontal, Settings, RefreshCw, Search, PenSquare } from
 import { EmailRow } from "@/components/EmailRow";
 import { EmailDetailPeek } from "@/components/EmailDetailPeek";
 import { ComposeEmail } from "@/components/ComposeEmail";
-import { SettingsPeek } from "@/components/SettingsPeek";
 import { FiltersPeek } from "@/components/FiltersPeek";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -14,7 +13,6 @@ export function InboxClient({ initialEmails }: { initialEmails: any[] }) {
   const [selectedEmailId, setSelectedEmailId] = useState<string | null>(null);
   const [fullViewEmailId, setFullViewEmailId] = useState<string | null>(null);
   const [isComposing, setIsComposing] = useState(false);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSyncing, setIsSyncing] = useState(false);
@@ -25,7 +23,6 @@ export function InboxClient({ initialEmails }: { initialEmails: any[] }) {
       setIsComposing(true);
       setSelectedEmailId(null);
       setFullViewEmailId(null);
-      setIsSettingsOpen(false);
       setIsFiltersOpen(false);
     };
     const handleFilterCategory = (e: any) => {
@@ -33,7 +30,6 @@ export function InboxClient({ initialEmails }: { initialEmails: any[] }) {
       setFullViewEmailId(null);
       setSelectedEmailId(null);
       setIsComposing(false);
-      setIsSettingsOpen(false);
       setIsFiltersOpen(false);
     };
     window.addEventListener('open-compose', handleOpenCompose);
@@ -130,32 +126,19 @@ export function InboxClient({ initialEmails }: { initialEmails: any[] }) {
     <div className="flex h-full bg-white relative rounded-tl-2xl border-t border-l border-gray-200/50 shadow-sm overflow-hidden min-h-0">
       {/* Left List Area */}
       <div className="flex flex-col h-full flex-1 min-w-0">
-        {/* Header */}
         <header className="px-6 py-4 flex items-center justify-between border-b border-gray-100 flex-shrink-0">
-          <div className="flex items-center gap-4 flex-1">
+          <div className="flex items-center gap-4">
             <h1 className="text-xl font-semibold text-gray-900 leading-none">{activeCategory || "Inbox"}</h1>
-            
-            <div className="relative flex-1 max-w-md ml-4 flex items-center">
-              <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
-              <input 
-                type="text" 
-                placeholder="Search emails..." 
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-4 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all leading-normal"
-              />
-            </div>
           </div>
           
           <div className="flex items-center gap-3 text-sm ml-4">
-
             <button 
               onClick={handleSync}
               disabled={isSyncing}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-50 text-gray-700 font-medium hover:bg-gray-100 transition-colors disabled:opacity-50"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? "animate-spin" : ""}`} />
-              {isSyncing ? "Syncing..." : "Sync Gmail"}
+              {isSyncing ? "Syncing..." : "Sync emails"}
             </button>
 
             <button 
@@ -167,29 +150,28 @@ export function InboxClient({ initialEmails }: { initialEmails: any[] }) {
               {isAutoLabeling ? "Labeling..." : "Auto label"}
             </button>
             
-            <div className="h-4 w-px bg-gray-200" />
+            <div className="relative w-64 flex items-center">
+              <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input 
+                type="text" 
+                placeholder="Search emails..." 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-9 pr-4 py-1.5 bg-gray-50 border border-gray-200 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all leading-normal"
+              />
+            </div>
+            
+            <div className="h-4 w-px bg-gray-200 mx-1" />
             
             <button 
               onClick={() => {
                 setIsFiltersOpen(true);
-                setIsSettingsOpen(false);
                 setIsComposing(false);
                 setSelectedEmailId(null);
               }}
-              className={`p-1.5 transition-colors rounded ${isFiltersOpen ? "bg-gray-100 text-gray-900" : "text-gray-400 hover:text-gray-600"}`}
+              className={`p-1.5 transition-colors rounded-full ${isFiltersOpen ? "bg-gray-100 text-gray-900" : "text-gray-400 hover:text-gray-600 hover:bg-gray-50"}`}
             >
               <SlidersHorizontal className="w-4 h-4" />
-            </button>
-            <button 
-              onClick={() => {
-                setIsSettingsOpen(true);
-                setIsFiltersOpen(false);
-                setIsComposing(false);
-                setSelectedEmailId(null);
-              }}
-              className={`p-1.5 transition-colors rounded ${isSettingsOpen ? "bg-gray-100 text-gray-900" : "text-gray-400 hover:text-gray-600"}`}
-            >
-              <Settings className="w-4 h-4" />
             </button>
           </div>
         </header>
@@ -211,13 +193,11 @@ export function InboxClient({ initialEmails }: { initialEmails: any[] }) {
                 key={email.id} 
                 onClick={() => {
                   setIsComposing(false);
-                  setIsSettingsOpen(false);
                   setIsFiltersOpen(false);
                   setSelectedEmailId(email.id);
                 }}
                 onDoubleClick={() => {
                   setIsComposing(false);
-                  setIsSettingsOpen(false);
                   setIsFiltersOpen(false);
                   setSelectedEmailId(null);
                   setFullViewEmailId(email.id);
@@ -236,8 +216,6 @@ export function InboxClient({ initialEmails }: { initialEmails: any[] }) {
       {/* Side Peek Panel */}
       {isComposing ? (
         <ComposeEmail onClose={() => setIsComposing(false)} />
-      ) : isSettingsOpen ? (
-        <SettingsPeek onClose={() => setIsSettingsOpen(false)} />
       ) : isFiltersOpen ? (
         <FiltersPeek onClose={() => setIsFiltersOpen(false)} />
       ) : selectedEmailId ? (
