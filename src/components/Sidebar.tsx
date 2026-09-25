@@ -60,11 +60,14 @@ export function Sidebar() {
             >
               <LogOut className="w-4 h-4" />
               Sign Out
-            </button>
           </div>
         )}
 
-        <button className="p-1.5 hover:bg-gray-200/50 rounded-md text-gray-500 transition-colors">
+        <button 
+          onClick={() => window.dispatchEvent(new CustomEvent('open-compose'))}
+          className="p-1.5 hover:bg-gray-200/50 rounded-md text-gray-500 transition-colors"
+          title="Compose"
+        >
           <Edit className="w-4 h-4" />
         </button>
       </div>

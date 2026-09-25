@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Wand2, SlidersHorizontal, Settings, RefreshCw, Search, PenSquare } from "lucide-react";
 import { EmailRow } from "@/components/EmailRow";
 import { EmailDetailPeek } from "@/components/EmailDetailPeek";
@@ -10,13 +10,28 @@ import { ComposeEmail } from "@/components/ComposeEmail";
 export function InboxClient({ initialEmails }: { initialEmails: any[] }) {
   const [emails] = useState(initialEmails);
   const [selectedEmailId, setSelectedEmailId] = useState<string | null>(null);
+  const [fullViewEmailId, setFullViewEmailId] = useState<string | null>(null);
   const [isComposing, setIsComposing] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSyncing, setIsSyncing] = useState(false);
 
+  useEffect(() => {
+    const handleOpenCompose = () => {
+      setIsComposing(true);
+      setSelectedEmailId(null);
+      setFullViewEmailId(null);
+    };
+    window.addEventListener('open-compose', handleOpenCompose);
+    return () => window.removeEventListener('open-compose', handleOpenCompose);
+  }, []);
+
   const selectedEmail = useMemo(() => 
     emails.find(e => e.id === selectedEmailId) || null
   , [emails, selectedEmailId]);
+
+  const fullViewEmail = useMemo(() => 
+    emails.find(e => e.id === fullViewEmailId) || null
+  , [emails, fullViewEmailId]);
 
   const filteredEmails = useMemo(() => {
     if (!searchQuery.trim()) return emails;
@@ -39,9 +54,7 @@ export function InboxClient({ initialEmails }: { initialEmails: any[] }) {
       const data = await res.json();
       if (res.ok) {
         setSyncStatus(`Synced ${data.syncedCount} new emails!`);
-        // Trigger AI processing in background
         fetch("/api/ai/process", { method: "POST" });
-        // Refresh page to get new data after a short delay
         setTimeout(() => window.location.reload(), 1500);
       } else {
         setSyncStatus(`Sync error: ${data.error || res.statusText}`);
@@ -53,38 +66,43 @@ export function InboxClient({ initialEmails }: { initialEmails: any[] }) {
     }
   };
 
+  // If full view is active, render only the full email
+  if (fullViewEmail) {
+    return (
+      <div className="flex-1 h-full bg-white relative rounded-tl-2xl border-t border-l border-gray-200/50 shadow-sm overflow-hidden flex flex-col">
+        <div className="w-full h-full flex-1">
+          <EmailDetailPeek 
+            email={fullViewEmail} 
+            onClose={() => setFullViewEmailId(null)} 
+            isFullView={true}
+          />
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex h-full bg-white relative rounded-tl-2xl border-t border-l border-gray-200/50 shadow-sm overflow-hidden">
+    <div className="flex h-full bg-white relative rounded-tl-2xl border-t border-l border-gray-200/50 shadow-sm overflow-hidden min-h-0">
       {/* Left List Area */}
-      <div className="flex flex-col h-full flex-1">
+      <div className="flex flex-col h-full flex-1 min-w-0">
         {/* Header */}
-        <header className="px-6 py-4 flex items-center justify-between border-b border-gray-100">
+        <header className="px-6 py-4 flex items-center justify-between border-b border-gray-100 flex-shrink-0">
           <div className="flex items-center gap-4 flex-1">
-            <h1 className="text-xl font-semibold text-gray-900">Inbox</h1>
+            <h1 className="text-xl font-semibold text-gray-900 leading-none">Inbox</h1>
             
-            <div className="relative flex-1 max-w-md ml-4">
+            <div className="relative flex-1 max-w-md ml-4 flex items-center">
               <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input 
                 type="text" 
                 placeholder="Search emails..." 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-4 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                className="w-full pl-9 pr-4 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all leading-normal"
               />
             </div>
           </div>
           
           <div className="flex items-center gap-3 text-sm ml-4">
-            <button 
-              onClick={() => {
-                setSelectedEmailId(null);
-                setIsComposing(true);
-              }}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-600 text-white font-medium hover:bg-blue-700 transition-colors"
-            >
-              <PenSquare className="w-3.5 h-3.5" />
-              Compose
-            </button>
 
             <button 
               onClick={handleSync}
@@ -132,6 +150,11 @@ export function InboxClient({ initialEmails }: { initialEmails: any[] }) {
                 onClick={() => {
                   setIsComposing(false);
                   setSelectedEmailId(email.id);
+                }}
+                onDoubleClick={() => {
+                  setIsComposing(false);
+                  setSelectedEmailId(null);
+                  setFullViewEmailId(email.id);
                 }}
               >
                 <EmailRow 

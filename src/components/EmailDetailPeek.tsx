@@ -21,9 +21,10 @@ interface EmailDetailPeekProps {
     suggestedReply?: string;
   } | null;
   onClose: () => void;
+  isFullView?: boolean;
 }
 
-export function EmailDetailPeek({ email, onClose }: EmailDetailPeekProps) {
+export function EmailDetailPeek({ email, onClose, isFullView = false }: EmailDetailPeekProps) {
   const [isDrafting, setIsDrafting] = useState(false);
   const [draftText, setDraftText] = useState("");
   const [isSending, setIsSending] = useState(false);
@@ -71,7 +72,7 @@ export function EmailDetailPeek({ email, onClose }: EmailDetailPeekProps) {
   };
 
   return (
-    <div className="w-[500px] flex-shrink-0 border-l border-gray-100 bg-white flex flex-col h-full shadow-[-4px_0_24px_rgba(0,0,0,0.02)]">
+    <div className={`flex flex-col h-full bg-white ${isFullView ? 'w-full' : 'w-[500px] flex-shrink-0 border-l border-gray-100 shadow-[-4px_0_24px_rgba(0,0,0,0.02)]'}`}>
       {/* Header */}
       <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
         <h2 className="font-semibold text-gray-900 truncate pr-4">{email.sender_name || email.sender_email}</h2>
