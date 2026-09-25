@@ -7,12 +7,13 @@ import { usePathname, useRouter } from "next/navigation";
 import clsx from "clsx";
 import { createClient } from "@/utils/supabase/client";
 
-const AI_FOLDERS = [
+const DEFAULT_FOLDERS = [
   { name: "Project updates", color: "bg-blue-400" },
   { name: "Leadership updates", color: "bg-orange-400" },
   { name: "Sales leads", color: "bg-purple-400" },
   { name: "Hiring leads", color: "bg-pink-400" },
   { name: "Meeting requests", color: "bg-green-400" },
+  { name: "Urgent", color: "bg-red-400" },
 ];
 
 export function Sidebar() {
@@ -21,8 +22,18 @@ export function Sidebar() {
   const supabase = createClient();
   const [user, setUser] = useState<import("@supabase/supabase-js").User | null>(null);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [categories, setCategories] = useState<any[]>(DEFAULT_FOLDERS);
 
   useEffect(() => {
+    supabase.from('categories').select('*').then(({ data }) => {
+      if (data && data.length > 0) {
+        setCategories(data.map(c => ({
+          name: c.name,
+          color: `bg-${c.color}-400`,
+          slug: c.slug
+        })));
+      }
+    });
     supabase.auth.getUser().then(({ data }) => {
       if (data?.user) {
         setUser(data.user);
@@ -75,23 +86,26 @@ export function Sidebar() {
 
       <div className="flex-1 overflow-y-auto px-2 space-y-6 mt-4">
         <div className="space-y-0.5">
-          <Link
-            href="/"
+          <div
+            onClick={() => window.dispatchEvent(new CustomEvent('filter-category', { detail: 'Inbox' }))}
             className={clsx(
-              "sidebar-link",
-              pathname === "/" && "sidebar-link-active"
+              "sidebar-link cursor-pointer hover:bg-gray-200/50"
             )}
           >
             <Inbox className="w-4 h-4" />
             <span>Inbox</span>
-          </Link>
+          </div>
           
           <div className="pt-2 pb-1 px-3 text-xs font-semibold text-gray-400 tracking-wider">
             VIEWS
           </div>
-          {AI_FOLDERS.map((folder) => (
-            <div key={folder.name} className="sidebar-link group">
-              <div className={clsx("w-2 h-2 rounded-full", folder.color)} />
+          {categories.map((folder) => (
+            <div 
+              key={folder.name} 
+              onClick={() => window.dispatchEvent(new CustomEvent('filter-category', { detail: folder.name }))}
+              className="sidebar-link group cursor-pointer hover:bg-gray-200/50"
+            >
+              <div className={clsx("w-2 h-2 rounded-full flex-shrink-0", folder.color)} />
               <span className="truncate">{folder.name}</span>
             </div>
           ))}

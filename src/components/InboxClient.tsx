@@ -14,6 +14,7 @@ export function InboxClient({ initialEmails }: { initialEmails: any[] }) {
   const [isComposing, setIsComposing] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSyncing, setIsSyncing] = useState(false);
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
 
   useEffect(() => {
     const handleOpenCompose = () => {
@@ -21,8 +22,18 @@ export function InboxClient({ initialEmails }: { initialEmails: any[] }) {
       setSelectedEmailId(null);
       setFullViewEmailId(null);
     };
+    const handleFilterCategory = (e: any) => {
+      setActiveCategory(e.detail === 'Inbox' ? null : e.detail);
+      setFullViewEmailId(null);
+      setSelectedEmailId(null);
+      setIsComposing(false);
+    };
     window.addEventListener('open-compose', handleOpenCompose);
-    return () => window.removeEventListener('open-compose', handleOpenCompose);
+    window.addEventListener('filter-category', handleFilterCategory);
+    return () => {
+      window.removeEventListener('open-compose', handleOpenCompose);
+      window.removeEventListener('filter-category', handleFilterCategory);
+    };
   }, []);
 
   const selectedEmail = useMemo(() => 
@@ -34,15 +45,21 @@ export function InboxClient({ initialEmails }: { initialEmails: any[] }) {
   , [emails, fullViewEmailId]);
 
   const filteredEmails = useMemo(() => {
-    if (!searchQuery.trim()) return emails;
-    const lowerQ = searchQuery.toLowerCase();
-    return emails.filter(e => 
-      e.sender_name?.toLowerCase().includes(lowerQ) ||
-      e.sender_email?.toLowerCase().includes(lowerQ) ||
-      e.subject?.toLowerCase().includes(lowerQ) ||
-      e.snippet?.toLowerCase().includes(lowerQ)
-    );
-  }, [emails, searchQuery]);
+    let result = emails;
+    if (activeCategory) {
+      result = result.filter(e => e.category === activeCategory);
+    }
+    if (searchQuery.trim()) {
+      const lowerQ = searchQuery.toLowerCase();
+      result = result.filter(e => 
+        e.sender_name?.toLowerCase().includes(lowerQ) ||
+        e.sender_email?.toLowerCase().includes(lowerQ) ||
+        e.subject?.toLowerCase().includes(lowerQ) ||
+        e.snippet?.toLowerCase().includes(lowerQ)
+      );
+    }
+    return result;
+  }, [emails, searchQuery, activeCategory]);
 
   const [syncStatus, setSyncStatus] = useState<string | null>(null);
   const [isAutoLabeling, setIsAutoLabeling] = useState(false);
@@ -108,7 +125,7 @@ export function InboxClient({ initialEmails }: { initialEmails: any[] }) {
         {/* Header */}
         <header className="px-6 py-4 flex items-center justify-between border-b border-gray-100 flex-shrink-0">
           <div className="flex items-center gap-4 flex-1">
-            <h1 className="text-xl font-semibold text-gray-900 leading-none">Inbox</h1>
+            <h1 className="text-xl font-semibold text-gray-900 leading-none">{activeCategory || "Inbox"}</h1>
             
             <div className="relative flex-1 max-w-md ml-4 flex items-center">
               <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
