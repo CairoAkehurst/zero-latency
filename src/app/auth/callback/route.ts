@@ -8,8 +8,22 @@ export async function GET(request: Request) {
 
   if (code) {
     const supabase = await createClient();
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
-    if (!error) {
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+    if (!error && data?.session?.user) {
+      const user = data.session.user;
+      const providerToken = data.session.provider_token;
+      const providerRefreshToken = data.session.provider_refresh_token;
+
+      // Upsert user and store tokens for Gmail API sync
+      await supabase.from('users').upsert({
+        id: user.id,
+        email: user.email ?? '',
+        full_name: user.user_metadata?.full_name ?? user.user_metadata?.name ?? '',
+        avatar_url: user.user_metadata?.avatar_url ?? '',
+        google_access_token: providerToken ?? null,
+        google_refresh_token: providerRefreshToken ?? null,
+      }, { onConflict: 'id' });
+
       const forwardedHost = request.headers.get('x-forwarded-host');
       const isLocal = process.env.NODE_ENV === 'development';
       if (isLocal) {
