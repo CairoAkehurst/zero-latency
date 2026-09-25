@@ -58,8 +58,9 @@ export async function POST() {
     : '"General"';
 
   let processedCount = 0;
+  const errors: string[] = [];
 
-  for (const email of unprocessedEmails) {
+  const promises = unprocessedEmails.map(async (email) => {
     try {
       const prompt = `
       Analyze the following email.
@@ -87,7 +88,7 @@ export async function POST() {
       });
 
       const responseText = completion.choices[0].message.content;
-      if (!responseText) continue;
+      if (!responseText) return;
       
       const aiResult = JSON.parse(responseText);
 
@@ -114,16 +115,22 @@ export async function POST() {
 
       if (existingMeta) {
         const { error: updateError } = await supabase.from('email_ai_metadata').update(payload).eq('id', existingMeta.id);
-        if (updateError) console.error("Metadata update error:", updateError);
+        if (updateError) errors.push(`Update err on ${email.id}: ${updateError.message}`);
       } else {
         const { error: insertError } = await supabase.from('email_ai_metadata').insert(payload);
-        if (insertError) console.error("Metadata insert error:", insertError);
+        if (insertError) errors.push(`Insert err on ${email.id}: ${insertError.message}`);
       }
 
       processedCount++;
-    } catch (error) {
-      console.error(`Failed to process email ${email.id}:`, error);
+    } catch (error: any) {
+      errors.push(`Process err on ${email.id}: ${error?.message || String(error)}`);
     }
+  });
+
+  await Promise.all(promises);
+
+  if (errors.length > 0) {
+    return NextResponse.json({ success: processedCount > 0, processedCount, error: errors.join(" | ") }, { status: 400 });
   }
 
   return NextResponse.json({ success: true, processedCount });
