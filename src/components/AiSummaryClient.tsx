@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Loader2, Sparkles, Check, Trash2, X, Send, Bot, User, Edit3, MessageSquare, EyeOff, MinusCircle } from "lucide-react";
 import { formatEmailDate } from "@/utils/formatDate";
+import { Avatar } from "@/components/Avatar";
 
 interface AgentThought {
   id: string;
@@ -550,9 +551,12 @@ export function AiSummaryClient() {
                       {/* Top card row: Sender & Actions */}
                       <div className="flex items-start justify-between mb-4">
                         <div className="flex items-center gap-3 overflow-hidden flex-1 min-w-0 pr-2">
-                          <div className="w-9 h-9 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 font-medium flex-shrink-0 text-sm uppercase">
-                            {email.sender_name?.charAt(0) || email.sender_email?.charAt(0) || "?"}
-                          </div>
+                          <Avatar 
+                          name={email.sender_name} 
+                          email={email.sender_email} 
+                          size="md" 
+                          className="w-9 h-9 border border-gray-100 shadow-xs" 
+                        />
                           <div className="min-w-0 flex-1">
                             <h3 className="font-semibold text-gray-900 text-sm truncate" title={email.sender_name || email.sender_email}>
                               {email.sender_name || email.sender_email}

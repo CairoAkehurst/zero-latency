@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { X, Reply, ReplyAll, Forward, Check, Send, Loader2, Maximize2, Minimize2, Archive, Trash2, Mail, Clock, MoreVertical, CornerUpLeft, CornerUpRight, ChevronDown, Sparkles, Type, Paperclip, Link as LinkIcon, Image as ImageIcon, Bold, Italic, Underline, Highlighter, Tag } from "lucide-react";
 import { formatEmailDate } from "@/utils/formatDate";
 import { useAccountDataStore } from "@/lib/client/store";
+import { Avatar } from "@/components/Avatar";
 
 interface EmailDetailPeekProps {
   email: {
@@ -318,9 +319,12 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
         {/* Sender Info Row */}
         <div className="flex items-start justify-between w-full">
           <div className="flex gap-4">
-            <div className="w-10 h-10 rounded-full bg-gray-200 flex-shrink-0 flex items-center justify-center text-gray-600 font-semibold text-lg uppercase">
-              {email.sender_name?.charAt(0) || email.sender_email?.charAt(0) || "?"}
-            </div>
+            <Avatar 
+              name={email.sender_name} 
+              email={email.sender_email} 
+              size="lg" 
+              className="w-10 h-10 shadow-xs border border-gray-100" 
+            />
             <div className="flex flex-col">
               <div className="flex items-baseline gap-2">
                 <span className="text-base font-bold text-gray-900">{email.sender_name || email.sender_email}</span>
