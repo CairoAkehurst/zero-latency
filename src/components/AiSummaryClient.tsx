@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, Sparkles, Check, Trash2, X, Send, Bot, User, Edit3, MessageSquare, EyeOff } from "lucide-react";
+import { Loader2, Sparkles, Check, Trash2, X, Send, Bot, User, Edit3, MessageSquare, EyeOff, MinusCircle } from "lucide-react";
 import { formatEmailDate } from "@/utils/formatDate";
 
 interface AgentThought {
@@ -402,6 +402,9 @@ export function AiSummaryClient() {
       });
 
       if (res.ok) {
+        // Automatically remove the email from the priority inbox without deleting it
+        setEmails(prev => prev.filter(item => item.id !== session.email.id));
+
         setSessions(prev => prev.map(s => {
           if (s.id !== session.id) return s;
           return {
@@ -567,9 +570,9 @@ export function AiSummaryClient() {
                           <button 
                             onClick={(e) => handleDismissFromPriority(email.id, e)}
                             className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-                            title="Remove from Priority"
+                            title="Remove from priority inbox"
                           >
-                            <EyeOff className="w-4 h-4" />
+                            <MinusCircle className="w-4 h-4" />
                           </button>
 
                           {/* Delete Button */}
