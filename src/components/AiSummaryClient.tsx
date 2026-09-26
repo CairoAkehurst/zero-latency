@@ -391,13 +391,39 @@ export function AiSummaryClient({
         replyBody = `Hi ${email.sender_name ? email.sender_name.split(' ')[0] : 'there'},\n\nThank you for your email regarding "${email.subject || 'this matter'}". This has been noted and addressed.\n\nBest regards`;
       }
 
+      // Check if a calendar invite is required and auto-create it so we can embed it
+      let outgoingBody = replyBody;
+      let calendarInviteCreated = false;
+      try {
+        const calRes = await fetch("/api/calendar/invite", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            emailSubject: email.subject || '',
+            emailBody: email.snippet || email.summary || '',
+            recipientEmail: email.sender_email,
+            recipientName: email.sender_name || '',
+            replyText: replyBody
+          })
+        });
+        const calData = await calRes.json();
+        if (calData.created && calData.inviteCardHtml) {
+          calendarInviteCreated = true;
+          // Embed the formatted Google Calendar invite card into the HTML email
+          const formattedReplyHtml = `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 14px; line-height: 1.6; color: #111827;">${replyBody.replace(/\n\n/g, '<br/><br/>').replace(/\n/g, '<br/>')}</div>${calData.inviteCardHtml}`;
+          outgoingBody = formattedReplyHtml;
+        }
+      } catch (calErr) {
+        console.error("Calendar invite check error:", calErr);
+      }
+
       const res = await fetch("/api/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           toEmail: email.sender_email,
           subject: email.subject?.startsWith("Re:") ? email.subject : `Re: ${email.subject || ''}`,
-          body: replyBody,
+          body: outgoingBody,
           threadId: email.google_thread_id,
           messageId: email.message_id_header || email.google_message_id,
           references: email.references_header
@@ -405,27 +431,9 @@ export function AiSummaryClient({
       });
 
       if (res.ok) {
-        // Also check if a calendar invite should be automatically dispatched
-        try {
-          const calRes = await fetch("/api/calendar/invite", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              emailSubject: email.subject || '',
-              emailBody: email.snippet || email.summary || '',
-              recipientEmail: email.sender_email,
-              recipientName: email.sender_name || '',
-              replyText: replyBody
-            })
-          });
-          const calData = await calRes.json();
-          if (calData.created) {
-            setBackgroundTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: 'Sent & Invite Dispatched 📅' } : t));
-          } else {
-            setBackgroundTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: 'Sent' } : t));
-          }
-        } catch (calErr) {
-          console.error("Calendar invite error:", calErr);
+        if (calendarInviteCreated) {
+          setBackgroundTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: 'Sent & Invite Embedded 📅' } : t));
+        } else {
           setBackgroundTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: 'Sent' } : t));
         }
 
@@ -593,13 +601,40 @@ export function AiSummaryClient({
     }));
 
     try {
+      // Check if a calendar invite should be created and embed it
+      let outgoingBody = session.draftReply;
+      let inviteCreated = false;
+      let eventSummary = '';
+      try {
+        const calRes = await fetch("/api/calendar/invite", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            emailSubject: session.email.subject || '',
+            emailBody: session.email.snippet || session.email.summary || '',
+            recipientEmail: session.email.sender_email,
+            recipientName: session.email.sender_name || '',
+            replyText: session.draftReply
+          })
+        });
+        const calData = await calRes.json();
+        if (calData.created && calData.inviteCardHtml) {
+          inviteCreated = true;
+          eventSummary = calData.summary || 'Meeting';
+          const formattedReplyHtml = `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 14px; line-height: 1.6; color: #111827;">${session.draftReply.replace(/\n\n/g, '<br/><br/>').replace(/\n/g, '<br/>')}</div>${calData.inviteCardHtml}`;
+          outgoingBody = formattedReplyHtml;
+        }
+      } catch (calErr) {
+        console.error("Calendar invite error:", calErr);
+      }
+
       const res = await fetch("/api/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           toEmail: session.email.sender_email,
           subject: session.email.subject?.startsWith("Re:") ? session.email.subject : `Re: ${session.email.subject || ''}`,
-          body: session.draftReply,
+          body: outgoingBody,
           threadId: session.email.google_thread_id,
           messageId: session.email.message_id_header || session.email.google_message_id,
           references: session.email.references_header
@@ -609,30 +644,6 @@ export function AiSummaryClient({
       if (res.ok) {
         // Automatically remove the email from the priority inbox without deleting it
         setEmails(prev => prev.filter(item => item.id !== session.email.id));
-
-        // Check if a calendar invite should be created
-        let inviteCreated = false;
-        let eventSummary = '';
-        try {
-          const calRes = await fetch("/api/calendar/invite", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              emailSubject: session.email.subject || '',
-              emailBody: session.email.snippet || session.email.summary || '',
-              recipientEmail: session.email.sender_email,
-              recipientName: session.email.sender_name || '',
-              replyText: session.draftReply
-            })
-          });
-          const calData = await calRes.json();
-          if (calData.created) {
-            inviteCreated = true;
-            eventSummary = calData.summary || 'Meeting';
-          }
-        } catch (calErr) {
-          console.error("Calendar invite error:", calErr);
-        }
 
         setSessions(prev => prev.map(s => {
           if (s.id !== session.id) return s;

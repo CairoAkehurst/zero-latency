@@ -39,11 +39,12 @@ export async function POST(request: Request) {
 
     const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
 
+    const isHtml = /<[a-z][\s\S]*>/i.test(body);
+
     // Construct raw RFC 2822 email
     const messageParts = [
       `To: ${toEmail}`,
       `Subject: ${subject || 'Re: Reply'}`,
-      'Content-Type: text/plain; charset="UTF-8"',
       'MIME-Version: 1.0',
     ];
 
@@ -56,7 +57,14 @@ export async function POST(request: Request) {
       if (refStr) messageParts.push(`References: ${refStr}`);
     }
 
-    messageParts.push('', body); // empty line before body
+    if (isHtml) {
+      // Send as HTML with proper utf-8 encoding
+      messageParts.push('Content-Type: text/html; charset="UTF-8"');
+      messageParts.push('', body);
+    } else {
+      messageParts.push('Content-Type: text/plain; charset="UTF-8"');
+      messageParts.push('', body);
+    }
 
     const rawMessage = messageParts.join('\r\n');
     const encodedMessage = Buffer.from(rawMessage)

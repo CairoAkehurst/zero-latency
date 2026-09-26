@@ -162,6 +162,28 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
   const handleSend = async () => {
     setIsSending(true);
     try {
+      let outgoingBody = draftText;
+      // Check if a calendar invite should be created and embed it
+      try {
+        const calRes = await fetch("/api/calendar/invite", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            emailSubject: email.subject || '',
+            emailBody: email.body_text || email.snippet || '',
+            recipientEmail: toText,
+            recipientName: email.sender_name || '',
+            replyText: draftText
+          })
+        });
+        const calData = await calRes.json();
+        if (calData.created && calData.inviteCardHtml) {
+          outgoingBody = `${draftText}${calData.inviteCardHtml}`;
+        }
+      } catch (calErr) {
+        console.error("Calendar invite error:", calErr);
+      }
+
       const res = await fetch("/api/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -170,30 +192,13 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
           ccEmail: ccText,
           bccEmail: bccText,
           subject: email.subject,
-          body: draftText, // now sends raw HTML
+          body: outgoingBody,
           threadId: email.google_thread_id,
           messageId: email.message_id_header,
           references: email.references_header
         }),
       });
       if (res.ok) {
-        // Also check if a calendar invite should be auto-sent
-        try {
-          fetch("/api/calendar/invite", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              emailSubject: email.subject || '',
-              emailBody: email.body_text || email.snippet || '',
-              recipientEmail: toText,
-              recipientName: email.sender_name || '',
-              replyText: draftText
-            })
-          }).catch(console.error);
-        } catch (e) {
-          // Non-blocking
-        }
-
         setSendSuccess(true);
         setTimeout(() => {
           setSendSuccess(false);
