@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getCalendarClient } from '@/lib/server/gmail';
 import OpenAI from 'openai';
 import { createHash } from 'node:crypto';
+import type { calendar_v3 } from 'googleapis';
 
 const escapeHtml = (value: string) => value.replace(/[&<>"']/g, (char) => ({
   '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
@@ -33,6 +34,10 @@ export async function POST(request: Request) {
     if (!recipientEmail) {
       return NextResponse.json({ error: 'recipientEmail is required' }, { status: 400 });
     }
+    const attendeeEmail = String(recipientEmail).match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0];
+    if (!attendeeEmail) {
+      return NextResponse.json({ error: 'A valid recipient email is required' }, { status: 400 });
+    }
 
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
     const now = new Date();
@@ -42,8 +47,8 @@ export async function POST(request: Request) {
 Analyze the email to detect if a meeting, call, appointment, or calendar event is being scheduled, accepted, confirmed, or agreed upon.
 Current date/time (ISO): ${isoNow}.
 
-Trigger shouldCreateInvite=true only when a participant clearly agrees to a meeting time. Examples: "Friday at 2pm works", "confirmed", "see you then", or a reply that accepts a proposed time.
-An unaccepted proposal, a question about availability, or a tentative suggestion is NOT agreement and must not create an event. Use the reply being sent to detect the user's acceptance; use the email/thread content to detect the other participant's acceptance.
+Trigger shouldCreateInvite=true when a participant clearly agrees to a meeting time, or when the reply being sent explicitly asks to arrange/propose a meeting at a specific time. Examples: "Friday at 2pm works", "confirmed", "see you then", "let's meet Tuesday at 3", or a reply that accepts a proposed time.
+An unaccepted proposal in the received email, a question about availability, or a tentative suggestion is NOT agreement and must not create an event. User-authored reply text may create an invite for an explicit scheduling request; email/thread content alone needs clear agreement.
 
 Do NOT trigger if: declining, cancelling, or no specific time is mentioned.
 
@@ -99,15 +104,14 @@ ${replyText || ''}`
     const event = {
       summary: parsed.summary || emailSubject || 'Meeting',
       description: `${parsed.description || ''}\n\nScheduled via Zero Latency AI`,
+      location: parsed.location || undefined,
       start: {
         dateTime: startDt.toISOString(),
       },
       end: {
         dateTime: endDt.toISOString(),
       },
-      attendees: [
-        { email: recipientEmail, displayName: recipientName || undefined },
-      ],
+      attendees: [{ email: attendeeEmail, displayName: recipientName || undefined }],
       conferenceData: {
         createRequest: {
           requestId: `meet-${Date.now()}`,
@@ -121,22 +125,23 @@ ${replyText || ''}`
 
     // Google event IDs make thread-level retries safe when an email is reopened or
     // the send flow retries after the calendar insert succeeded.
-    const eventId = googleEventId(`${dedupeKey || `${emailSubject || ''}:${emailBody || ''}:${replyText || ''}`}|${startDt.toISOString()}|${recipientEmail.toLowerCase()}`);
-    let res;
+    const eventId = googleEventId(`${dedupeKey || `${emailSubject || ''}:${emailBody || ''}:${replyText || ''}`}|${startDt.toISOString()}|${attendeeEmail.toLowerCase()}`);
+    let eventData: calendar_v3.Schema$Event;
     try {
-      res = await calendar.events.insert({
+      const result = await calendar.events.insert({
         calendarId: 'primary',
         requestBody: { ...event, id: eventId },
         sendUpdates: 'all',
         conferenceDataVersion: 1,
       });
-    } catch (insertError: any) {
-      if (insertError?.code !== 409) throw insertError;
+      eventData = result.data;
+    } catch (insertError: unknown) {
+      if (Number((insertError as { code?: number })?.code) !== 409) throw insertError;
       const existing = await calendar.events.get({ calendarId: 'primary', eventId });
-      res = { data: existing.data };
+      eventData = existing.data;
     }
 
-    const meetLink = res.data.conferenceData?.entryPoints?.find((e: any) => e.entryPointType === 'video')?.uri || res.data.htmlLink || '';
+    const meetLink = eventData.conferenceData?.entryPoints?.find((entry) => entry.entryPointType === 'video')?.uri || eventData.htmlLink || '';
 
     // Format human-friendly meeting date/time (e.g., "Friday, Oct 24, 2026, 3:00 PM – 3:30 PM")
     const dateOptions: Intl.DateTimeFormatOptions = { 
@@ -171,8 +176,8 @@ ${replyText || ''}`
       <strong>Where:</strong> <a href="${meetLink}" style="color: #2563eb; text-decoration: underline;" target="_blank">Join with Google Meet</a>
     </div>` : ''}
     <div style="margin-top: 14px; padding-top: 14px; border-top: 1px solid #f3f4f6; display: flex; gap: 10px;">
-      ${res.data.htmlLink ? `
-      <a href="${res.data.htmlLink}" style="display: inline-block; background-color: #2563eb; color: #ffffff; text-decoration: none; font-size: 13px; font-weight: 600; padding: 8px 16px; border-radius: 6px;" target="_blank">
+      ${eventData.htmlLink ? `
+      <a href="${eventData.htmlLink}" style="display: inline-block; background-color: #2563eb; color: #ffffff; text-decoration: none; font-size: 13px; font-weight: 600; padding: 8px 16px; border-radius: 6px;" target="_blank">
         View on Google Calendar
       </a>` : ''}
       ${meetLink ? `
@@ -183,25 +188,25 @@ ${replyText || ''}`
   </div>
 </div>`;
 
-    const inviteCardText = `\n\n----------------------------------------\n📅 Google Calendar Invitation\nEvent: ${event.summary}\nWhen: ${fullTimeStr}${meetLink ? `\nMeeting Link: ${meetLink}` : ''}${res.data.htmlLink ? `\nCalendar: ${res.data.htmlLink}` : ''}\n----------------------------------------\n`;
+    const inviteCardText = `\n\n----------------------------------------\n📅 Google Calendar Invitation\nEvent: ${event.summary}\nWhen: ${fullTimeStr}${meetLink ? `\nMeeting Link: ${meetLink}` : ''}${eventData.htmlLink ? `\nCalendar: ${eventData.htmlLink}` : ''}\n----------------------------------------\n`;
 
     return NextResponse.json({
       created: true,
-      eventId: res.data.id,
-      htmlLink: res.data.htmlLink,
-      summary: res.data.summary,
-      start: res.data.start?.dateTime,
-      end: res.data.end?.dateTime,
+      eventId: eventData.id,
+      htmlLink: eventData.htmlLink,
+      summary: eventData.summary,
+      start: eventData.start?.dateTime,
+      end: eventData.end?.dateTime,
       meetLink,
       fullTimeStr,
       inviteCardHtml,
       inviteCardText,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Calendar invite error:', error);
     return NextResponse.json({ 
       created: false, 
-      error: error.message || 'Failed to create calendar invite' 
+      error: error instanceof Error ? error.message : 'Failed to create calendar invite'
     }, { status: 500 });
   }
 }

@@ -36,10 +36,29 @@ export function ComposeEmail({ onClose, onExpand, isFullView = false }: ComposeE
     if (!to || !subject || !body) return alert("Please fill in all fields.");
     setIsSending(true);
     try {
+      let outgoingBody = body;
+      try {
+        const calendarResponse = await fetch('/api/calendar/invite', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            emailSubject: subject,
+            emailBody: '',
+            recipientEmail: to,
+            replyText: body.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' '),
+            dedupeKey: `compose:${to.toLowerCase()}:${subject.toLowerCase()}`,
+          }),
+        });
+        const invite = await calendarResponse.json();
+        if (invite.created && invite.inviteCardHtml) outgoingBody = `${body}${invite.inviteCardHtml}`;
+      } catch (calendarError) {
+        console.error('Calendar invite detection failed:', calendarError);
+      }
+
       const res = await fetch("/api/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ toEmail: to, ccEmail: ccText, bccEmail: bccText, subject, body }),
+        body: JSON.stringify({ toEmail: to, ccEmail: ccText, bccEmail: bccText, subject, body: outgoingBody }),
       });
       if (res.ok) {
         onClose();

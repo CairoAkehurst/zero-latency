@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { AutoLabelDialog } from "./AutoLabelDialog";
-import { Inbox, File, Send, Edit, MoreVertical, LogOut, Settings, LayoutTemplate, Plus, ChevronDown, Sparkles, Trash2, Keyboard } from "lucide-react";
+import { Inbox, File, Send, Edit, MoreVertical, LogOut, Settings, LayoutTemplate, Plus, ChevronDown, Sparkles, Trash2, Keyboard, CalendarDays } from "lucide-react";
 import clsx from "clsx";
 import { createClient } from "@/utils/supabase/client";
 
@@ -179,6 +179,13 @@ export function Sidebar() {
           >
             <Inbox className="w-4 h-4" />
             <span>Inbox</span>
+          </Link>
+          <Link
+            href="/calendar"
+            className={clsx("sidebar-link cursor-pointer hover:bg-gray-200/50", pathname === '/calendar' ? "bg-gray-200/50 font-medium" : "")}
+          >
+            <CalendarDays className="w-4 h-4" />
+            <span>Calendar</span>
           </Link>
         </div>
 
