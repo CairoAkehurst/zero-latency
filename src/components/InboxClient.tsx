@@ -31,6 +31,7 @@ export function InboxClient({ initialEmails, initialNextPageToken }: { initialEm
   
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [isInboxCacheReady, setIsInboxCacheReady] = useState(false);
   
   // Debounce search
   const [debouncedQuery, setDebouncedQuery] = useState(searchQuery);
@@ -43,8 +44,6 @@ export function InboxClient({ initialEmails, initialNextPageToken }: { initialEm
   const categoryCache = useRef<Map<string, { emails: any[]; nextPageToken: string | null }>>(
     new Map([['in:inbox', { emails: initialEmails, nextPageToken: initialNextPageToken }]])
   );
-  const isInitialMount = useRef(true);
-  const inboxCacheLoaded = useRef(false);
 
   // Keep a local snapshot so revisiting the inbox can paint before the next
   // scheduled Gmail poll runs.
@@ -64,18 +63,18 @@ export function InboxClient({ initialEmails, initialNextPageToken }: { initialEm
     } catch (error) {
       console.error('Failed to read inbox cache:', error);
     } finally {
-      inboxCacheLoaded.current = true;
+      setIsInboxCacheReady(true);
     }
   }, []);
 
   useEffect(() => {
-    if (!inboxCacheLoaded.current) return;
+    if (!isInboxCacheReady) return;
     try {
       localStorage.setItem('zero-latency-inbox-cache', JSON.stringify({ emails, nextPageToken }));
     } catch (error) {
       console.error('Failed to save inbox cache:', error);
     }
-  }, [emails, nextPageToken]);
+  }, [emails, nextPageToken, isInboxCacheReady]);
 
   // Fetch when search or category changes
   useEffect(() => {
@@ -95,18 +94,11 @@ export function InboxClient({ initialEmails, initialNextPageToken }: { initialEm
       q += ` ${debouncedQuery.trim()}`;
     }
     
-    // Check if we have cached results for instant display
+    // Paint cached results immediately while fetching the current Gmail state.
     const cached = categoryCache.current.get(q);
-    if (cached && !isInitialMount.current) {
+    if (cached) {
       setEmails(cached.emails);
       setNextPageToken(cached.nextPageToken);
-    }
-
-    if (isInitialMount.current) {
-      isInitialMount.current = false;
-      if (debouncedQuery === "" && !activeCategory) {
-        return;
-      }
     }
 
     let isMounted = true;
@@ -320,10 +312,21 @@ export function InboxClient({ initialEmails, initialNextPageToken }: { initialEm
     if (!nextPageToken || isLoadingMore) return;
     setIsLoadingMore(true);
     try {
-      const res = await fetch(`/api/mail/threads?pageToken=${nextPageToken}`);
+      let q = 'in:inbox';
+      if (activeCategory === 'Sent') q = 'in:sent';
+      else if (activeCategory === 'Drafts') q = 'in:draft';
+      else if (activeCategory === 'All Mail') q = '';
+      else if (activeCategory) q = `label:"${activeCategory}"`;
+      if (debouncedQuery.trim()) q += ` ${debouncedQuery.trim()}`;
+
+      const params = new URLSearchParams({ pageToken: nextPageToken, q });
+      const res = await fetch(`/api/mail/threads?${params.toString()}`);
       const data = await res.json();
       if (res.ok) {
-        setEmails(prev => [...prev, ...(data.emails || [])]);
+        setEmails(prev => {
+          const existingIds = new Set(prev.map(email => email.id));
+          return [...prev, ...(data.emails || []).filter((email: any) => !existingIds.has(email.id))];
+        });
         setNextPageToken(data.nextPageToken || null);
       }
     } catch (err) {
@@ -402,6 +405,7 @@ export function InboxClient({ initialEmails, initialNextPageToken }: { initialEm
             ) : (
               <div className="flex items-center gap-4">
                 <h1 className="text-xl font-semibold text-gray-900 leading-none">{activeCategory || "Inbox"}</h1>
+                {isSyncing && <Loader2 className="w-4 h-4 animate-spin text-blue-600" aria-label="Loading emails" />}
               </div>
             )}
             
@@ -478,7 +482,13 @@ export function InboxClient({ initialEmails, initialNextPageToken }: { initialEm
                 )}
               </div>
             ) : (
-              filteredEmails.map((email) => (
+              <>
+              {isSyncing && (
+                <div className="flex justify-center py-3" aria-label="Loading emails">
+                  <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
+                </div>
+              )}
+              {filteredEmails.map((email) => (
                 <div 
                   key={email.id} 
                   onClick={() => {
@@ -500,7 +510,13 @@ export function InboxClient({ initialEmails, initialNextPageToken }: { initialEm
                     onToggleCheck={(checked, event) => handleToggleCheck(email.id, checked, event)}
                   />
                 </div>
-              ))
+              ))}
+              </>
+            )}
+            {isLoadingMore && (
+              <div className="flex justify-center py-4" aria-label="Loading more emails">
+                <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
+              </div>
             )}
             
             {nextPageToken && !searchQuery && (
