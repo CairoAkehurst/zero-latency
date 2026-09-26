@@ -3,7 +3,7 @@ import OpenAI from 'openai';
 
 export async function POST(request: Request) {
   try {
-    const { instruction, tone, toneInstructions, emailContext } = await request.json();
+    const { instruction, tone, toneInstructions, emailContext, signature, signatureEnabled } = await request.json();
     if (!instruction) return NextResponse.json({ error: 'Missing instruction' }, { status: 400 });
 
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -18,7 +18,9 @@ CRITICAL INSTRUCTIONS FOR REPLY DRAFTING:
    - If the email is brief or transactional, keep the response proportionate and focused.
 2. MATCH SENDER'S TONE & USER'S PREFERRED PERSONA:
    - Match the relationship tone reflected by the sender while strictly adhering to the user's communication style guidelines.
-   - Use natural greetings and sign-offs fitting the context.`;
+3. SIGNATURE — THIS IS CRITICAL:
+   - Do NOT include any sign-off, valediction, closing line, or signature of any kind (e.g. no "Best regards", "Kind regards", "Thanks", "Sincerely", "Cheers", "[Your Name]", "[Your Title]", or any placeholder text).
+   - End the email body naturally after the last substantive sentence. The user's real signature will be appended automatically.`;
 
     if (toneInstructions) {
       systemPrompt += `\n\nUser Communication Persona & Style Guidelines:\n${toneInstructions}`;
@@ -37,7 +39,7 @@ CRITICAL INSTRUCTIONS FOR REPLY DRAFTING:
     if (emailContext) {
       messages.push({
         role: "user",
-        content: `Original Email Context:\n${emailContext}\n\nTask / Reply Intent:\n${instruction}\n\nWrite a complete, fully fledged response corresponding to this intent.`
+        content: `Original Email Context:\n${emailContext}\n\nTask / Reply Intent:\n${instruction}\n\nWrite a complete, fully fledged response. Do NOT include any sign-off or signature — end after the last substantive sentence.`
       });
     } else {
       messages.push({ role: "user", content: instruction });
@@ -50,8 +52,16 @@ CRITICAL INSTRUCTIONS FOR REPLY DRAFTING:
       max_tokens: 900,
     });
 
-    return NextResponse.json({ text: completion.choices[0].message.content });
+    let text = (completion.choices[0].message.content || '').trim();
+
+    // Append the user's real signature if provided and enabled
+    if (signatureEnabled && signature && signature.trim()) {
+      text = `${text}\n\n${signature.trim()}`;
+    }
+
+    return NextResponse.json({ text });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+

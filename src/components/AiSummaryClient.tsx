@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { Loader2, Sparkles, Check, Trash2, X, Send, Bot, User, Edit3, MessageSquare, EyeOff, MinusCircle, RefreshCw, Calendar, Search } from "lucide-react";
 import { formatEmailDate } from "@/utils/formatDate";
 import { Avatar } from "@/components/Avatar";
-import { useAiToneStore } from "@/lib/client/store";
+import { useAiToneStore, useAccountDataStore } from "@/lib/client/store";
 
 interface AgentThought {
   id: string;
@@ -337,6 +337,7 @@ export function AiSummaryClient({
   };
 
   const { activeTone, professionalPrompt, casualPrompt, concisePrompt, customPrompt } = useAiToneStore();
+  const { signatureEnabled, signatureText } = useAccountDataStore();
 
   const getEffectiveToneInstruction = () => {
     switch (activeTone) {
@@ -374,10 +375,12 @@ export function AiSummaryClient({
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            instruction: `Draft a complete, fully fledged reply fulfilling this action: "${replyIntent}". Match the incoming email's length and tone. Follow user style guidelines.`,
+            instruction: `Draft a complete, fully fledged reply fulfilling this action: "${replyIntent}". Match the incoming email's length and tone. Follow user style guidelines. Do NOT include any sign-off or signature.`,
             tone: activeTone,
             toneInstructions: getEffectiveToneInstruction(),
-            emailContext
+            emailContext,
+            signature: signatureText,
+            signatureEnabled
           })
         });
 
@@ -514,10 +517,12 @@ export function AiSummaryClient({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          instruction: `Write a natural reply to this email conforming to the style guidelines. Sign off politely.`,
+          instruction: `Write a natural reply to this email conforming to the style guidelines. Do NOT include any sign-off or signature.`,
           tone: activeTone,
           toneInstructions: getEffectiveToneInstruction(),
-          emailContext
+          emailContext,
+          signature: signatureText,
+          signatureEnabled
         })
       });
 
@@ -719,10 +724,12 @@ export function AiSummaryClient({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          instruction: `Refine and rewrite the current draft according to this user feedback: "${userText}". Follow style guidelines.`,
+          instruction: `Refine and rewrite the current draft according to this user feedback: "${userText}". Follow style guidelines. Do NOT include any sign-off or signature.`,
           tone: activeTone,
           toneInstructions: getEffectiveToneInstruction(),
-          emailContext
+          emailContext,
+          signature: signatureText,
+          signatureEnabled
         })
       });
 
