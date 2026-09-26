@@ -18,7 +18,7 @@ const SECTIONS: { id: string; label: string; icon: string; group: 'Account' | 'W
   { id: 'snippets', label: 'Snippets', icon: 'brackets', group: 'Account' },
   { id: 'signature', label: 'Signature', icon: 'pen', group: 'Account' },
   { id: 'notifications', label: 'Notifications', icon: 'bell', group: 'Account' },
-  { id: 'account', label: 'Manage account', icon: 'person', group: 'Account' },
+  { id: 'account', label: 'Manage accounts', icon: 'person', group: 'Account' },
   { id: 'shortcuts', label: 'Keyboard shortcuts', icon: 'keyboard', group: 'Workspace' },
 ];
 
@@ -304,17 +304,21 @@ function AccountSettings() {
             <>
               {!a.canReadFreeBusy ? <a className="zl-btn zl-btn--text zl-btn--sm" href={`/api/auth/login?hint=${encodeURIComponent(a.email)}`}>Reconnect</a> : null}
               <button className="zl-btn zl-btn--danger zl-btn--sm" onClick={async () => {
-                if (!window.confirm(`Disconnect ${a.email} from ZeroLatency, revoke its Google access and sign out?`)) return;
-                await api.logout({ revoke: true });
-                router.replace('/login');
-              }}>Disconnect</button>
+                if (!window.confirm(`Remove ${a.email} from ZeroLatency and revoke its Google access?`)) return;
+                const r = await api.logout({ accountId: a.id, revoke: true });
+                if (r.remaining) window.location.reload(); else router.replace('/login');
+              }}>Remove</button>
             </>
           ) : null}
         </Row>
       ))}
-      {session.demo ? <p className="zl-field-hint">Demo mode: connect Google by running without ZL_DEMO.</p> : null}
-      <Row title="Sign out" desc="Sign out of ZeroLatency on this device.">
-        <button className="zl-btn zl-btn--ghost" disabled={session.demo} onClick={async () => { await api.logout(); router.replace('/login'); }}><Icon name="logout" />Sign out</button>
+      {!session.demo ? (
+        <Row title="Add another account" desc="Connect up to four Google accounts and switch between them.">
+          <a className="zl-btn zl-btn--secondary" href="/api/auth/login"><Icon name="plus" />Add account</a>
+        </Row>
+      ) : <p className="zl-field-hint">Demo mode: connect Google by running without ZL_DEMO.</p>}
+      <Row title="Sign out" desc="Sign out of every account on this device.">
+        <button className="zl-btn zl-btn--ghost" disabled={session.demo} onClick={async () => { await api.logout({ all: true }); router.replace('/login'); }}><Icon name="logout" />Sign out</button>
       </Row>
     </>
   );

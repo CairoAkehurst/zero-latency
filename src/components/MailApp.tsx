@@ -8,7 +8,6 @@ import type { Label, SessionInfo, ThreadSummary } from '@/lib/shared/types';
 import { FOLDERS, MailContext, REMINDER_LABEL, type ComposeInit, type MailCtx, type NavTarget, type ThreadAction } from './mail-context';
 import { ToastProvider, useToast, Spinner } from './ui';
 import { Sidebar } from './Sidebar';
-import { SummaryGrid } from './SummaryGrid';
 import { ListPane } from './ListPane';
 import { ThreadView } from './ThreadView';
 import { Composer } from './Composer';
@@ -81,7 +80,7 @@ function sameSide(a: SideDesc, b: SideDesc): boolean {
 function navFromUrl(): { nav: NavTarget | null; thread: string | null } {
   const p = new URLSearchParams(window.location.search);
   const v = p.get('view'), f = p.get('folder'), s = p.get('q');
-  const nav: NavTarget | null = p.has('summary') ? { kind: 'summary', id: 'inbox' } : v ? { kind: 'view', id: v } : f ? { kind: 'folder', id: f } : s ? { kind: 'search', id: s } : null;
+  const nav: NavTarget | null = v ? { kind: 'view', id: v } : f ? { kind: 'folder', id: f } : s ? { kind: 'search', id: s } : null;
   return { nav, thread: p.get('thread') };
 }
 
@@ -134,14 +133,13 @@ function App({ session }: { session: SessionInfo }) {
   const query = useMemo(() => {
     if (nav.kind === 'search') return nav.id;
     if (nav.kind === 'folder') return FOLDERS.find((f) => f.id === nav.id)?.q ?? '';
-    // Summary shows the primary Inbox (the first view) as cards.
-    if (nav.kind === 'summary') return data.views[0] ? compileView(data.views[0].filters) : 'in:inbox';
+    // Summary logic removed
     return activeView ? compileView(activeView.filters) : '';
   }, [nav, activeView, data.views]);
 
   useEffect(() => {
     const p = new URLSearchParams();
-    if (nav.kind === 'view') p.set('view', nav.id); else if (nav.kind === 'folder') p.set('folder', nav.id); else if (nav.kind === 'summary') p.set('summary', ''); else p.set('q', nav.id);
+    if (nav.kind === 'view') p.set('view', nav.id); else if (nav.kind === 'folder') p.set('folder', nav.id); else p.set('q', nav.id);
     if (openThreadId) p.set('thread', openThreadId);
     window.history.replaceState(null, '', `/mail?${p}`);
   }, [nav, openThreadId]);
@@ -481,9 +479,7 @@ function App({ session }: { session: SessionInfo }) {
       <div className={`zl-app-root${mobileSidebar ? ' show-sidebar' : ''}`} onClick={(e) => { if (mobileSidebar && (e.target as HTMLElement).closest('.zl-nav-item')) setMobileSidebar(false); }}>
         <Sidebar onSearch={() => { setSearchOpen(true); setMobileSidebar(false); }} />
         <div className={`zl-workspace${side ? ` has-side has-side--${side}` : ''}`}>
-          {full ? <div className="zl-full" style={{ display: 'grid', minHeight: 0 }}>{threadView}</div> : nav.kind === 'summary' && !searchOpen ? (
-            <SummaryGrid state={list} onLoadMore={loadMore} onRetry={() => loadList(query)} onOpenSidebar={() => setMobileSidebar(true)} />
-          ) : (
+          {full ? <div className="zl-full" style={{ display: 'grid', minHeight: 0 }}>{threadView}</div> : (
             <ListPane
               state={list}
               selected={selected}

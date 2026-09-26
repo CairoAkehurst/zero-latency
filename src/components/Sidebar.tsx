@@ -23,22 +23,29 @@ function AccountMenu({ anchor, onClose }: { anchor: HTMLElement; onClose: () => 
   const router = useRouter();
   const ref = useRef<HTMLDivElement>(null);
   useMenuKeys(ref);
+  const switchTo = async (id: string) => {
+    await api.switchAccount(id);
+    window.location.reload();
+  };
   return (
-    <Popover anchor={anchor} onClose={onClose} label="Account">
+    <Popover anchor={anchor} onClose={onClose} label="Accounts">
       <div className="zl-menu" ref={ref} style={{ width: 280 }}>
-        <div className="zl-menu-label">Account</div>
+        <div className="zl-menu-label">Accounts</div>
         {session.accounts.map((a) => (
-          <button key={a.id} className="zl-menu-item zl-menu-item--2line" onClick={onClose}>
+          <button key={a.id} className="zl-menu-item zl-menu-item--2line" onClick={() => (a.id === account.id ? onClose() : switchTo(a.id))} disabled={session.demo}>
             <Avatar name={a.name} picture={a.picture} />
             <span className="zl-menu-item-text">{a.name}<small>{a.email}</small></span>
             {a.id === account.id ? <Icon name="check" className="zl-menu-item-check" /> : null}
           </button>
         ))}
+        {!session.demo ? (
+          <a className="zl-menu-item" href={`/api/auth/login?returnTo=${encodeURIComponent('/mail')}`}><Icon name="plus" />Add another account</a>
+        ) : null}
         <div className="zl-menu-sep" />
         <button className="zl-menu-item" onClick={() => { onClose(); openSettings('inbox'); }}><Icon name="gear" />Settings</button>
-        <button className="zl-menu-item" onClick={() => { onClose(); openSettings('account'); }}><Icon name="user" />Manage account</button>
+        <button className="zl-menu-item" onClick={() => { onClose(); openSettings('account'); }}><Icon name="user" />Manage accounts</button>
         {!session.demo ? (
-          <button className="zl-menu-item" onClick={async () => { await api.logout(); router.replace('/login'); }}>
+          <button className="zl-menu-item" onClick={async () => { const r = await api.logout({ accountId: account.id }); if (r.remaining) window.location.reload(); else router.replace('/login'); }}>
             <Icon name="logout" />Sign out of {account.email}
           </button>
         ) : null}
@@ -141,10 +148,6 @@ export function Sidebar({ onSearch }: { onSearch: () => void }) {
 
       {/* The primary Inbox sits on its own above the Views list, which scrolls independently. */}
       {pinnedView ? renderView(pinnedView, 0, true) : null}
-      <button className="zl-nav-item" aria-current={nav.kind === 'summary' ? 'page' : undefined} onClick={() => navigate({ kind: 'summary', id: 'inbox' })}>
-        <Glyph name="layers" ink="purple" />
-        <span>Summary</span>
-      </button>
       <div className="zl-nav-section">
         <span className="zl-section-label">Views</span>
         <IconButton icon="plus" label="New view" size="sm" onClick={(e) => setNewViewAnchor(e.currentTarget)} />
