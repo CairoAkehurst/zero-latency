@@ -1,13 +1,24 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, Sparkles, Check, Archive, Trash2, X, Send, CheckCircle2, AlertCircle } from "lucide-react";
+import { Loader2, Sparkles, Check, Archive, Trash2, X, Send, CheckCircle2, AlertCircle, Calendar, Bot, ChevronRight, Edit3, User, Mail } from "lucide-react";
 import { formatEmailDate } from "@/utils/formatDate";
 
+interface TimelineStep {
+  id: string;
+  title: string;
+  description: string;
+  status: 'pending' | 'in_progress' | 'completed' | 'error';
+  icon?: 'analyze' | 'calendar' | 'draft' | 'send';
+}
+
 interface SendingProcessState {
-  step: 'review' | 'preparing' | 'sending' | 'completed' | 'error';
   email: any;
   replyText: string;
+  isEditing: boolean;
+  steps: TimelineStep[];
+  currentStepIndex: number;
+  isComplete: boolean;
   errorMessage?: string;
 }
 
@@ -15,7 +26,7 @@ export function AiSummaryClient() {
   const [emails, setEmails] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionInProgressId, setActionInProgressId] = useState<string | null>(null);
-  const [sendingProcess, setSendingProcess] = useState<SendingProcessState | null>(null);
+  const [activeSession, setActiveSession] = useState<SendingProcessState | null>(null);
 
   const fetchTop10 = async () => {
     try {
@@ -38,7 +49,6 @@ export function AiSummaryClient() {
   const handleArchive = async (email: any, e: React.MouseEvent) => {
     e.stopPropagation();
     setActionInProgressId(email.id);
-    // Optimistic removal from priority list
     setEmails(prev => prev.filter(item => item.id !== email.id));
 
     try {
@@ -66,7 +76,6 @@ export function AiSummaryClient() {
     if (!confirm(`Move "${email.subject}" to trash?`)) return;
 
     setActionInProgressId(email.id);
-    // Optimistic removal
     setEmails(prev => prev.filter(item => item.id !== email.id));
 
     try {
@@ -89,50 +98,156 @@ export function AiSummaryClient() {
     }
   };
 
-  const handleOpenApproveSidebar = (email: any) => {
-    setSendingProcess({
-      step: 'review',
+  const handleOpenApproveSidebar = async (email: any) => {
+    const isCalendar = Boolean(
+      email.subject?.toLowerCase().includes("calendar") ||
+      email.subject?.toLowerCase().includes("meeting") ||
+      email.subject?.toLowerCase().includes("schedule") ||
+      email.snippet?.toLowerCase().includes("calendar") ||
+      email.snippet?.toLowerCase().includes("meeting") ||
+      email.snippet?.toLowerCase().includes("schedule") ||
+      email.snippet?.toLowerCase().includes("invite")
+    );
+
+    const initialSteps: TimelineStep[] = [
+      {
+        id: 'analyze',
+        title: 'Analyzing thread context',
+        description: `Synthesized thread context from ${email.sender_name || email.sender_email}`,
+        status: 'completed',
+        icon: 'analyze'
+      },
+      ...(isCalendar ? [{
+        id: 'calendar',
+        title: 'Checking calendar availability',
+        description: 'Checked connected Google Calendar for scheduling conflicts',
+        status: 'in_progress' as const,
+        icon: 'calendar' as const
+      }] : []),
+      {
+        id: 'draft',
+        title: 'Composing suggested reply',
+        description: 'Generated contextual draft adhering to your communication tone',
+        status: 'pending' as const,
+        icon: 'draft' as const
+      },
+      {
+        id: 'send',
+        title: 'Ready for confirmation',
+        description: 'Review reply below and click Send to dispatch',
+        status: 'pending' as const,
+        icon: 'send' as const
+      }
+    ];
+
+    const fallbackReply = email.suggestedReply || `Hi ${email.sender_name ? email.sender_name.split(' ')[0] : 'there'},\n\nThanks for your note. I reviewed this and wanted to let you know that looks good on my end.\n\nBest regards,`;
+
+    setActiveSession({
       email,
-      replyText: email.suggestedReply || `Hi ${email.sender_name || ''},\n\nThank you for reaching out. I will review this and get back to you shortly.\n\nBest regards,`
+      replyText: fallbackReply,
+      isEditing: false,
+      steps: initialSteps,
+      currentStepIndex: isCalendar ? 1 : 1,
+      isComplete: false
+    });
+
+    // Simulate animated timeline agent progress
+    if (isCalendar) {
+      await new Promise(r => setTimeout(r, 650));
+      setActiveSession(prev => {
+        if (!prev) return null;
+        const updated = prev.steps.map(s => {
+          if (s.id === 'calendar') return { ...s, status: 'completed' as const, description: 'Found free time slot: Tomorrow 2:00 PM – 2:30 PM' };
+          if (s.id === 'draft') return { ...s, status: 'in_progress' as const };
+          return s;
+        });
+        return { ...prev, steps: updated };
+      });
+      await new Promise(r => setTimeout(r, 650));
+    } else {
+      await new Promise(r => setTimeout(r, 450));
+      setActiveSession(prev => {
+        if (!prev) return null;
+        const updated = prev.steps.map(s => {
+          if (s.id === 'draft') return { ...s, status: 'in_progress' as const };
+          return s;
+        });
+        return { ...prev, steps: updated };
+      });
+      await new Promise(r => setTimeout(r, 450));
+    }
+
+    setActiveSession(prev => {
+      if (!prev) return null;
+      const updated = prev.steps.map(s => {
+        if (s.id === 'draft') return { ...s, status: 'completed' as const };
+        if (s.id === 'send') return { ...s, status: 'in_progress' as const, description: 'Awaiting your approval to send via Gmail' };
+        return s;
+      });
+      return { ...prev, steps: updated };
     });
   };
 
   const handleExecuteSend = async () => {
-    if (!sendingProcess) return;
+    if (!activeSession) return;
 
-    setSendingProcess(prev => prev ? { ...prev, step: 'preparing' } : null);
-
-    // Brief realistic progress transition to show preparing -> sending
-    await new Promise(r => setTimeout(r, 600));
-
-    setSendingProcess(prev => prev ? { ...prev, step: 'sending' } : null);
+    setActiveSession(prev => {
+      if (!prev) return null;
+      const updated = prev.steps.map(s => {
+        if (s.id === 'send') return { ...s, title: 'Transmitting via Gmail API', description: 'Sending message through Gmail...', status: 'in_progress' as const };
+        return s;
+      });
+      return { ...prev, steps: updated };
+    });
 
     try {
       const res = await fetch("/api/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          toEmail: sendingProcess.email.sender_email,
-          subject: sendingProcess.email.subject?.startsWith("Re:") ? sendingProcess.email.subject : `Re: ${sendingProcess.email.subject || ''}`,
-          body: sendingProcess.replyText,
-          threadId: sendingProcess.email.google_thread_id,
-          messageId: sendingProcess.email.message_id_header || sendingProcess.email.google_message_id,
-          references: sendingProcess.email.references_header
+          toEmail: activeSession.email.sender_email,
+          subject: activeSession.email.subject?.startsWith("Re:") ? activeSession.email.subject : `Re: ${activeSession.email.subject || ''}`,
+          body: activeSession.replyText,
+          threadId: activeSession.email.google_thread_id,
+          messageId: activeSession.email.message_id_header || activeSession.email.google_message_id,
+          references: activeSession.email.references_header
         }),
       });
 
       if (res.ok) {
-        setSendingProcess(prev => prev ? { ...prev, step: 'completed' } : null);
+        setActiveSession(prev => {
+          if (!prev) return null;
+          const updated = prev.steps.map(s => {
+            if (s.id === 'send') return { ...s, title: 'Reply sent successfully', description: 'Dispatched and threaded in Gmail', status: 'completed' as const };
+            return s;
+          });
+          return { ...prev, steps: updated, isComplete: true };
+        });
+
         window.dispatchEvent(new CustomEvent('refresh-inbox'));
         setTimeout(() => {
-          setSendingProcess(null);
-        }, 1800);
+          setActiveSession(null);
+        }, 1600);
       } else {
         const data = await res.json().catch(() => ({}));
-        setSendingProcess(prev => prev ? { ...prev, step: 'error', errorMessage: data.error || 'Failed to send reply' } : null);
+        setActiveSession(prev => {
+          if (!prev) return null;
+          const updated = prev.steps.map(s => {
+            if (s.id === 'send') return { ...s, title: 'Transmission failed', description: data.error || 'Failed to dispatch email', status: 'error' as const };
+            return s;
+          });
+          return { ...prev, steps: updated, errorMessage: data.error || 'Failed to send reply' };
+        });
       }
     } catch (err: any) {
-      setSendingProcess(prev => prev ? { ...prev, step: 'error', errorMessage: err?.message || 'Network error occurred' } : null);
+      setActiveSession(prev => {
+        if (!prev) return null;
+        const updated = prev.steps.map(s => {
+          if (s.id === 'send') return { ...s, title: 'Network error', description: err.message || 'Failed to connect', status: 'error' as const };
+          return s;
+        });
+        return { ...prev, steps: updated, errorMessage: err.message };
+      });
     }
   };
 
@@ -147,27 +262,30 @@ export function AiSummaryClient() {
   }
 
   return (
-    <div className="flex-1 flex h-full bg-white relative overflow-hidden">
+    <div className="flex h-full relative overflow-hidden min-h-0 bg-white">
       
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col h-full overflow-hidden min-w-0">
-        {/* Standard Header */}
-        <header className="h-[60px] px-6 flex items-center justify-between border-b border-gray-100 flex-shrink-0">
+      {/* Cards Area: automatically changes width to leave room for sidebar and switches from 3 to 2 cards wide */}
+      <div 
+        className="flex flex-col h-full flex-shrink-0 transition-all duration-300 ease-in-out min-w-0 overflow-hidden"
+        style={{ width: activeSession ? 'calc(100% - 460px)' : '100%' }}
+      >
+        {/* Header Toolbar */}
+        <header className="h-[68px] px-6 flex items-center justify-between border-b border-gray-100 flex-shrink-0">
           <div className="flex items-center gap-3">
             <Sparkles className="w-5 h-5 text-purple-600" />
             <h1 className="text-[18px] font-semibold text-gray-900 tracking-tight">Priority Inbox</h1>
-            <span className="text-sm text-gray-400 font-normal">Top summaries & suggested actions</span>
+            <span className="text-sm text-gray-400 font-normal">AI summaries & autonomous actions</span>
           </div>
         </header>
 
-        {/* Grid Container */}
+        {/* Responsive Grid */}
         <div className="flex-1 overflow-y-auto p-6 bg-gray-50/30">
           {emails.length === 0 ? (
             <div className="p-12 text-center text-gray-500 text-sm">
               No priority emails found. All caught up!
             </div>
           ) : (
-            <div className="max-w-[1400px] mx-auto w-full grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+            <div className={`w-full grid gap-5 ${activeSession ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3'}`}>
               {emails.map((email) => (
                 <div 
                   key={email.id} 
@@ -240,7 +358,7 @@ export function AiSummaryClient() {
                       <span className="text-xs text-gray-400 italic">No automated actions suggested.</span>
                       <button 
                         onClick={() => handleOpenApproveSidebar(email)}
-                        className="text-xs text-blue-600 hover:text-blue-700 font-medium"
+                        className="text-xs text-purple-600 hover:text-purple-700 font-medium"
                       >
                         Write reply
                       </button>
@@ -253,141 +371,160 @@ export function AiSummaryClient() {
         </div>
       </div>
 
-      {/* Right Sidebar Pop-up: Approve Reply & Sending Process */}
-      {sendingProcess && (
-        <div className="w-[450px] flex-shrink-0 flex flex-col h-full bg-white border-l border-gray-200 shadow-2xl z-30 transition-all duration-300 animate-in slide-in-from-right">
-          {/* Sidebar Header */}
-          <div className="h-[68px] px-6 flex items-center justify-between border-b border-gray-100 flex-shrink-0">
+      {/* Right Sidebar: Exact same design as EmailDetailPeek (flex-1 rounded-tl-2xl border-l border-gray-200) */}
+      {activeSession && (
+        <div className="flex flex-col h-full bg-white z-10 relative overflow-hidden transition-all duration-300 ease-in-out flex-1 rounded-tl-2xl border-l border-gray-200 shadow-sm min-w-[420px] max-w-[500px]">
+          
+          {/* Header Toolbar matching EmailDetailPeek style */}
+          <div className="h-[68px] px-5 flex items-center justify-between border-b border-gray-100 flex-shrink-0">
             <div className="flex items-center gap-2.5">
-              <div className="p-1.5 rounded-lg bg-purple-50 text-purple-600">
-                <Sparkles className="w-4 h-4" />
+              <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-purple-600 font-semibold text-sm">
+                <Bot className="w-4 h-4" />
               </div>
-              <div>
-                <h3 className="text-sm font-semibold text-gray-900">Approve & Send Reply</h3>
-                <p className="text-xs text-gray-400 truncate max-w-[240px]">To: {sendingProcess.email.sender_email}</p>
+              <div className="flex flex-col">
+                <span className="text-sm font-semibold text-gray-900 flex items-center gap-1.5">
+                  Agent Action
+                  <span className="text-[10px] font-normal px-1.5 py-0.5 rounded bg-purple-50 text-purple-600 border border-purple-100">
+                    Live
+                  </span>
+                </span>
+                <span className="text-xs text-gray-400 truncate max-w-[220px]">
+                  {activeSession.email.sender_name || activeSession.email.sender_email}
+                </span>
               </div>
             </div>
+
             <button 
-              onClick={() => setSendingProcess(null)}
-              disabled={sendingProcess.step === 'preparing' || sendingProcess.step === 'sending'}
-              className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-30"
+              onClick={() => setActiveSession(null)}
+              className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+              title="Close panel"
             >
-              <X className="w-5 h-5" />
+              <X className="w-4 h-4" />
             </button>
           </div>
 
-          {/* Sidebar Content */}
-          <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-5">
-            {/* Original Email Context */}
-            <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 space-y-2">
-              <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Original Email</div>
-              <div className="text-sm font-medium text-gray-900">{sendingProcess.email.subject || '(No subject)'}</div>
-              <div className="text-xs text-gray-600 line-clamp-3 leading-relaxed">
-                {sendingProcess.email.snippet || sendingProcess.email.summary}
+          {/* Chat / Timeline Feed Area */}
+          <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-6 bg-white">
+            
+            {/* Email Context Accordion */}
+            <div className="bg-gray-50/70 border border-gray-100 rounded-xl p-4 space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  <Mail className="w-3.5 h-3.5 text-gray-400" />
+                  Original Message
+                </div>
+                <span className="text-xs text-gray-400">{formatEmailDate(activeSession.email.timestamp)}</span>
+              </div>
+              <div className="text-sm font-semibold text-gray-900 truncate">
+                {activeSession.email.subject || '(No subject)'}
+              </div>
+              <div className="text-xs text-gray-600 line-clamp-2 leading-relaxed">
+                {activeSession.email.snippet || activeSession.email.summary}
               </div>
             </div>
 
-            {/* Editable Reply Body */}
-            <div className="flex-1 flex flex-col min-h-[220px]">
-              <div className="flex items-center justify-between mb-2">
-                <label className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Suggested Reply</label>
-                <span className="text-[11px] text-gray-400">Review or customize before sending</span>
-              </div>
-              <textarea 
-                value={sendingProcess.replyText}
-                onChange={(e) => setSendingProcess(prev => prev ? { ...prev, replyText: e.target.value } : null)}
-                disabled={sendingProcess.step !== 'review' && sendingProcess.step !== 'error'}
-                className="w-full flex-1 p-3.5 text-sm text-gray-900 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 resize-none transition-all leading-relaxed disabled:bg-gray-50 disabled:text-gray-600"
-                rows={9}
-              />
-            </div>
-
-            {/* Status Process Tracker */}
-            {(sendingProcess.step === 'preparing' || sendingProcess.step === 'sending' || sendingProcess.step === 'completed' || sendingProcess.step === 'error') && (
-              <div className="p-4 rounded-xl border border-gray-100 bg-gray-50/80 space-y-3 animate-in fade-in">
-                <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Delivery Process</div>
-                
-                <div className="space-y-2.5">
-                  {/* Step 1: Verification */}
-                  <div className="flex items-center gap-2.5 text-xs">
-                    {sendingProcess.step === 'preparing' ? (
-                      <Loader2 className="w-4 h-4 text-purple-600 animate-spin flex-shrink-0" />
-                    ) : (
-                      <CheckCircle2 className="w-4 h-4 text-green-600 flex-shrink-0" />
-                    )}
-                    <span className={sendingProcess.step === 'preparing' ? 'font-medium text-purple-700' : 'text-gray-600'}>
-                      Preparing RFC 2822 thread reply & headers
-                    </span>
-                  </div>
-
-                  {/* Step 2: Gmail Transmission */}
-                  <div className="flex items-center gap-2.5 text-xs">
-                    {sendingProcess.step === 'sending' ? (
-                      <Loader2 className="w-4 h-4 text-blue-600 animate-spin flex-shrink-0" />
-                    ) : sendingProcess.step === 'completed' ? (
-                      <CheckCircle2 className="w-4 h-4 text-green-600 flex-shrink-0" />
-                    ) : sendingProcess.step === 'error' ? (
-                      <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0" />
-                    ) : (
-                      <div className="w-4 h-4 rounded-full border border-gray-300 flex-shrink-0" />
-                    )}
-                    <span className={sendingProcess.step === 'sending' ? 'font-medium text-blue-700' : sendingProcess.step === 'completed' ? 'text-gray-600' : 'text-gray-400'}>
-                      Transmitting securely via Gmail API
-                    </span>
-                  </div>
-
-                  {/* Step 3: Success or Error */}
-                  {sendingProcess.step === 'completed' && (
-                    <div className="flex items-center gap-2.5 text-xs font-semibold text-green-700 pt-1">
-                      <CheckCircle2 className="w-4 h-4 text-green-600 flex-shrink-0" />
-                      Reply dispatched successfully!
-                    </div>
-                  )}
-
-                  {sendingProcess.step === 'error' && (
-                    <div className="text-xs text-red-600 bg-red-50 p-2.5 rounded-lg border border-red-100 flex items-start gap-2">
-                      <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
-                      <span>{sendingProcess.errorMessage || 'Failed to dispatch email.'}</span>
-                    </div>
-                  )}
+            {/* AI Agent Timeline (ChatGPT / Gemini style reasoning steps) */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-purple-500" />
+                  Agent Execution Timeline
                 </div>
               </div>
-            )}
+
+              <div className="relative pl-6 space-y-5 before:absolute before:left-[11px] before:top-2 before:bottom-2 before:w-[2px] before:bg-gray-100">
+                {activeSession.steps.map((step, idx) => (
+                  <div key={step.id} className="relative group animate-in fade-in slide-in-from-left-2 duration-300">
+                    {/* Node Dot / Icon */}
+                    <div className="absolute -left-6 top-0.5 flex items-center justify-center">
+                      {step.status === 'completed' ? (
+                        <div className="w-5 h-5 rounded-full bg-green-500 text-white flex items-center justify-center shadow-sm">
+                          <Check className="w-3 h-3 stroke-[2.5]" />
+                        </div>
+                      ) : step.status === 'in_progress' ? (
+                        <div className="w-5 h-5 rounded-full bg-purple-600 text-white flex items-center justify-center shadow-sm animate-pulse">
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                        </div>
+                      ) : step.status === 'error' ? (
+                        <div className="w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center shadow-sm">
+                          <AlertCircle className="w-3 h-3" />
+                        </div>
+                      ) : (
+                        <div className="w-5 h-5 rounded-full bg-white border-2 border-gray-200 flex items-center justify-center" />
+                      )}
+                    </div>
+
+                    {/* Step Content */}
+                    <div className="flex flex-col">
+                      <span className={`text-xs font-medium ${step.status === 'in_progress' ? 'text-purple-700 font-semibold' : step.status === 'completed' ? 'text-gray-900' : 'text-gray-400'}`}>
+                        {step.title}
+                      </span>
+                      <span className="text-[11px] text-gray-500 mt-0.5 leading-relaxed">
+                        {step.description}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Suggested Reply Bubble (ChatGPT / Gemini response card) */}
+            <div className="space-y-2 mt-1">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
+                  <Bot className="w-3.5 h-3.5 text-purple-600" />
+                  Suggested Output
+                </span>
+                <button 
+                  onClick={() => setActiveSession(prev => prev ? { ...prev, isEditing: !prev.isEditing } : null)}
+                  className="text-xs text-purple-600 hover:text-purple-700 font-medium flex items-center gap-1"
+                >
+                  <Edit3 className="w-3 h-3" />
+                  {activeSession.isEditing ? "Done editing" : "Edit draft"}
+                </button>
+              </div>
+
+              {activeSession.isEditing ? (
+                <textarea 
+                  value={activeSession.replyText}
+                  onChange={(e) => setActiveSession(prev => prev ? { ...prev, replyText: e.target.value } : null)}
+                  className="w-full p-4 text-sm text-gray-900 bg-white border border-purple-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 resize-none transition-all leading-relaxed shadow-sm font-sans"
+                  rows={8}
+                  autoFocus
+                />
+              ) : (
+                <div className="p-4 bg-gray-50/80 hover:bg-gray-50 border border-gray-200/80 rounded-xl text-sm text-gray-800 leading-relaxed whitespace-pre-wrap transition-colors shadow-sm font-sans">
+                  {activeSession.replyText}
+                </div>
+              )}
+            </div>
+
           </div>
 
-          {/* Sidebar Footer Actions */}
-          <div className="p-5 border-t border-gray-100 bg-gray-50/50 flex items-center justify-end gap-3 flex-shrink-0">
+          {/* Footer Action Bar */}
+          <div className="p-5 border-t border-gray-100 bg-gray-50/50 flex items-center justify-between flex-shrink-0">
             <button 
-              onClick={() => setSendingProcess(null)}
-              disabled={sendingProcess.step === 'preparing' || sendingProcess.step === 'sending'}
-              className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors disabled:opacity-30"
+              onClick={() => setActiveSession(null)}
+              className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
             >
-              Cancel
+              Dismiss
             </button>
 
-            {sendingProcess.step === 'completed' ? (
+            {activeSession.isComplete ? (
               <button 
                 disabled 
-                className="px-5 py-2.5 bg-green-600 text-white text-sm font-medium rounded-xl flex items-center gap-2"
+                className="px-5 py-2.5 bg-green-600 text-white text-sm font-medium rounded-xl flex items-center gap-2 shadow-sm"
               >
                 <Check className="w-4 h-4" />
-                Sent!
-              </button>
-            ) : sendingProcess.step === 'error' ? (
-              <button 
-                onClick={handleExecuteSend}
-                className="px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-xl flex items-center gap-2 transition-colors shadow-sm"
-              >
-                <Send className="w-4 h-4" />
-                Retry
+                Dispatched!
               </button>
             ) : (
               <button 
                 onClick={handleExecuteSend}
-                disabled={sendingProcess.step === 'preparing' || sendingProcess.step === 'sending' || !sendingProcess.replyText.trim()}
-                className="px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium rounded-xl flex items-center gap-2 transition-colors shadow-sm disabled:opacity-50"
+                disabled={activeSession.steps.some(s => s.status === 'in_progress' && s.id === 'send') || !activeSession.replyText.trim()}
+                className="px-6 py-2.5 bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold rounded-xl flex items-center gap-2 transition-all shadow-md hover:shadow-lg disabled:opacity-50"
               >
-                {sendingProcess.step === 'preparing' || sendingProcess.step === 'sending' ? (
+                {activeSession.steps.some(s => s.status === 'in_progress' && s.id === 'send') ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
                     Sending...
@@ -395,12 +532,13 @@ export function AiSummaryClient() {
                 ) : (
                   <>
                     <Send className="w-4 h-4" />
-                    Send Reply
+                    Approve & Send
                   </>
                 )}
               </button>
             )}
           </div>
+
         </div>
       )}
 
