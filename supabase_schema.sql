@@ -1,5 +1,5 @@
 -- ==============================================================================
--- Supabase Schema for AgentMail
+-- Supabase Schema for Zero Latency
 -- Run this in the Supabase SQL Editor (Dashboard -> SQL Editor -> New Query)
 -- ==============================================================================
 
@@ -14,7 +14,7 @@ create table if not exists public.users (
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
--- 2. Create Categories Table
+-- 2. Create Categories Table (For UI mapping of colors to Gmail labels)
 create table if not exists public.categories (
   id uuid default gen_random_uuid() primary key,
   name text not null,
@@ -23,7 +23,7 @@ create table if not exists public.categories (
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
--- 3. Insert Default Notion Mail AI Categories
+-- 3. Insert Default Categories
 insert into public.categories (name, slug, color) values
   ('Project updates', 'project-updates', 'blue'),
   ('Leadership updates', 'leadership-updates', 'orange'),
@@ -33,42 +33,27 @@ insert into public.categories (name, slug, color) values
   ('Urgent', 'urgent', 'red')
 on conflict do nothing;
 
--- 4. Create Emails Table
-create table if not exists public.emails (
-  id uuid default gen_random_uuid() primary key,
-  user_id uuid references public.users(id) on delete cascade not null,
-  google_message_id text not null unique,
-  google_thread_id text not null,
-  sender_name text,
-  sender_email text not null,
-  subject text,
-  body_text text,
-  body_html text,
-  snippet text,
-  is_unread boolean default true,
-  received_at timestamp with time zone not null,
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null
-);
-
--- 5. Create AI Summaries & Metadata Table
+-- 4. Create AI Summaries & Metadata Table
+-- (Modified to reference google_message_id directly instead of a local emails table)
 create table if not exists public.email_ai_metadata (
   id uuid default gen_random_uuid() primary key,
-  email_id uuid references public.emails(id) on delete cascade not null,
+  user_id uuid references public.users(id) on delete cascade not null,
+  google_message_id text not null,
   category_id uuid references public.categories(id) on delete set null,
   tldr text,
   action_required boolean default false,
   suggested_reply text,
   action_payload jsonb,
-  processed_at timestamp with time zone default timezone('utc'::text, now()) not null
+  processed_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  unique(user_id, google_message_id)
 );
 
--- 6. Enable Row Level Security (RLS)
+-- 5. Enable Row Level Security (RLS)
 alter table public.users enable row level security;
 alter table public.categories enable row level security;
-alter table public.emails enable row level security;
 alter table public.email_ai_metadata enable row level security;
 
--- 7. RLS Policies
+-- 6. RLS Policies
 create policy "Users can view and update their own profile"
   on public.users for all
   using (auth.uid() = id);
@@ -88,16 +73,17 @@ create policy "Categories can be deleted by authenticated users"
   to authenticated
   using (true);
 
-create policy "Users can view and manage their own emails"
-  on public.emails for all
+create policy "Users can view and manage metadata of their own emails"
+  on public.email_ai_metadata for all
   using (auth.uid() = user_id);
 
-create policy "Users can view metadata of their own emails"
-  on public.email_ai_metadata for all
-  using (
-    exists (
-      select 1 from public.emails
-      where emails.id = email_ai_metadata.email_id
-      and emails.user_id = auth.uid()
-    )
-  );
+-- 7. Migration / Cleanup Script (Run this carefully if migrating an existing DB)
+/*
+-- Drop old foreign key constraint if it exists
+alter table if exists public.email_ai_metadata drop constraint if exists email_ai_metadata_email_id_fkey;
+
+-- We can't automatically migrate UUID to string if they didn't match google_message_id, 
+-- so we might need to recreate the table if the old one exists and you want a fresh start.
+drop table if exists public.email_ai_metadata;
+drop table if exists public.emails cascade;
+*/

@@ -118,6 +118,33 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
     }
   };
 
+  const handleAction = async (action: 'trash' | 'archive' | 'unread') => {
+    try {
+      if (action === 'trash') {
+        await fetch("/api/mail/modify", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ messageIds: [email.id], action: "trash" })
+        });
+      } else if (action === 'archive') {
+        await fetch("/api/mail/modify", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ messageIds: [email.id], action: "modify", removeLabelIds: ['INBOX'] })
+        });
+      } else if (action === 'unread') {
+        await fetch("/api/mail/modify", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ messageIds: [email.id], action: "modify", addLabelIds: ['UNREAD'] })
+        });
+      }
+      onClose(); // Optimistically close after action
+    } catch (e) {
+      alert("Failed to perform action");
+    }
+  };
+
   const fullDate = new Date(email.timestamp);
   const formattedFullDate = isNaN(fullDate.getTime()) ? email.timestamp : fullDate.toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
 
@@ -138,13 +165,13 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
       {/* Header Toolbar */}
       <div className="h-[68px] px-5 flex items-center justify-between border-b border-gray-100 flex-shrink-0">
         <div className="flex items-center gap-4">
-          <button className="p-2 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-full transition-colors" title="Archive">
+          <button onClick={() => handleAction('archive')} className="p-2 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-full transition-colors" title="Archive">
             <Archive className="w-4 h-4" />
           </button>
-          <button className="p-2 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-full transition-colors" title="Delete">
+          <button onClick={() => handleAction('trash')} className="p-2 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-full transition-colors" title="Delete">
             <Trash2 className="w-4 h-4" />
           </button>
-          <button className="p-2 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-full transition-colors" title="Mark unread">
+          <button onClick={() => handleAction('unread')} className="p-2 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-full transition-colors" title="Mark unread">
             <Mail className="w-4 h-4" />
           </button>
         </div>

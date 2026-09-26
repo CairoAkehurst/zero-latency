@@ -83,15 +83,22 @@ export function InboxClient({ initialEmails }: { initialEmails: any[] }) {
 
   const handleDeleteSelected = async () => {
     if (checkedEmailIds.size === 0) return;
-    const supabase = createClient();
     const idsToDelete = Array.from(checkedEmailIds);
     
+    // Optimistic UI update
     setEmails(prev => prev.filter(e => !idsToDelete.includes(e.id)));
     setCheckedEmailIds(new Set());
     
-    const { error } = await supabase.from('emails').delete().in('id', idsToDelete);
-    if (error) {
-      alert("Failed to delete emails: " + error.message);
+    try {
+      const res = await fetch("/api/mail/modify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messageIds: idsToDelete, action: "trash" })
+      });
+      if (!res.ok) throw new Error("Failed to delete emails in Gmail");
+    } catch (error: any) {
+      alert(error.message);
+      // Ideally we would roll back the UI state here
     }
   };
 
@@ -102,12 +109,11 @@ export function InboxClient({ initialEmails }: { initialEmails: any[] }) {
     setIsSyncing(true);
     setSyncStatus(null);
     try {
-      const res = await fetch("/api/sync", { method: "POST" });
+      const res = await fetch("/api/mail/threads");
       const data = await res.json();
       if (res.ok) {
-        setSyncStatus(`Synced ${data.syncedCount} new emails!`);
-        fetch("/api/ai/process", { method: "POST" });
-        setTimeout(() => window.location.reload(), 1500);
+        setEmails(data.emails || []);
+        setSyncStatus(`Synced successfully!`);
       } else {
         setSyncStatus(`Sync error: ${data.error || res.statusText}`);
       }
@@ -115,6 +121,7 @@ export function InboxClient({ initialEmails }: { initialEmails: any[] }) {
       setSyncStatus(`Sync error: ${String(err)}`);
     } finally {
       setIsSyncing(false);
+      setTimeout(() => setSyncStatus(null), 3000);
     }
   };
 
@@ -126,7 +133,7 @@ export function InboxClient({ initialEmails }: { initialEmails: any[] }) {
       const data = await res.json();
       if (res.ok) {
         setSyncStatus(`Auto-labeled ${data.processedCount || 0} emails!`);
-        setTimeout(() => window.location.reload(), 1500);
+        handleSync(); // re-fetch to show new summaries
       } else {
         setSyncStatus(`AI error: ${data.error || data.message || res.statusText}`);
       }
@@ -171,13 +178,6 @@ export function InboxClient({ initialEmails }: { initialEmails: any[] }) {
               >
                 <Trash2 className="w-3.5 h-3.5" />
                 Delete
-              </button>
-
-              <button 
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-100 text-gray-700 font-medium hover:bg-gray-200 transition-colors whitespace-nowrap"
-              >
-                <Tag className="w-3.5 h-3.5" />
-                Label
               </button>
             </div>
           ) : (

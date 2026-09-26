@@ -7,33 +7,31 @@ import { usePathname, useRouter } from "next/navigation";
 import clsx from "clsx";
 import { createClient } from "@/utils/supabase/client";
 
-const DEFAULT_FOLDERS = [
-  { name: "Project updates", color: "bg-blue-400" },
-  { name: "Leadership updates", color: "bg-orange-400" },
-  { name: "Sales leads", color: "bg-purple-400" },
-  { name: "Hiring leads", color: "bg-pink-400" },
-  { name: "Meeting requests", color: "bg-green-400" },
-  { name: "Urgent", color: "bg-red-400" },
-];
-
 export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const supabase = createClient();
   const [user, setUser] = useState<import("@supabase/supabase-js").User | null>(null);
   const [showDropdown, setShowDropdown] = useState(false);
-  const [categories, setCategories] = useState<any[]>(DEFAULT_FOLDERS);
+  const [labels, setLabels] = useState<any[]>([]);
   const [isAddingLabel, setIsAddingLabel] = useState(false);
   const [newLabelName, setNewLabelName] = useState("");
 
-  const fetchCategories = async () => {
-    const { data } = await supabase.from('categories').select('*');
-    if (data && data.length > 0) {
-      setCategories(data.map(c => ({
-        name: c.name,
-        color: `bg-${c.color}-400`,
-        slug: c.slug
-      })));
+  const fetchLabels = async () => {
+    try {
+      const res = await fetch('/api/mail/labels');
+      const data = await res.json();
+      if (res.ok && data.labels) {
+        // Filter out system labels for the UI list, or keep USER ones
+        const userLabels = data.labels.filter((l: any) => l.type === 'user');
+        setLabels(userLabels.map((c: any) => ({
+          id: c.id,
+          name: c.name,
+          color: c.color?.backgroundColor ? `bg-[${c.color.backgroundColor}]` : 'bg-gray-400'
+        })));
+      }
+    } catch (e) {
+      console.error("Failed to fetch labels", e);
     }
   };
 
@@ -43,41 +41,27 @@ export function Sidebar() {
       return;
     }
     
-    const colors = ["blue", "red", "green", "purple", "pink", "orange", "yellow", "teal"];
-    const randomColor = colors[Math.floor(Math.random() * colors.length)];
-    const slug = newLabelName.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-    
-    const { error } = await supabase.from('categories').insert({
-      name: newLabelName.trim(),
-      color: randomColor,
-      slug
-    });
-
-    if (error) {
-      console.error("Failed to save label:", error);
-      alert("Failed to save label. Did you run the updated SQL policies?");
-    } else {
-      setNewLabelName("");
-      setIsAddingLabel(false);
-      fetchCategories();
-    }
-  };
-
-  const handleDeleteLabel = async (e: React.MouseEvent, folder: any) => {
-    e.preventDefault();
-    if (confirm(`Are you sure you want to delete the "${folder.name}" label?`)) {
-      const { error } = await supabase.from('categories').delete().eq('name', folder.name);
-      if (error) {
-        console.error("Failed to delete label:", error);
-        alert("Failed to delete label. Check RLS policies.");
+    try {
+      const res = await fetch('/api/mail/labels', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newLabelName.trim() })
+      });
+      
+      if (res.ok) {
+        setNewLabelName("");
+        setIsAddingLabel(false);
+        fetchLabels();
       } else {
-        fetchCategories();
+        alert("Failed to create label in Gmail");
       }
+    } catch (e) {
+      console.error(e);
     }
   };
 
   useEffect(() => {
-    fetchCategories();
+    fetchLabels();
     supabase.auth.getUser().then(({ data }) => {
       if (data?.user) {
         setUser(data.user);
@@ -149,15 +133,13 @@ export function Sidebar() {
               <Plus className="w-3.5 h-3.5" />
             </button>
           </div>
-          {categories.map((folder) => (
+          {labels.map((folder) => (
             <div 
               key={folder.name} 
               onClick={() => window.dispatchEvent(new CustomEvent('filter-category', { detail: folder.name }))}
-              onContextMenu={(e) => handleDeleteLabel(e, folder)}
               className="sidebar-link group cursor-pointer hover:bg-gray-200/50"
-              title="Right-click to delete"
             >
-              <div className={clsx("w-2 h-2 rounded-full flex-shrink-0", folder.color)} />
+              <div className={clsx("w-2 h-2 rounded-full flex-shrink-0", folder.color.startsWith('bg-[') ? folder.color : 'bg-gray-400')} style={folder.color.startsWith('bg-[') ? { backgroundColor: folder.color.slice(4,-1) } : {}} />
               <span className="truncate">{folder.name}</span>
             </div>
           ))}
