@@ -1,63 +1,6 @@
-"use client";
+const fs = require('fs');
 
-import { useEffect, useState } from "react";
-import { Loader2, Calendar, Reply, Sparkles, Check, Mail } from "lucide-react";
-import { formatEmailDate } from "@/utils/formatDate";
-
-export function AiSummaryClient() {
-  const [emails, setEmails] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchTop10 = async () => {
-      try {
-        const res = await fetch("/api/mail/threads?maxResults=10");
-        const data = await res.json();
-        if (data.emails) {
-          setEmails(data.emails);
-        }
-      } catch (e) {
-        console.error(e);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchTop10();
-  }, []);
-
-  const handleAction = async (email: any, action: string) => {
-    if (!email.suggestedReply) return;
-    
-    // Auto draft and send
-    try {
-      alert("Drafting and sending reply...");
-      await fetch("/api/send", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          toEmail: email.sender_email,
-          subject: email.subject,
-          body: email.suggestedReply,
-          threadId: email.google_thread_id,
-          messageId: email.google_message_id
-        }),
-      });
-      alert("Successfully sent!");
-    } catch (e) {
-      alert("Failed to send reply");
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="flex-1 flex flex-col h-full bg-white relative">
-        <div className="flex items-center justify-center h-full">
-          <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
-        </div>
-      </div>
-    );
-  }
-
+const ui = `
   return (
     <div className="flex-1 flex flex-col h-full bg-white relative overflow-hidden">
       
@@ -120,4 +63,12 @@ export function AiSummaryClient() {
       </div>
     </div>
   );
-}
+`;
+
+let content = fs.readFileSync('src/components/AiSummaryClient.tsx', 'utf8');
+content = content.replace(
+  /return \(\n    <div className="flex-1 flex flex-col h-full bg-gray-50 relative overflow-y-auto p-8">[\s\S]*?\n  \);\n\}/,
+  `${ui.trim()}\n}`
+);
+
+fs.writeFileSync('src/components/AiSummaryClient.tsx', content);

@@ -8,7 +8,7 @@ export default function InboxLayout({
   return (
     <>
       <Sidebar />
-      <main className="flex-1 overflow-y-auto bg-white rounded-2xl shadow-sm border border-gray-200/50">
+      <main className="flex-1 flex flex-col overflow-hidden bg-white rounded-2xl shadow-sm border border-gray-200/50 my-2 mr-2">
         {children}
       </main>
     </>
