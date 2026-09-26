@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, Sparkles, Check, Archive, Trash2, X, Send, Bot, User, Edit3, MessageSquare } from "lucide-react";
+import { Loader2, Sparkles, Check, Trash2, X, Send, Bot, User, Edit3, MessageSquare, EyeOff } from "lucide-react";
 import { formatEmailDate } from "@/utils/formatDate";
 
 interface AgentThought {
@@ -30,55 +30,160 @@ interface AgentSession {
   messages: ChatMessage[];
 }
 
+interface SmartAction {
+  label: string;
+  reply: string;
+  style: 'primary' | 'secondary';
+}
+
+function computeSmartActions(email: any): SmartAction[] {
+  const text = `${email.subject || ''} ${email.snippet || ''} ${email.summary || ''}`.toLowerCase();
+  const actions: SmartAction[] = [];
+
+  const timeMatches = text.match(/\b(1[0-2]|[1-9])(?::[0-5][0-9])?\s*(?:am|pm)\b/gi);
+  const dayMatches = text.match(/\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday|tomorrow|today)\b/gi);
+
+  if (text.includes("reschedule") || text.includes("postpone")) {
+    actions.push({
+      label: "Propose new time",
+      reply: `Hi ${email.sender_name ? email.sender_name.split(' ')[0] : ''},\n\nThanks for your note. Could we reschedule for later this week or early next week? Let me know what times work best for you.\n\nBest regards,`,
+      style: "primary"
+    });
+    actions.push({
+      label: "Decline request",
+      reply: `Hi ${email.sender_name ? email.sender_name.split(' ')[0] : ''},\n\nThank you for letting me know. Unfortunately, I won't be able to reschedule at this time.\n\nBest regards,`,
+      style: "secondary"
+    });
+  } else if (timeMatches && timeMatches.length > 0) {
+    const timeStr = timeMatches[0].toUpperCase();
+    const dayStr = dayMatches && dayMatches.length > 0 ? ` on ${dayMatches[0].charAt(0).toUpperCase() + dayMatches[0].slice(1).toLowerCase()}` : '';
+    
+    actions.push({
+      label: `Accept ${timeStr}${dayStr}`,
+      reply: `Hi ${email.sender_name ? email.sender_name.split(' ')[0] : ''},\n\n${timeStr}${dayStr} works great for me. I've marked it down on my calendar.\n\nBest regards,`,
+      style: "primary"
+    });
+
+    if (timeMatches.length > 1) {
+      const altTime = timeMatches[1].toUpperCase();
+      actions.push({
+        label: `Accept ${altTime}`,
+        reply: `Hi ${email.sender_name ? email.sender_name.split(' ')[0] : ''},\n\n${altTime} works best for my schedule. Looking forward to speaking then.\n\nBest regards,`,
+        style: "primary"
+      });
+    }
+
+    actions.push({
+      label: "Decline meeting",
+      reply: `Hi ${email.sender_name ? email.sender_name.split(' ')[0] : ''},\n\nThank you for the invitation, but unfortunately I have a scheduling conflict and cannot make this time.\n\nBest regards,`,
+      style: "secondary"
+    });
+  } else if (text.includes("proposal") || text.includes("project") || text.includes("contract") || text.includes("agreement")) {
+    actions.push({
+      label: "Accept project proposal",
+      reply: `Hi ${email.sender_name ? email.sender_name.split(' ')[0] : ''},\n\nThank you for sharing the proposal. Everything looks great to me—let's proceed with the project.\n\nBest regards,`,
+      style: "primary"
+    });
+    actions.push({
+      label: "Request revisions",
+      reply: `Hi ${email.sender_name ? email.sender_name.split(' ')[0] : ''},\n\nThanks for sending this over. I reviewed the details and would like to suggest a few minor revisions before finalizing.\n\nBest regards,`,
+      style: "secondary"
+    });
+    actions.push({
+      label: "Decline proposal",
+      reply: `Hi ${email.sender_name ? email.sender_name.split(' ')[0] : ''},\n\nThank you for sending this over. After consideration, we will not be moving forward with this at this time.\n\nBest regards,`,
+      style: "secondary"
+    });
+  } else if (text.includes("invoice") || text.includes("receipt") || text.includes("payment") || text.includes("bill")) {
+    actions.push({
+      label: "Confirm payment received",
+      reply: `Hi ${email.sender_name ? email.sender_name.split(' ')[0] : ''},\n\nConfirming that this has been received and processed. Thank you!\n\nBest regards,`,
+      style: "primary"
+    });
+    actions.push({
+      label: "Forward to finance",
+      reply: `Hi ${email.sender_name ? email.sender_name.split(' ')[0] : ''},\n\nReceived with thanks. I have forwarded this to our finance team for settlement.\n\nBest regards,`,
+      style: "secondary"
+    });
+  } else if (text.includes("?") || text.includes("let me know") || text.includes("what do you think") || text.includes("can you")) {
+    actions.push({
+      label: "Looks good, approved",
+      reply: `Hi ${email.sender_name ? email.sender_name.split(' ')[0] : ''},\n\nI reviewed this and everything looks good on my end. Please feel free to proceed.\n\nBest regards,`,
+      style: "primary"
+    });
+    actions.push({
+      label: "Will follow up shortly",
+      reply: `Hi ${email.sender_name ? email.sender_name.split(' ')[0] : ''},\n\nThanks for reaching out! I'm looking into this and will follow up with you shortly.\n\nBest regards,`,
+      style: "secondary"
+    });
+  } else {
+    actions.push({
+      label: "Acknowledge & Thank",
+      reply: `Hi ${email.sender_name ? email.sender_name.split(' ')[0] : ''},\n\nThanks for the update, much appreciated!\n\nBest regards,`,
+      style: "primary"
+    });
+    actions.push({
+      label: "Confirm received",
+      reply: `Hi ${email.sender_name ? email.sender_name.split(' ')[0] : ''},\n\nConfirming receipt of this information. Will review and follow up if needed.\n\nBest regards,`,
+      style: "secondary"
+    });
+  }
+
+  return actions.slice(0, 3);
+}
+
 export function AiSummaryClient() {
   const [emails, setEmails] = useState<any[]>([]);
+  const [nextPageToken, setNextPageToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [actionInProgressId, setActionInProgressId] = useState<string | null>(null);
+
+  // Background active agent indicators
+  const [backgroundTasks, setBackgroundTasks] = useState<Array<{ id: string; subject: string; status: string }>>([]);
 
   // Multi-chat management
   const [sessions, setSessions] = useState<AgentSession[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [userPromptInput, setUserPromptInput] = useState("");
 
-  const fetchTop10 = async () => {
+  const fetchEmails = async (token?: string) => {
     try {
-      const res = await fetch("/api/mail/threads?maxResults=10");
+      const url = token 
+        ? `/api/mail/threads?maxResults=10&pageToken=${token}`
+        : "/api/mail/threads?maxResults=10";
+      const res = await fetch(url);
       const data = await res.json();
       if (data.emails) {
-        setEmails(data.emails);
+        if (token) {
+          setEmails(prev => [...prev, ...data.emails]);
+        } else {
+          setEmails(data.emails);
+        }
+        setNextPageToken(data.nextPageToken || null);
       }
     } catch (e) {
       console.error(e);
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
   };
 
   useEffect(() => {
-    fetchTop10();
+    fetchEmails();
   }, []);
 
-  const handleArchive = async (email: any, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setActionInProgressId(email.id);
-    setEmails(prev => prev.filter(item => item.id !== email.id));
+  const handleLoadMore = () => {
+    if (!nextPageToken || loadingMore) return;
+    setLoadingMore(true);
+    fetchEmails(nextPageToken);
+  };
 
-    try {
-      const res = await fetch("/api/mail/modify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messageIds: [email.id], action: "modify", removeLabelIds: ['INBOX'] })
-      });
-      if (res.ok) {
-        window.dispatchEvent(new CustomEvent('refresh-inbox'));
-      } else {
-        fetchTop10();
-      }
-    } catch (err) {
-      fetchTop10();
-    } finally {
-      setActionInProgressId(null);
-    }
+  // Remove from priority inbox without modifying Gmail labels/archive
+  const handleDismissFromPriority = (emailId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEmails(prev => prev.filter(item => item.id !== emailId));
   };
 
   const handleDelete = async (email: any, e: React.MouseEvent) => {
@@ -94,17 +199,57 @@ export function AiSummaryClient() {
       });
       if (res.ok) {
         window.dispatchEvent(new CustomEvent('refresh-inbox'));
-      } else {
-        fetchTop10();
       }
     } catch (err) {
-      fetchTop10();
+      console.error(err);
     } finally {
       setActionInProgressId(null);
     }
   };
 
-  const handleApproveReply = (email: any) => {
+  // Auto-reply directly in background when clicking smart action buttons
+  const handleAutoReplyAction = async (email: any, action: SmartAction) => {
+    const taskId = Math.random().toString();
+    const taskSubject = action.label;
+
+    // Add task to corner indicator
+    setBackgroundTasks(prev => [...prev, { id: taskId, subject: taskSubject, status: 'Drafting & Sending' }]);
+    // Optimistically remove card from priority inbox view
+    setEmails(prev => prev.filter(item => item.id !== email.id));
+
+    try {
+      const res = await fetch("/api/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          toEmail: email.sender_email,
+          subject: email.subject?.startsWith("Re:") ? email.subject : `Re: ${email.subject || ''}`,
+          body: action.reply,
+          threadId: email.google_thread_id,
+          messageId: email.message_id_header || email.google_message_id,
+          references: email.references_header
+        }),
+      });
+
+      if (res.ok) {
+        setBackgroundTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: 'Sent' } : t));
+        window.dispatchEvent(new CustomEvent('refresh-inbox'));
+        setTimeout(() => {
+          setBackgroundTasks(prev => prev.filter(t => t.id !== taskId));
+        }, 3000);
+      } else {
+        setBackgroundTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: 'Failed' } : t));
+        setTimeout(() => {
+          setBackgroundTasks(prev => prev.filter(t => t.id !== taskId));
+        }, 4000);
+      }
+    } catch (err) {
+      setBackgroundTasks(prev => prev.filter(t => t.id !== taskId));
+    }
+  };
+
+  // Open the interactive Zero AI reply chat sidebar
+  const handleOpenAiReplySidebar = (email: any) => {
     const existing = sessions.find(s => s.id === email.id);
     if (existing) {
       setActiveSessionId(email.id);
@@ -155,7 +300,6 @@ export function AiSummaryClient() {
     setSessions(prev => [...prev, newSession]);
     setActiveSessionId(email.id);
 
-    // Simulate animated reasoning timeline with blue indicators
     setTimeout(() => {
       setSessions(prev => prev.map(s => {
         if (s.id !== email.id) return s;
@@ -355,7 +499,7 @@ export function AiSummaryClient() {
   return (
     <div className="flex h-full relative overflow-hidden min-h-0 bg-white">
       
-      {/* Cards Area: automatically changes width to leave room for sidebar and switches from 3 to 2 cards wide */}
+      {/* Cards Area */}
       <div 
         className="flex flex-col h-full flex-shrink-0 transition-all duration-300 ease-in-out min-w-0 overflow-hidden"
         style={{ width: activeSession ? 'calc(100% - 460px)' : '100%' }}
@@ -368,100 +512,140 @@ export function AiSummaryClient() {
             </div>
             <div className="flex flex-col">
               <h1 className="text-[17px] font-semibold text-gray-900 tracking-tight">Priority Inbox</h1>
-              <span className="text-xs text-gray-400 font-normal">Top summaries & suggested actions</span>
+              <span className="text-xs text-gray-400 font-normal">Smart tailored actions & automated replies</span>
             </div>
           </div>
+
+          {/* Top Corner Agent Working Indicator */}
+          {backgroundTasks.length > 0 && (
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-50 border border-blue-100 animate-in fade-in slide-in-from-top-1">
+              <Loader2 className="w-3.5 h-3.5 text-blue-600 animate-spin" />
+              <span className="text-xs font-medium text-blue-700">
+                Agent is working: {backgroundTasks[backgroundTasks.length - 1].subject} ({backgroundTasks[backgroundTasks.length - 1].status})
+              </span>
+            </div>
+          )}
         </header>
 
         {/* Responsive Grid */}
-        <div className="flex-1 overflow-y-auto p-6 bg-gray-50/30">
+        <div className="flex-1 overflow-y-auto p-6 bg-gray-50/30 flex flex-col">
           {emails.length === 0 ? (
             <div className="p-12 text-center text-gray-500 text-sm">
               No priority emails found. All caught up!
             </div>
           ) : (
-            <div className={`w-full grid gap-5 ${activeSession ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3'}`}>
-              {emails.map((email) => (
-                <div 
-                  key={email.id} 
-                  className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 flex flex-col transition-all hover:shadow-md relative group"
-                >
-                  {/* Top card row: Sender & Actions */}
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-center gap-3 overflow-hidden flex-1 min-w-0 pr-2">
-                      <div className="w-9 h-9 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 font-medium flex-shrink-0 text-sm uppercase">
-                        {email.sender_name?.charAt(0) || email.sender_email?.charAt(0) || "?"}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <h3 className="font-semibold text-gray-900 text-sm truncate" title={email.sender_name || email.sender_email}>
-                          {email.sender_name || email.sender_email}
-                        </h3>
-                        <p className="text-xs text-gray-500 truncate" title={email.subject}>
-                          {email.subject || '(No subject)'}
-                        </p>
-                      </div>
-                    </div>
+            <>
+              <div className={`w-full grid gap-5 ${activeSession ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3'}`}>
+                {emails.map((email) => {
+                  const smartActions = computeSmartActions(email);
 
-                    <div className="flex items-center gap-1 flex-shrink-0">
-                      <span className="text-xs text-gray-400 mr-1.5">{formatEmailDate(email.timestamp)}</span>
-                      {/* Archive Button */}
-                      <button 
-                        onClick={(e) => handleArchive(email, e)}
-                        disabled={actionInProgressId === email.id}
-                        className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-                        title="Archive email"
-                      >
-                        <Archive className="w-4 h-4" />
-                      </button>
-                      {/* Delete Button */}
-                      <button 
-                        onClick={(e) => handleDelete(email, e)}
-                        disabled={actionInProgressId === email.id}
-                        className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                        title="Move to trash"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                  
-                  {/* Summary Body */}
-                  <div className="flex-1 text-sm text-gray-700 leading-relaxed mb-4">
-                    <span className="font-medium text-gray-900 mr-1">Summary:</span>
-                    {email.summary || email.snippet}
-                  </div>
+                  return (
+                    <div 
+                      key={email.id} 
+                      className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 flex flex-col transition-all hover:shadow-md relative group"
+                    >
+                      {/* Top card row: Sender & Actions */}
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex items-center gap-3 overflow-hidden flex-1 min-w-0 pr-2">
+                          <div className="w-9 h-9 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 font-medium flex-shrink-0 text-sm uppercase">
+                            {email.sender_name?.charAt(0) || email.sender_email?.charAt(0) || "?"}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <h3 className="font-semibold text-gray-900 text-sm truncate" title={email.sender_name || email.sender_email}>
+                              {email.sender_name || email.sender_email}
+                            </h3>
+                            <p className="text-xs text-gray-500 truncate" title={email.subject}>
+                              {email.subject || '(No subject)'}
+                            </p>
+                          </div>
+                        </div>
 
-                  {/* Card Bottom / Reply Actions */}
-                  {email.suggestedReply || email.hasAiMetadata ? (
-                    <div className="pt-3 border-t border-gray-100 flex items-center gap-2 mt-auto">
-                      <button 
-                        onClick={() => handleApproveReply(email)}
-                        className="flex-1 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg transition-colors flex items-center justify-center gap-1.5 shadow-sm"
-                      >
-                        <Check className="w-3.5 h-3.5" />
-                        Approve Reply
-                      </button>
-                      <button 
-                        onClick={() => handleApproveReply(email)}
-                        className="px-3 py-2 bg-gray-100 text-gray-700 text-xs font-medium rounded-lg hover:bg-gray-200 transition-colors text-center"
-                      >
-                        View & Edit
-                      </button>
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          <span className="text-xs text-gray-400 mr-1.5">{formatEmailDate(email.timestamp)}</span>
+                          
+                          {/* Dismiss / Remove from Priority Button */}
+                          <button 
+                            onClick={(e) => handleDismissFromPriority(email.id, e)}
+                            className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                            title="Remove from Priority"
+                          >
+                            <EyeOff className="w-4 h-4" />
+                          </button>
+
+                          {/* Delete Button */}
+                          <button 
+                            onClick={(e) => handleDelete(email, e)}
+                            disabled={actionInProgressId === email.id}
+                            className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                            title="Move to trash"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                      
+                      {/* Summary Body */}
+                      <div className="flex-1 text-sm text-gray-700 leading-relaxed mb-4">
+                        <span className="font-medium text-gray-900 mr-1">Summary:</span>
+                        {email.summary || email.snippet}
+                      </div>
+
+                      {/* Tailored Action Buttons (Max 3) + Write reply button */}
+                      <div className="pt-3 border-t border-gray-100 flex flex-col gap-2 mt-auto">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {smartActions.map((act, i) => (
+                            <button
+                              key={i}
+                              onClick={() => handleAutoReplyAction(email, act)}
+                              className={`px-3 py-2 text-xs font-semibold rounded-lg transition-colors flex items-center justify-center gap-1.5 shadow-sm ${
+                                act.style === 'primary'
+                                  ? 'bg-blue-600 hover:bg-blue-700 text-white flex-1'
+                                  : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                              }`}
+                            >
+                              <Check className="w-3.5 h-3.5" />
+                              <span className="truncate">{act.label}</span>
+                            </button>
+                          ))}
+                        </div>
+
+                        {/* Interactive AI Reply button */}
+                        <div className="flex items-center justify-end pt-1">
+                          <button 
+                            onClick={() => handleOpenAiReplySidebar(email)}
+                            className="text-xs text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1 transition-colors"
+                          >
+                            <Sparkles className="w-3.5 h-3.5" />
+                            <span>Reply with AI</span>
+                          </button>
+                        </div>
+                      </div>
+
                     </div>
-                  ) : (
-                    <div className="pt-3 border-t border-gray-50 mt-auto flex items-center justify-between">
-                      <span className="text-xs text-gray-400 italic">No automated actions suggested.</span>
-                      <button 
-                        onClick={() => handleApproveReply(email)}
-                        className="text-xs text-blue-600 hover:text-blue-700 font-medium"
-                      >
-                        Write reply
-                      </button>
-                    </div>
-                  )}
+                  );
+                })}
+              </div>
+
+              {/* Load More Button */}
+              {nextPageToken && (
+                <div className="flex items-center justify-center pt-8 pb-4">
+                  <button
+                    onClick={handleLoadMore}
+                    disabled={loadingMore}
+                    className="px-6 py-2.5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 text-xs font-semibold rounded-full shadow-sm transition-all flex items-center gap-2 disabled:opacity-50"
+                  >
+                    {loadingMore ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-600" />
+                        <span>Loading more...</span>
+                      </>
+                    ) : (
+                      <span>Load more emails</span>
+                    )}
+                  </button>
                 </div>
-              ))}
-            </div>
+              )}
+            </>
           )}
         </div>
       </div>
@@ -504,7 +688,6 @@ export function AiSummaryClient() {
           {/* Header Toolbar matching EmailDetailPeek (EXACTLY h-[68px]) */}
           <div className="h-[68px] px-5 flex items-center justify-between border-b border-gray-100 flex-shrink-0">
             <div className="flex items-center gap-3 min-w-0">
-              {/* Blue accent icon matching priority inbox */}
               <div className="p-2 bg-blue-50 text-blue-600 rounded-lg flex-shrink-0">
                 <Sparkles className="w-5 h-5" />
               </div>
@@ -523,7 +706,6 @@ export function AiSummaryClient() {
               </div>
             </div>
 
-            {/* Standard circular hover X close button from EmailDetailPeek */}
             <button 
               onClick={() => setActiveSessionId(null)}
               className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
@@ -539,22 +721,18 @@ export function AiSummaryClient() {
             {activeSession.messages.map((msg) => (
               <div key={msg.id} className="flex flex-col gap-3">
                 {msg.sender === 'user' ? (
-                  /* User Prompt Stream */
                   <div className="flex items-start gap-2.5 justify-end">
                     <div className="bg-gray-100 text-gray-800 text-xs px-3.5 py-2.5 rounded-2xl rounded-tr-sm max-w-[85%] leading-relaxed">
                       {msg.content}
                     </div>
                   </div>
                 ) : (
-                  /* Zero Agent Stream */
                   <div className="flex items-start gap-3">
                     <div className="mt-1 flex-shrink-0">
                       <Sparkles className="w-4 h-4 text-blue-600" />
                     </div>
 
                     <div className="flex-1 space-y-4 min-w-0">
-                      
-                      {/* Thought Process (Clean vertical lines in accent blue, NO clunky box) */}
                       {msg.thoughts && msg.thoughts.length > 0 && (
                         <div className="border-l-2 border-blue-400 pl-3 py-1 space-y-2.5">
                           {msg.thoughts.map((th) => (
@@ -575,14 +753,12 @@ export function AiSummaryClient() {
                         </div>
                       )}
 
-                      {/* Final message text or delivery notice */}
                       {msg.content && (
                         <div className="text-xs text-gray-700 leading-relaxed font-sans">
                           {msg.content}
                         </div>
                       )}
 
-                      {/* Inline Suggested Reply */}
                       {msg.suggestedReply && (
                         <div className="space-y-2 mt-2 animate-in fade-in duration-200">
                           <div className="flex items-center justify-between text-xs text-gray-500">
@@ -614,7 +790,6 @@ export function AiSummaryClient() {
                             </div>
                           )}
 
-                          {/* Primary Blue Action Button */}
                           <div className="flex items-center justify-end pt-1">
                             <button
                               onClick={() => handleSendReply(activeSession)}
@@ -650,7 +825,7 @@ export function AiSummaryClient() {
 
           </div>
 
-          {/* Bottom Chat Prompt Input Bar (Cohesive with composer buttons and inputs) */}
+          {/* Bottom Chat Prompt Input Bar */}
           <div className="p-4 border-t border-gray-100 bg-white flex items-center gap-2 flex-shrink-0">
             <input 
               type="text"
