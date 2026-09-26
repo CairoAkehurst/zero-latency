@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, Sparkles, Check, Trash2, X, Send, Bot, User, Edit3, MessageSquare, EyeOff, MinusCircle } from "lucide-react";
+import { Loader2, Sparkles, Check, Trash2, X, Send, Bot, User, Edit3, MessageSquare, EyeOff, MinusCircle, RefreshCw } from "lucide-react";
 import { formatEmailDate } from "@/utils/formatDate";
 import { Avatar } from "@/components/Avatar";
 import { useAiToneStore } from "@/lib/client/store";
@@ -34,18 +34,19 @@ interface AgentSession {
 
 interface SmartAction {
   label: string;
-  reply: string;
+  replyIntent?: string;
+  reply?: string;
   style: 'primary' | 'secondary';
 }
 
-function computeSmartActions(email: any): SmartAction[] {
+function computeSmartActionsFallback(email: any): SmartAction[] {
   const text = `${email.subject || ''} ${email.snippet || ''} ${email.summary || ''}`.toLowerCase();
   const sender = `${email.sender_name || ''} ${email.sender_email || ''}`.toLowerCase();
   const actions: SmartAction[] = [];
 
   const firstName = email.sender_name ? email.sender_name.split(' ')[0] : 'there';
 
-  // 1. Detect Automated CI/CD, Deployment, Alert, or System Failure (Vercel, GitHub, Sentry, Netlify, Render, AWS, Datadog)
+  // 1. Detect Automated CI/CD, Deployment, Alert, or System Failure
   const isDeployOrAlert = 
     sender.includes('vercel') || 
     sender.includes('github') || 
@@ -57,8 +58,6 @@ function computeSmartActions(email: any): SmartAction[] {
     text.includes('failed production deployment') || 
     text.includes('deployment failed') || 
     text.includes('build failed') || 
-    text.includes('pipeline failed') ||
-    text.includes('workflow run failed') ||
     text.includes('alert:') ||
     text.includes('incident alert') ||
     text.includes('error rate');
@@ -66,24 +65,19 @@ function computeSmartActions(email: any): SmartAction[] {
   if (isDeployOrAlert) {
     actions.push({
       label: "Acknowledge alert",
-      reply: `Hi,\n\nAlert acknowledged. Investigating the deployment/system error now.\n\nBest regards,`,
+      replyIntent: "Acknowledge this system/deployment alert and confirm we are looking into it.",
       style: "primary"
     });
     actions.push({
-      label: "Mark investigated",
-      reply: `Hi,\n\nI have investigated this issue and taken the necessary corrective actions.\n\nBest regards,`,
+      label: "Investigate error",
+      replyIntent: "Confirm receipt and state that our engineering team is actively investigating the error.",
       style: "secondary"
     });
-    actions.push({
-      label: "Dismiss alert",
-      reply: ``,
-      style: "secondary"
-    });
-    return actions.slice(0, 3);
+    return actions;
   }
 
-  // 2. Detect Security alerts, 2FA, OTP, Password Resets, Verification Codes
-  const isSecurityOrOtp = 
+  // 2. Detect Security alerts, 2FA, OTP, Password Resets
+  const isSecurity = 
     text.includes('verification code') || 
     text.includes('password reset') || 
     text.includes('security code') || 
@@ -92,26 +86,21 @@ function computeSmartActions(email: any): SmartAction[] {
     text.includes('security alert') ||
     sender.includes('security');
 
-  if (isSecurityOrOtp) {
+  if (isSecurity) {
     actions.push({
-      label: "Confirm & Acknowledge",
-      reply: `Hi,\n\nConfirmed and reviewed this security activity. Thank you.\n\nBest regards,`,
+      label: "Confirm security",
+      replyIntent: "Confirm and acknowledge this security verification or login notice.",
       style: "primary"
     });
     actions.push({
       label: "Review activity",
-      reply: ``,
+      replyIntent: "Acknowledge security alert and state that account activity is being verified.",
       style: "secondary"
     });
-    actions.push({
-      label: "Dismiss",
-      reply: ``,
-      style: "secondary"
-    });
-    return actions.slice(0, 3);
+    return actions;
   }
 
-  // 3. Detect Invoices, Receipts, Subscriptions, Payments (Stripe, Billing, Accounting)
+  // 3. Detect Invoices, Receipts, Subscriptions, Payments
   const isBilling = 
     text.includes('invoice') || 
     text.includes('receipt') || 
@@ -125,25 +114,19 @@ function computeSmartActions(email: any): SmartAction[] {
 
   if (isBilling) {
     actions.push({
-      label: "Confirm payment received",
-      reply: `Hi ${firstName},\n\nConfirming receipt of this invoice/payment. Everything looks good on our records.\n\nBest regards,`,
+      label: "Confirm payment",
+      replyIntent: "Confirm receipt of payment/invoice and thank them for the prompt processing.",
       style: "primary"
     });
     actions.push({
-      label: "Forward to finance",
-      reply: `Hi ${firstName},\n\nReceived with thanks. I have forwarded this to our finance team for processing.\n\nBest regards,`,
+      label: "Forward finance",
+      replyIntent: "Thank them and state that this has been forwarded to finance for settlement.",
       style: "secondary"
     });
-    actions.push({
-      label: "Dismiss",
-      reply: ``,
-      style: "secondary"
-    });
-    return actions.slice(0, 3);
+    return actions;
   }
 
-  // 4. Detect Genuine Meeting / Scheduling / Rescheduling Invites
-  // CRITICAL: Must have explicit calendar/meeting context words, NOT just random timestamps in automated emails
+  // 4. Detect Meeting / Scheduling
   const isMeetingContext = 
     text.includes('meeting') || 
     text.includes('reschedule') || 
@@ -153,102 +136,85 @@ function computeSmartActions(email: any): SmartAction[] {
     text.includes('call') || 
     text.includes('catch up') || 
     text.includes('schedule a time') || 
-    text.includes('free to chat') || 
-    text.includes('availability') || 
-    text.includes('interview');
+    text.includes('availability');
 
   const timeMatches = text.match(/\b(1[0-2]|[1-9])(?::[0-5][0-9])?\s*(?:am|pm)\b/gi);
   const dayMatches = text.match(/\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday|tomorrow|today)\b/gi);
 
   if (isMeetingContext && (text.includes("reschedule") || text.includes("postpone"))) {
     actions.push({
-      label: "Propose new time",
-      reply: `Hi ${firstName},\n\nThanks for your note. Could we reschedule for later this week or early next week? Let me know what times work best for you.\n\nBest regards,`,
+      label: "Propose time",
+      replyIntent: "Thank them for the note and propose rescheduling for later this week or next week.",
       style: "primary"
     });
     actions.push({
       label: "Decline request",
-      reply: `Hi ${firstName},\n\nThank you for letting me know. Unfortunately, I won't be able to reschedule at this time.\n\nBest regards,`,
+      replyIntent: "Politely decline the reschedule request due to scheduling conflicts.",
       style: "secondary"
     });
-    return actions.slice(0, 3);
+    return actions;
   }
 
   if (isMeetingContext && timeMatches && timeMatches.length > 0) {
     const timeStr = timeMatches[0].toUpperCase();
-    const dayStr = dayMatches && dayMatches.length > 0 ? ` on ${dayMatches[0].charAt(0).toUpperCase() + dayMatches[0].slice(1).toLowerCase()}` : '';
+    const dayStr = dayMatches && dayMatches.length > 0 ? ` ${dayMatches[0].charAt(0).toUpperCase() + dayMatches[0].slice(1).toLowerCase()}` : '';
     
     actions.push({
-      label: `Accept ${timeStr}${dayStr}`,
-      reply: `Hi ${firstName},\n\n${timeStr}${dayStr} works great for me. I've marked it down on my calendar and look forward to speaking then.\n\nBest regards,`,
+      label: `Accept ${timeStr}`,
+      replyIntent: `Confirm and accept the invitation for ${timeStr}${dayStr}, confirming it is marked on the calendar.`,
       style: "primary"
     });
-
-    if (timeMatches.length > 1) {
-      const altTime = timeMatches[1].toUpperCase();
-      actions.push({
-        label: `Accept ${altTime}`,
-        reply: `Hi ${firstName},\n\n${altTime} works best for my schedule. Looking forward to our conversation.\n\nBest regards,`,
-        style: "primary"
-      });
-    }
-
     actions.push({
       label: "Decline meeting",
-      reply: `Hi ${firstName},\n\nThank you for the invitation, but unfortunately I have a scheduling conflict and cannot make this time.\n\nBest regards,`,
+      replyIntent: "Thank them warmly for the invitation, but politely decline due to an unavoidable schedule conflict.",
       style: "secondary"
     });
-    return actions.slice(0, 3);
+    return actions;
   }
 
-  // 5. Detect Project Proposals, Contracts, Offers
-  if (text.includes("proposal") || text.includes("contract") || text.includes("agreement") || text.includes("scope of work")) {
+  // 5. Detect Project Proposals & Contracts
+  if (text.includes("proposal") || text.includes("contract") || text.includes("agreement") || text.includes("scope")) {
     actions.push({
       label: "Accept proposal",
-      reply: `Hi ${firstName},\n\nThank you for sharing the proposal. Everything looks great to me—let's proceed with the project.\n\nBest regards,`,
+      replyIntent: "Express enthusiasm, approve the proposal/agreement, and state we are ready to proceed with next steps.",
       style: "primary"
     });
     actions.push({
       label: "Request revisions",
-      reply: `Hi ${firstName},\n\nThanks for sending this over. I reviewed the details and would like to suggest a few minor revisions before finalizing.\n\nBest regards,`,
+      replyIntent: "Thank them for sending the proposal, mention you reviewed it, and request a few minor adjustments.",
       style: "secondary"
     });
-    actions.push({
-      label: "Decline proposal",
-      reply: `Hi ${firstName},\n\nThank you for sending this over. After careful consideration, we will not be moving forward with this at this time.\n\nBest regards,`,
-      style: "secondary"
-    });
-    return actions.slice(0, 3);
+    return actions;
   }
 
-  // 6. Detect Questions or Inquiries
+  // 6. Inquiries / Questions
   if (text.includes("?") || text.includes("let me know") || text.includes("what do you think") || text.includes("can you")) {
     actions.push({
-      label: "Looks good, approved",
-      reply: `Hi ${firstName},\n\nI reviewed this and everything looks good on my end. Please feel free to proceed.\n\nBest regards,`,
+      label: "Confirm details",
+      replyIntent: "Answer affirmatively, address questions thoroughly, and confirm the details mentioned in their email.",
       style: "primary"
     });
     actions.push({
-      label: "Will follow up shortly",
-      reply: `Hi ${firstName},\n\nThanks for reaching out! I'm looking into this and will follow up with you shortly.\n\nBest regards,`,
+      label: "Follow up",
+      replyIntent: "Thank them for reaching out, state you are looking into the specifics, and promise a comprehensive follow-up shortly.",
       style: "secondary"
     });
-    return actions.slice(0, 3);
+    return actions;
   }
 
   // 7. General Updates / Default
   actions.push({
-    label: "Acknowledge & Thank",
-    reply: `Hi ${firstName},\n\nThanks for the update, much appreciated!\n\nBest regards,`,
+    label: "Acknowledge update",
+    replyIntent: "Acknowledge the update, express appreciation for sharing the information, and confirm everything is noted.",
     style: "primary"
   });
   actions.push({
     label: "Confirm received",
-    reply: `Hi ${firstName},\n\nConfirming receipt of this information. Will review and follow up if needed.\n\nBest regards,`,
+    replyIntent: "Confirm receipt of the email and indicate you will follow up if anything else is needed.",
     style: "secondary"
   });
 
-  return actions.slice(0, 3);
+  return actions;
 }
 
 interface AiSummaryClientProps {
@@ -274,6 +240,29 @@ export function AiSummaryClient({
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [userPromptInput, setUserPromptInput] = useState("");
 
+  const [customActionsMap, setCustomActionsMap] = useState<Record<string, { primary?: { label: string; replyIntent?: string }; secondary?: { label: string; replyIntent?: string } }>>({});
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  // Asynchronously request AI-generated 2-3 word custom action intents
+  const fetchCustomAiActions = async (emailList: any[]) => {
+    if (!emailList || emailList.length === 0) return;
+    try {
+      const res = await fetch("/api/ai/actions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ emails: emailList })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.actions) {
+          setCustomActionsMap(prev => ({ ...prev, ...data.actions }));
+        }
+      }
+    } catch (err) {
+      console.error("Failed to fetch custom AI actions:", err);
+    }
+  };
+
   const fetchEmails = async (token?: string) => {
     try {
       const url = token 
@@ -288,18 +277,27 @@ export function AiSummaryClient({
           setEmails(data.emails);
         }
         setNextPageToken(data.nextPageToken || null);
+        fetchCustomAiActions(data.emails);
       }
     } catch (e) {
       console.error(e);
     } finally {
       setLoading(false);
       setLoadingMore(false);
+      setIsSyncing(false);
     }
+  };
+
+  const handleSync = async () => {
+    setIsSyncing(true);
+    await fetchEmails();
   };
 
   useEffect(() => {
     if (initialEmails.length === 0) {
       fetchEmails();
+    } else {
+      fetchCustomAiActions(initialEmails);
     }
   }, []);
 
@@ -336,6 +334,22 @@ export function AiSummaryClient({
     }
   };
 
+  const { activeTone, professionalPrompt, casualPrompt, concisePrompt, customPrompt } = useAiToneStore();
+
+  const getEffectiveToneInstruction = () => {
+    switch (activeTone) {
+      case 'casual':
+        return `Style: Casual & Friendly.\n${casualPrompt}`;
+      case 'concise':
+        return `Style: Direct & Concise.\n${concisePrompt}`;
+      case 'custom':
+        return `Style: Custom Persona.\n${customPrompt}`;
+      case 'professional':
+      default:
+        return `Style: Professional & Business.\n${professionalPrompt}`;
+    }
+  };
+
   // Auto-reply directly in background when clicking smart action buttons
   const handleAutoReplyAction = async (email: any, action: SmartAction) => {
     const taskId = Math.random().toString();
@@ -347,13 +361,43 @@ export function AiSummaryClient({
     setEmails(prev => prev.filter(item => item.id !== email.id));
 
     try {
+      let replyBody = action.reply;
+
+      // If reply is not pre-crafted or needs fully fledged drafting:
+      if (!replyBody) {
+        const replyIntent = action.replyIntent || action.label;
+        const emailContext = `Original Email:\nFrom: ${email.sender_name || ''} <${email.sender_email || ''}>\nSubject: ${email.subject || ''}\nBody:\n${email.snippet || email.summary || ''}`;
+        
+        const draftRes = await fetch("/api/ai/write", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            instruction: `Draft a complete, fully fledged reply fulfilling this action: "${replyIntent}". Match the incoming email's length and tone. Follow user style guidelines.`,
+            tone: activeTone,
+            toneInstructions: getEffectiveToneInstruction(),
+            emailContext
+          })
+        });
+
+        if (draftRes.ok) {
+          const draftData = await draftRes.json();
+          if (draftData.text) {
+            replyBody = draftData.text.trim();
+          }
+        }
+      }
+
+      if (!replyBody) {
+        replyBody = `Hi ${email.sender_name ? email.sender_name.split(' ')[0] : 'there'},\n\nThank you for your email regarding "${email.subject || 'this matter'}". This has been noted and addressed.\n\nBest regards`;
+      }
+
       const res = await fetch("/api/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           toEmail: email.sender_email,
           subject: email.subject?.startsWith("Re:") ? email.subject : `Re: ${email.subject || ''}`,
-          body: action.reply,
+          body: replyBody,
           threadId: email.google_thread_id,
           messageId: email.message_id_header || email.google_message_id,
           references: email.references_header
@@ -373,23 +417,8 @@ export function AiSummaryClient({
         }, 4000);
       }
     } catch (err) {
+      console.error("Auto reply failed:", err);
       setBackgroundTasks(prev => prev.filter(t => t.id !== taskId));
-    }
-  };
-
-  const { activeTone, professionalPrompt, casualPrompt, concisePrompt, customPrompt } = useAiToneStore();
-
-  const getEffectiveToneInstruction = () => {
-    switch (activeTone) {
-      case 'casual':
-        return `Style: Casual & Friendly.\n${casualPrompt}`;
-      case 'concise':
-        return `Style: Direct & Concise.\n${concisePrompt}`;
-      case 'custom':
-        return `Style: Custom Persona.\n${customPrompt}`;
-      case 'professional':
-      default:
-        return `Style: Professional & Business.\n${professionalPrompt}`;
     }
   };
 
@@ -705,6 +734,15 @@ export function AiSummaryClient({
         <header className="h-[68px] px-6 flex items-center justify-between border-b border-gray-100 flex-shrink-0">
           <div className="flex items-center gap-4">
             <h1 className="text-xl font-semibold text-gray-900 leading-none">Priority Inbox</h1>
+
+            <button 
+              onClick={handleSync}
+              disabled={isSyncing}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-50 text-gray-700 text-xs font-medium hover:bg-gray-100 transition-colors disabled:opacity-50 whitespace-nowrap"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? "animate-spin" : ""}`} />
+              {isSyncing ? "Syncing..." : "Sync emails"}
+            </button>
           </div>
 
           {/* Top Corner Agent Working Indicator */}
@@ -728,7 +766,21 @@ export function AiSummaryClient({
             <>
               <div className={`w-full grid gap-5 ${activeSession ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3'}`}>
                 {emails.map((email) => {
-                  const smartActions = computeSmartActions(email);
+                  const fallbackActions = computeSmartActionsFallback(email);
+                  const custom = customActionsMap[email.id];
+                  
+                  const smartActions: SmartAction[] = [
+                    {
+                      label: custom?.primary?.label || fallbackActions[0]?.label || "Confirm and reply",
+                      replyIntent: custom?.primary?.replyIntent || custom?.primary?.label || fallbackActions[0]?.replyIntent,
+                      style: "primary"
+                    },
+                    {
+                      label: custom?.secondary?.label || fallbackActions[1]?.label || "Follow up later",
+                      replyIntent: custom?.secondary?.replyIntent || custom?.secondary?.label || fallbackActions[1]?.replyIntent,
+                      style: "secondary"
+                    }
+                  ];
 
                   return (
                     <div 
