@@ -408,7 +408,8 @@ export function AiSummaryClient({
             emailBody: email.snippet || email.summary || '',
             recipientEmail: email.sender_email,
             recipientName: email.sender_name || '',
-            replyText: replyBody
+            replyText: replyBody,
+            dedupeKey: email.google_thread_id || email.google_message_id || email.id,
           })
         });
         const calData = await calRes.json();
@@ -621,7 +622,8 @@ export function AiSummaryClient({
             emailBody: session.email.snippet || session.email.summary || '',
             recipientEmail: session.email.sender_email,
             recipientName: session.email.sender_name || '',
-            replyText: session.draftReply
+            replyText: session.draftReply,
+            dedupeKey: session.email.google_thread_id || session.email.google_message_id || session.email.id,
           })
         });
         const calData = await calRes.json();

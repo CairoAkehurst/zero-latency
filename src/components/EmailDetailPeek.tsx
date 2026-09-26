@@ -54,6 +54,15 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
   const [threadMessages, setThreadMessages] = useState<any[]>([]);
   const [isLoadingThread, setIsLoadingThread] = useState(false);
   const [expandedMessageIds, setExpandedMessageIds] = useState<Set<string>>(new Set());
+  const [detectedCalendarEvent, setDetectedCalendarEvent] = useState<{
+    created: boolean;
+    summary?: string;
+    fullTimeStr?: string;
+    meetLink?: string;
+    htmlLink?: string;
+    inviteCardHtml?: string;
+  } | null>(null);
+  const [isDetectingCalendar, setIsDetectingCalendar] = useState(false);
 
   useEffect(() => {
     fetch('/api/mail/labels')
@@ -113,6 +122,7 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
       setBccText("");
       setShowCcBcc(false);
       setShowFormatting(false);
+      setDetectedCalendarEvent(null);
 
       // Fetch full thread if google_thread_id is present
       const targetThreadId = email.google_thread_id;
@@ -120,7 +130,7 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
         setIsLoadingThread(true);
         fetch(`/api/mail/thread?threadId=${encodeURIComponent(targetThreadId)}`)
           .then(res => res.json())
-          .then(data => {
+          .then(async (data) => {
             if (data.messages && Array.isArray(data.messages)) {
               setThreadMessages(data.messages);
               // Expand the latest message by default
@@ -128,6 +138,34 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
                 const latest = data.messages[data.messages.length - 1];
                 setExpandedMessageIds(new Set([latest.id]));
               }
+
+              // Auto-detect calendar events in the background (non-blocking)
+              // Combine all message snippets/bodies for better context
+              const allText = data.messages
+                .map((m: any) => `From: ${m.sender_name || m.sender_email || 'Unknown'}\n${m.body_text || m.snippet || ''}`)
+                .join('\n\n---\n\n');
+
+              setIsDetectingCalendar(true);
+              fetch('/api/calendar/invite', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  emailSubject: email.subject || '',
+                  emailBody: allText,
+                  recipientEmail: email.sender_email || '',
+                  recipientName: email.sender_name || '',
+                  replyText: '', // No reply — detecting from incoming email
+                  dedupeKey: email.google_thread_id || email.google_message_id,
+                })
+              })
+                .then(r => r.json())
+                .then(calData => {
+                  if (calData.created && calData.inviteCardHtml) {
+                    setDetectedCalendarEvent(calData);
+                  }
+                })
+                .catch(() => {}) // Silently fail — calendar is best-effort
+                .finally(() => setIsDetectingCalendar(false));
             } else {
               setThreadMessages([]);
             }
@@ -141,6 +179,28 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
           });
       } else {
         setThreadMessages([]);
+        // Still try calendar detection for single emails
+        setIsDetectingCalendar(true);
+        fetch('/api/calendar/invite', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            emailSubject: email.subject || '',
+            emailBody: email.body_text || email.snippet || '',
+            recipientEmail: email.sender_email || '',
+            recipientName: email.sender_name || '',
+            replyText: '',
+            dedupeKey: email.google_thread_id || email.google_message_id,
+          })
+        })
+          .then(r => r.json())
+          .then(calData => {
+            if (calData.created && calData.inviteCardHtml) {
+              setDetectedCalendarEvent(calData);
+            }
+          })
+          .catch(() => {})
+          .finally(() => setIsDetectingCalendar(false));
       }
     }
   }, [email]);
@@ -223,10 +283,13 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             emailSubject: email.subject || '',
-            emailBody: email.body_text || email.snippet || '',
+            emailBody: threadMessages.length
+              ? threadMessages.map((message) => `From: ${message.sender_name || message.sender_email || 'Unknown'}\n${message.body_text || message.snippet || ''}`).join('\n\n---\n\n')
+              : email.body_text || email.snippet || '',
             recipientEmail: toText,
             recipientName: email.sender_name || '',
-            replyText: draftText
+            replyText: draftText,
+            dedupeKey: email.google_thread_id || email.google_message_id,
           })
         });
         const calData = await calRes.json();
@@ -433,6 +496,56 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
           <div className="w-full bg-white border border-blue-200 rounded-xl px-5 py-4">
             <div className="text-sm font-semibold text-blue-600 mb-1">AI Summary</div>
             <p className="text-sm text-gray-800 leading-relaxed">{email.summary}</p>
+          </div>
+        )}
+
+        {/* Calendar Detection Indicator */}
+        {isDetectingCalendar && !detectedCalendarEvent && (
+          <div className="flex items-center gap-2 text-xs text-gray-400">
+            <Loader2 className="w-3 h-3 animate-spin" />
+            <span>Checking for meeting details...</span>
+          </div>
+        )}
+
+        {/* Auto-Detected Google Calendar Invite Card */}
+        {detectedCalendarEvent?.created && detectedCalendarEvent.inviteCardHtml && (
+          <div className="w-full rounded-xl border border-emerald-200 bg-emerald-50 px-5 py-4">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-sm font-semibold text-emerald-700">📅 Calendar event auto-created</span>
+              <span className="text-xs bg-emerald-100 text-emerald-600 px-2 py-0.5 rounded-full font-medium">Google Calendar</span>
+            </div>
+            <div className="text-sm text-emerald-800 font-medium mb-1">{detectedCalendarEvent.summary}</div>
+            {detectedCalendarEvent.fullTimeStr && (
+              <div className="text-xs text-emerald-600 mb-3">{detectedCalendarEvent.fullTimeStr}</div>
+            )}
+            <div className="flex items-center gap-2">
+              {detectedCalendarEvent.htmlLink && (
+                <a
+                  href={detectedCalendarEvent.htmlLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg transition-colors"
+                >
+                  View on Calendar
+                </a>
+              )}
+              {detectedCalendarEvent.meetLink && (
+                <a
+                  href={detectedCalendarEvent.meetLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-emerald-200 text-emerald-700 text-xs font-semibold rounded-lg hover:bg-emerald-50 transition-colors"
+                >
+                  Join Google Meet
+                </a>
+              )}
+              <button
+                onClick={() => setDetectedCalendarEvent(null)}
+                className="ml-auto text-xs text-emerald-500 hover:text-emerald-700"
+              >
+                Dismiss
+              </button>
+            </div>
           </div>
         )}
 

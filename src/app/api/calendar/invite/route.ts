@@ -1,6 +1,23 @@
 import { NextResponse } from 'next/server';
 import { getCalendarClient } from '@/lib/server/gmail';
 import OpenAI from 'openai';
+import { createHash } from 'node:crypto';
+
+const escapeHtml = (value: string) => value.replace(/[&<>"']/g, (char) => ({
+  '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+}[char]!));
+
+function googleEventId(value: string) {
+  const bytes = createHash('sha256').update(value).digest();
+  const alphabet = '0123456789abcdefghijklmnopqrstuv';
+  let bits = '';
+  for (const byte of bytes) bits += byte.toString(2).padStart(8, '0');
+  let encoded = '';
+  for (let i = 0; i < bits.length; i += 5) {
+    encoded += alphabet[parseInt(bits.slice(i, i + 5).padEnd(5, '0'), 2)];
+  }
+  return encoded;
+}
 
 export async function POST(request: Request) {
   try {
@@ -9,7 +26,8 @@ export async function POST(request: Request) {
       emailBody, 
       recipientEmail, 
       recipientName, 
-      replyText 
+      replyText,
+      dedupeKey,
     } = await request.json();
 
     if (!recipientEmail) {
@@ -21,22 +39,23 @@ export async function POST(request: Request) {
     const isoNow = now.toISOString();
 
     const systemPrompt = `You are an intelligent calendar assistant for Zero Latency.
-Analyze the email conversation and reply to detect if a meeting, call, appointment, or calendar event is being scheduled, accepted, or confirmed.
+Analyze the email to detect if a meeting, call, appointment, or calendar event is being scheduled, accepted, confirmed, or agreed upon.
 Current date/time (ISO): ${isoNow}.
 
-If a meeting is required or agreed upon:
-Extract:
-1. "shouldCreateInvite": true (set to true ONLY if a specific meeting/call is being scheduled, proposed, or agreed upon; set to false if it's declining, or purely informational).
-2. "summary": Concise title of the calendar event (e.g. "Catch-up: Cairo & Sarah", "Project Sync", "Intro Call").
-3. "description": Brief context or agenda from the email.
-4. "startTime": ISO 8601 string for start of event (resolve relative times like "tomorrow at 4pm", "Friday at 10am" using current ISO: ${isoNow}).
-5. "endTime": ISO 8601 string for end of event (default to 30 or 60 minutes after startTime if duration isn't specified).
-6. "location": Physical location or "Google Meet" / virtual link if mentioned.
+Trigger shouldCreateInvite=true only when a participant clearly agrees to a meeting time. Examples: "Friday at 2pm works", "confirmed", "see you then", or a reply that accepts a proposed time.
+An unaccepted proposal, a question about availability, or a tentative suggestion is NOT agreement and must not create an event. Use the reply being sent to detect the user's acceptance; use the email/thread content to detect the other participant's acceptance.
 
-If no meeting needs to be scheduled on calendar, return:
-{
-  "shouldCreateInvite": false
-}`;
+Do NOT trigger if: declining, cancelling, or no specific time is mentioned.
+
+Extract:
+1. "shouldCreateInvite": true/false
+2. "summary": Concise event title (e.g. "Catch-up: Cairo & Sarah", "Project Sync")
+3. "description": Brief agenda from the email
+4. "startTime": ISO 8601 (resolve relative times like "tomorrow 4pm", "Friday 10am" using current ISO: ${isoNow})
+5. "endTime": ISO 8601 (default 30-60 min after start if not specified)
+6. "location": location or "Google Meet" if virtual
+
+If no meeting: { "shouldCreateInvite": false }`;
 
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
@@ -100,12 +119,22 @@ ${replyText || ''}`
       },
     };
 
-    const res = await calendar.events.insert({
-      calendarId: 'primary',
-      requestBody: event,
-      sendUpdates: 'all', // Auto-sends Google Calendar email invite to attendees!
-      conferenceDataVersion: 1,
-    });
+    // Google event IDs make thread-level retries safe when an email is reopened or
+    // the send flow retries after the calendar insert succeeded.
+    const eventId = googleEventId(`${dedupeKey || `${emailSubject || ''}:${emailBody || ''}:${replyText || ''}`}|${startDt.toISOString()}|${recipientEmail.toLowerCase()}`);
+    let res;
+    try {
+      res = await calendar.events.insert({
+        calendarId: 'primary',
+        requestBody: { ...event, id: eventId },
+        sendUpdates: 'all',
+        conferenceDataVersion: 1,
+      });
+    } catch (insertError: any) {
+      if (insertError?.code !== 409) throw insertError;
+      const existing = await calendar.events.get({ calendarId: 'primary', eventId });
+      res = { data: existing.data };
+    }
 
     const meetLink = res.data.conferenceData?.entryPoints?.find((e: any) => e.entryPointType === 'video')?.uri || res.data.htmlLink || '';
 
@@ -133,7 +162,7 @@ ${replyText || ''}`
     <span style="font-size: 16px; font-weight: 600; letter-spacing: -0.01em;">📅 Google Calendar Invitation</span>
   </div>
   <div style="padding: 18px 20px; color: #374151;">
-    <h3 style="margin: 0 0 8px 0; font-size: 17px; font-weight: 700; color: #111827;">${event.summary}</h3>
+    <h3 style="margin: 0 0 8px 0; font-size: 17px; font-weight: 700; color: #111827;">${escapeHtml(event.summary)}</h3>
     <div style="font-size: 14px; color: #4b5563; margin-bottom: 6px;">
       <strong>When:</strong> ${fullTimeStr}
     </div>
