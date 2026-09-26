@@ -970,7 +970,7 @@ export function AiSummaryClient({
                             className="flex-1 min-w-0 px-3 py-2 bg-gray-100 hover:bg-gray-200 text-blue-600 text-xs font-medium rounded-lg transition-colors flex items-center justify-center gap-1.5 truncate"
                           >
                             <Sparkles className="w-3.5 h-3.5 text-blue-600 flex-shrink-0" />
-                            <span className="truncate">Reply with AI</span>
+                            <span className="truncate">Reply</span>
                           </button>
                         </div>
                       </div>
