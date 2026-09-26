@@ -14,8 +14,8 @@ export function AutoLabelDialog({ onClose, onSuccess }: AutoLabelDialogProps) {
   const [isBusy, setIsBusy] = useState(false);
 
   const handleCreate = async () => {
-    if (!name.trim() || !description.trim()) {
-      alert("Please provide both a name and description.");
+    if (!name.trim()) {
+      alert("Please enter a label name.");
       return;
     }
     
@@ -70,7 +70,10 @@ export function AutoLabelDialog({ onClose, onSuccess }: AutoLabelDialogProps) {
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">When to apply</label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-sm font-medium text-gray-700">When to apply (optional)</label>
+              <span className="text-xs text-gray-400 font-normal">Auto-apply rule</span>
+            </div>
             <textarea 
               value={description}
               onChange={e => setDescription(e.target.value)}
@@ -97,7 +100,7 @@ export function AutoLabelDialog({ onClose, onSuccess }: AutoLabelDialogProps) {
             className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium rounded-lg shadow-sm transition-colors flex items-center gap-2 disabled:opacity-50"
           >
             {isBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Tag className="w-4 h-4" />}
-            {isBusy ? "Applying..." : "Create rule"}
+            {isBusy ? "Saving..." : description.trim() ? "Create & auto-label" : "Create label"}
           </button>
         </div>
 

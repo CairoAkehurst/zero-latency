@@ -17,37 +17,38 @@ export async function POST() {
   try {
     const { gmail } = await getGmailClient();
 
-    // 1. Fetch recent messages from Gmail
+    // 1. Fetch user custom labels that actually exist in Gmail
+    const labelsRes = await gmail.users.labels.list({ userId: 'me' });
+    const rawLabels = labelsRes.data.labels || [];
+    const userLabels = rawLabels.filter((l: any) => 
+      l.type === 'user' && 
+      !['CATEGORY_PROMOTIONS', 'CATEGORY_UPDATES', 'CATEGORY_SOCIAL', 'CATEGORY_FORUMS'].includes(l.name)
+    );
+
+    // If no custom labels exist, we don't apply any arbitrary labels!
+    if (userLabels.length === 0) {
+      return NextResponse.json({ 
+        message: 'No custom labels exist in your sidebar or Gmail. Create a label first to auto-label emails.', 
+        count: 0,
+        processedCount: 0 
+      });
+    }
+
+    // 2. Fetch recent inbox messages from Gmail
     const response = await gmail.users.messages.list({
       userId: 'me',
-      maxResults: 20,
+      maxResults: 25,
       q: 'in:inbox'
     });
 
     const messagesList = response.data.messages || [];
     if (messagesList.length === 0) {
-      return NextResponse.json({ message: 'No emails to process', count: 0 });
+      return NextResponse.json({ message: 'No emails in inbox', count: 0, processedCount: 0 });
     }
 
-    // 2. Fetch those that have already been processed
-    const messageIds = messagesList.map(m => m.id!).filter(Boolean);
-    const { data: existingMeta } = await supabase
-      .from('email_ai_metadata')
-      .select('google_message_id')
-      .in('google_message_id', messageIds)
-      .eq('user_id', user.id)
-      .not('category_id', 'is', null);
-
-    const processedIds = existingMeta?.map(m => m.google_message_id) || [];
-    const unprocessedList = messagesList.filter(m => !processedIds.includes(m.id!)).slice(0, 10); // cap at 10
-
-    if (unprocessedList.length === 0) {
-      return NextResponse.json({ message: 'No emails to process', count: 0 });
-    }
-
-    // 3. Fetch details for unprocessed emails
-    const unprocessedEmails = await Promise.all(
-      unprocessedList.map(async (msg) => {
+    // 3. Fetch details for messages
+    const emailDetails = await Promise.all(
+      messagesList.slice(0, 20).map(async (msg) => {
         try {
           const detail = await gmail.users.messages.get({
             userId: 'me',
@@ -58,96 +59,118 @@ export async function POST() {
           return {
             id: msg.id!,
             google_message_id: msg.id!,
+            labelIds: detail.data.labelIds || [],
             snippet: detail.data.snippet,
             ...parsed
           };
         } catch(e) { return null; }
       })
     );
-    const validUnprocessed = unprocessedEmails.filter(Boolean) as any[];
+    const validEmails = emailDetails.filter(Boolean) as any[];
 
-    if (validUnprocessed.length === 0) {
-      return NextResponse.json({ message: 'No valid unprocessed emails', count: 0 });
+    if (validEmails.length === 0) {
+      return NextResponse.json({ message: 'No valid emails to process', count: 0, processedCount: 0 });
     }
 
-    // 4. Fetch available categories dynamically
-    const { data: dbCategories } = await supabase.from('categories').select('id, name');
-    const availableCategories = dbCategories || [];
-    const categoryNames = availableCategories.map(c => c.name);
-    const categoryPromptOptions = categoryNames.length > 0 
-      ? categoryNames.map(name => `"${name}"`).join(" | ") 
-      : '"General"';
+    // 4. Prompt OpenAI with ONLY the labels that exist in the user's sidebar/Gmail
+    const labelOptions = userLabels.map(l => l.name || '').filter(Boolean);
 
-    let processedCount = 0;
-    const errors: string[] = [];
+    const prompt = `You are an email categorization assistant.
+You can ONLY choose from these exact labels that exist in the user's account:
+${labelOptions.map(name => `- "${name}"`).join('\n')}
 
-    const promises = validUnprocessed.map(async (email) => {
-      try {
-        const prompt = `
-        Analyze the following email.
-        Sender: ${email.senderName} <${email.senderEmail}>
-        Subject: ${email.subject}
-        Snippet: ${email.snippet}
+IMPORTANT RULE:
+If an email does NOT clearly fall into one of these specific categories, set "label" to null.
+Do NOT invent or use any other labels (do NOT use "Urgent", "Sales leads", "Project updates", etc. unless they are explicitly in the list above).
 
-        Please provide a JSON response with the following structure:
-        {
-          "category": ${categoryPromptOptions},
-          "tldr": "A 1-sentence summary of the email",
-          "action_required": boolean,
-          "suggested_reply": "A short suggested reply if applicable, otherwise null",
-          "action_type": "calendar" | "reply" | null
-        }
-        `;
+Emails to classify:
+${validEmails.map(e => `[ID: ${e.id}] From: ${e.sender_name || e.sender_email} | Subj: ${e.subject} | Snippet: ${e.snippet}`).join('\n')}
 
-        const completion = await openai.chat.completions.create({
-          model: "gpt-4o-mini",
-          messages: [
-            { role: "system", content: "You are an AI assistant that categorizes and summarizes emails into JSON." },
-            { role: "user", content: prompt }
-          ],
-          response_format: { type: "json_object" },
-        });
+Respond with a JSON object with a single key "classifications" containing an array of objects:
+{
+  "classifications": [
+    {
+      "id": "email_id",
+      "label": "One of the listed label names exactly, or null",
+      "tldr": "One sentence summary of the email"
+    }
+  ]
+}`;
 
-        const responseText = completion.choices[0].message.content;
-        if (!responseText) return;
-        
-        const aiResult = JSON.parse(responseText);
-
-        const matchedCategory = availableCategories.find(c => 
-          c.name.toLowerCase() === aiResult.category?.toLowerCase()
-        );
-
-        const payload = {
-          user_id: user.id,
-          google_message_id: email.id,
-          category_id: matchedCategory?.id || null,
-          tldr: aiResult.tldr,
-          action_required: aiResult.action_required,
-          suggested_reply: aiResult.suggested_reply,
-          action_payload: aiResult.action_type ? { type: aiResult.action_type } : null,
-          processed_at: new Date().toISOString()
-        };
-
-        const { error: upsertError } = await supabase
-          .from('email_ai_metadata')
-          .upsert(payload, { onConflict: 'user_id, google_message_id' });
-          
-        if (upsertError) errors.push(`Upsert err on ${email.id}: ${upsertError.message}`);
-
-        processedCount++;
-      } catch (error: any) {
-        errors.push(`Process err on ${email.id}: ${error?.message || String(error)}`);
-      }
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: "You categorize emails using ONLY the allowed labels provided, returning strict JSON." },
+        { role: "user", content: prompt }
+      ],
+      response_format: { type: "json_object" },
     });
 
-    await Promise.all(promises);
-
-    if (errors.length > 0) {
-      return NextResponse.json({ success: processedCount > 0, processedCount, error: errors.join(" | ") }, { status: 400 });
+    const responseText = completion.choices[0]?.message?.content;
+    let classifications: Array<{ id: string; label: string | null; tldr?: string }> = [];
+    if (responseText) {
+      try {
+        const parsed = JSON.parse(responseText);
+        classifications = parsed.classifications || parsed.emails || [];
+      } catch (err) {
+        console.error('Failed to parse OpenAI classification JSON:', err);
+      }
     }
 
-    return NextResponse.json({ success: true, processedCount });
+    // 5. Apply labels natively in Gmail API and store TLDR summaries
+    let appliedCount = 0;
+    const labelNameToIdMap = new Map(userLabels.filter(l => l.name && l.id).map(l => [l.name!.toLowerCase(), l.id!]));
+
+    await Promise.all(
+      classifications.map(async (c) => {
+        if (!c.id) return;
+
+        // Apply label in Gmail if it matches an existing label
+        if (c.label && typeof c.label === 'string') {
+          const matchedLabelId = labelNameToIdMap.get(c.label.trim().toLowerCase());
+          if (matchedLabelId) {
+            try {
+              await gmail.users.messages.batchModify({
+                userId: 'me',
+                requestBody: {
+                  ids: [c.id],
+                  addLabelIds: [matchedLabelId]
+                }
+              });
+              appliedCount++;
+            } catch (modifyErr) {
+              console.error(`Failed to add label to message ${c.id} in Gmail:`, modifyErr);
+            }
+          }
+        }
+
+        // Store summary in Supabase
+        if (c.tldr) {
+          try {
+            await supabase
+              .from('email_ai_metadata')
+              .upsert({
+                user_id: user.id,
+                google_message_id: c.id,
+                tldr: c.tldr,
+                processed_at: new Date().toISOString()
+              }, { onConflict: 'user_id, google_message_id' });
+          } catch (metaErr) {
+            console.error('Failed to save email TLDR metadata:', metaErr);
+          }
+        }
+      })
+    );
+
+    return NextResponse.json({ 
+      success: true, 
+      processedCount: appliedCount,
+      totalClassified: classifications.length,
+      availableLabels: labelOptions
+    });
+
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error('AI Auto-labeling error:', error);
+    return NextResponse.json({ error: error.message || 'Auto-labeling failed' }, { status: 500 });
   }
 }
