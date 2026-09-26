@@ -62,3 +62,31 @@ export const useAccountDataStore = create<AccountDataState>()(
     { name: 'zl-account-data' }
   )
 );
+
+export type AiToneType = 'professional' | 'casual' | 'concise' | 'custom';
+
+export interface AiToneSettings {
+  activeTone: AiToneType;
+  professionalPrompt: string;
+  casualPrompt: string;
+  concisePrompt: string;
+  customPrompt: string;
+  setActiveTone: (tone: AiToneType) => void;
+  updatePrompts: (prompts: Partial<Omit<AiToneSettings, 'activeTone' | 'setActiveTone' | 'updatePrompts'>>) => void;
+}
+
+export const useAiToneStore = create<AiToneSettings>()(
+  persist(
+    (set) => ({
+      activeTone: 'professional',
+      professionalPrompt: "Write in a professional, courteous, and structured tone. Use proper business etiquette, clear sentences, and clear next steps.",
+      casualPrompt: "Write in a warm, approachable, and conversational tone. Keep it friendly and natural like a peer or teammate.",
+      concisePrompt: "Be direct, brief, and straight to the point. No fluff or filler, just the essential answer or confirmation in 1-3 sentences.",
+      customPrompt: "Match the user's communication style. Be helpful, clear, and proactive in suggesting next steps.",
+      setActiveTone: (activeTone) => set({ activeTone }),
+      updatePrompts: (prompts) => set((state) => ({ ...state, ...prompts })),
+    }),
+    { name: 'zl-ai-tone-settings' }
+  )
+);
+

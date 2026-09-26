@@ -38,6 +38,12 @@ export function InboxClient({ initialEmails, initialNextPageToken }: { initialEm
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
+  // In-memory cache for fast category switching
+  const categoryCache = useRef<Map<string, { emails: any[]; nextPageToken: string | null }>>(
+    new Map([['in:inbox', { emails: initialEmails, nextPageToken: initialNextPageToken }]])
+  );
+  const isInitialMount = useRef(true);
+
   // Fetch when search or category changes
   useEffect(() => {
     let q = 'in:inbox';
@@ -56,29 +62,39 @@ export function InboxClient({ initialEmails, initialNextPageToken }: { initialEm
       q += ` ${debouncedQuery.trim()}`;
     }
     
+    // Check if we have cached results for instant display
+    const cached = categoryCache.current.get(q);
+    if (cached && !isInitialMount.current) {
+      setEmails(cached.emails);
+      setNextPageToken(cached.nextPageToken);
+    }
+
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      if (debouncedQuery === "" && !activeCategory) {
+        return;
+      }
+    }
+
     let isMounted = true;
     const fetchFiltered = async () => {
       setIsSyncing(true);
       try {
         const res = await fetch(`/api/mail/threads?q=${encodeURIComponent(q)}`);
         const data = await res.json();
-        if (isMounted && res.ok) {
-          setEmails(data.emails || []);
+        if (isMounted && res.ok && data.emails) {
+          setEmails(data.emails);
           setNextPageToken(data.nextPageToken || null);
+          categoryCache.current.set(q, { emails: data.emails, nextPageToken: data.nextPageToken || null });
         }
       } catch (err) {
-        console.error(err);
+        console.error("Failed to fetch filtered emails:", err);
       } finally {
         if (isMounted) setIsSyncing(false);
       }
     };
     
-    // Don't fetch on initial mount if we already have initialEmails and no query
-    if (debouncedQuery === "" && !activeCategory && emails === initialEmails) {
-      // do nothing
-    } else {
-      fetchFiltered();
-    }
+    fetchFiltered();
     
     return () => { isMounted = false; };
   }, [debouncedQuery, activeCategory, refreshKey]);
@@ -392,7 +408,16 @@ export function InboxClient({ initialEmails, initialNextPageToken }: { initialEm
 
           <div className="flex-1 overflow-y-auto pb-8" onScroll={handleScroll}>
             {filteredEmails.length === 0 ? (
-              <div className="p-8 text-center text-gray-500 text-sm">No emails found. Try syncing or adjusting your search.</div>
+              <div className="p-12 text-center text-gray-500 text-sm flex flex-col items-center justify-center gap-3">
+                {isSyncing ? (
+                  <>
+                    <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
+                    <span>Loading emails...</span>
+                  </>
+                ) : (
+                  <span>No emails found. Try syncing or adjusting your search.</span>
+                )}
+              </div>
             ) : (
               filteredEmails.map((email) => (
                 <div 

@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import { Icon } from './icons';
 import { Popover } from './ui';
 
-import { useSettingsStore, useAccountDataStore } from '@/lib/client/store';
+import { useSettingsStore, useAccountDataStore, useAiToneStore, AiToneType } from '@/lib/client/store';
 
 
 const SECTIONS = [
@@ -58,6 +58,7 @@ export function SettingsModal({ section, setSection, onClose }: { section: strin
   const { theme, setTheme, threadStyle, setThreadStyle, autoAdvance, setAutoAdvance, fontSize, setFontSize } = useSettingsStore();
   const { snippets, filters, signatureEnabled, signatureText, updateAccount } = useAccountDataStore();
   const [editingSnippet, setEditingSnippet] = useState<any>(null);
+  const { activeTone, professionalPrompt, casualPrompt, concisePrompt, customPrompt, setActiveTone, updatePrompts } = useAiToneStore();
   
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { 
@@ -198,7 +199,91 @@ export function SettingsModal({ section, setSection, onClose }: { section: strin
                 )}
               </>
             )}
-                {current.id !== 'inbox' && current.id !== 'account' && current.id !== 'snippets' && current.id !== 'shortcuts' && current.id !== 'filters' && current.id !== 'signature' && (<p className="zl-field-hint">These settings will be configurable in a future update.</p>)}
+                {current.id === 'ai' && (
+              <>
+                <Row 
+                  title="Default AI Tone" 
+                  desc="Select how Zero AI assistant writes emails and generates suggested replies."
+                >
+                  <Choice 
+                    label="Default AI Tone" 
+                    value={activeTone} 
+                    onChange={setActiveTone} 
+                    options={[
+                      { value: 'professional', label: 'Professional & Business' },
+                      { value: 'casual', label: 'Casual & Friendly' },
+                      { value: 'concise', label: 'Direct & Concise' },
+                      { value: 'custom', label: 'Custom Persona' }
+                    ]} 
+                  />
+                </Row>
+
+                <div className="zl-form-grid mt-4">
+                  <div className="zl-field">
+                    <label className="zl-field-label">
+                      Professional & Business Scenarios
+                    </label>
+                    <p className="zl-field-hint mb-1.5 text-xs text-gray-500">
+                      Applied for client communications, contracts, executive notes, and external partners.
+                    </p>
+                    <textarea 
+                      value={professionalPrompt} 
+                      onChange={e => updatePrompts({ professionalPrompt: e.target.value })} 
+                      className="zl-input zl-textarea" 
+                      rows={3} 
+                    />
+                  </div>
+
+                  <div className="zl-field mt-3">
+                    <label className="zl-field-label">
+                      Casual & Friendly Scenarios
+                    </label>
+                    <p className="zl-field-hint mb-1.5 text-xs text-gray-500">
+                      Applied for internal team chats, coffee invites, peers, and informal catch-ups.
+                    </p>
+                    <textarea 
+                      value={casualPrompt} 
+                      onChange={e => updatePrompts({ casualPrompt: e.target.value })} 
+                      className="zl-input zl-textarea" 
+                      rows={3} 
+                    />
+                  </div>
+
+                  <div className="zl-field mt-3">
+                    <label className="zl-field-label">
+                      Direct & Concise Responses
+                    </label>
+                    <p className="zl-field-hint mb-1.5 text-xs text-gray-500">
+                      Applied for quick confirmations, acceptances, and brief status updates.
+                    </p>
+                    <textarea 
+                      value={concisePrompt} 
+                      onChange={e => updatePrompts({ concisePrompt: e.target.value })} 
+                      className="zl-input zl-textarea" 
+                      rows={2} 
+                    />
+                  </div>
+
+                  <div className="zl-field mt-3">
+                    <label className="zl-field-label">
+                      Custom Instructions & Persona Notes
+                    </label>
+                    <p className="zl-field-hint mb-1.5 text-xs text-gray-500">
+                      Add any custom background info about you, your role, or specific rules for the AI.
+                    </p>
+                    <textarea 
+                      value={customPrompt} 
+                      onChange={e => updatePrompts({ customPrompt: e.target.value })} 
+                      className="zl-input zl-textarea" 
+                      rows={3} 
+                      placeholder="e.g. Always sign off with 'Best, [Your Name]'. Mention that I'm based in Auckland."
+                    />
+                  </div>
+                </div>
+              </>
+            )}
+
+            {current.id !== 'inbox' && current.id !== 'ai' && current.id !== 'account' && current.id !== 'snippets' && current.id !== 'shortcuts' && current.id !== 'filters' && current.id !== 'signature' && (<p className="zl-field-hint">These settings will be configurable in a future update.</p>)}
           </div>
         </div>
       </div>
