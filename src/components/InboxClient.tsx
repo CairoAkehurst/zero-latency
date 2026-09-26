@@ -347,7 +347,7 @@ export function InboxClient({ initialEmails, initialNextPageToken }: { initialEm
 
       {isSettingsOpen && (
         <SettingsModal 
-          initialSection={settingsSection} 
+          section={settingsSection} setSection={setSettingsSection} 
           onClose={() => setIsSettingsOpen(false)} 
         />
       )}
