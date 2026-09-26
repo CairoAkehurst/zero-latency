@@ -165,7 +165,7 @@ export function Sidebar() {
               pathname === '/ai-summary' ? "bg-purple-50" : ""
             )}
           >
-            <Sparkles className="w-4 h-4 text-purple-600" />
+            <Sparkles className="w-4 h-4 text-blue-600" />
             <span>Priority</span>
           </Link>
           

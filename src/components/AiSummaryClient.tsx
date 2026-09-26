@@ -105,7 +105,6 @@ export function AiSummaryClient() {
   };
 
   const handleApproveReply = (email: any) => {
-    // If session already exists for this email, switch to it
     const existing = sessions.find(s => s.id === email.id);
     if (existing) {
       setActiveSessionId(email.id);
@@ -156,7 +155,7 @@ export function AiSummaryClient() {
     setSessions(prev => [...prev, newSession]);
     setActiveSessionId(email.id);
 
-    // Simulate animated Gemini-style reasoning timeline
+    // Simulate animated reasoning timeline with blue indicators
     setTimeout(() => {
       setSessions(prev => prev.map(s => {
         if (s.id !== email.id) return s;
@@ -361,12 +360,16 @@ export function AiSummaryClient() {
         className="flex flex-col h-full flex-shrink-0 transition-all duration-300 ease-in-out min-w-0 overflow-hidden"
         style={{ width: activeSession ? 'calc(100% - 460px)' : '100%' }}
       >
-        {/* Header Toolbar matching Email Detail View / Inbox headers */}
+        {/* Header Toolbar matching Info Pane height exactly: h-[68px] */}
         <header className="h-[68px] px-6 flex items-center justify-between border-b border-gray-100 flex-shrink-0">
           <div className="flex items-center gap-3">
-            <Sparkles className="w-5 h-5 text-purple-600" />
-            <h1 className="text-[18px] font-semibold text-gray-900 tracking-tight">Priority Inbox</h1>
-            <span className="text-sm text-gray-400 font-normal">Top summaries & suggested actions</span>
+            <div className="p-2 bg-blue-50 text-blue-600 rounded-lg flex-shrink-0">
+              <Sparkles className="w-5 h-5" />
+            </div>
+            <div className="flex flex-col">
+              <h1 className="text-[17px] font-semibold text-gray-900 tracking-tight">Priority Inbox</h1>
+              <span className="text-xs text-gray-400 font-normal">Top summaries & suggested actions</span>
+            </div>
           </div>
         </header>
 
@@ -386,7 +389,7 @@ export function AiSummaryClient() {
                   {/* Top card row: Sender & Actions */}
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex items-center gap-3 overflow-hidden flex-1 min-w-0 pr-2">
-                      <div className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 font-medium flex-shrink-0 text-sm uppercase">
+                      <div className="w-9 h-9 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 font-medium flex-shrink-0 text-sm uppercase">
                         {email.sender_name?.charAt(0) || email.sender_email?.charAt(0) || "?"}
                       </div>
                       <div className="min-w-0 flex-1">
@@ -401,7 +404,7 @@ export function AiSummaryClient() {
 
                     <div className="flex items-center gap-1 flex-shrink-0">
                       <span className="text-xs text-gray-400 mr-1.5">{formatEmailDate(email.timestamp)}</span>
-                      {/* Archive Button (Directly archives, no popups) */}
+                      {/* Archive Button */}
                       <button 
                         onClick={(e) => handleArchive(email, e)}
                         disabled={actionInProgressId === email.id}
@@ -410,7 +413,7 @@ export function AiSummaryClient() {
                       >
                         <Archive className="w-4 h-4" />
                       </button>
-                      {/* Delete Button (Directly moves to trash, no popups) */}
+                      {/* Delete Button */}
                       <button 
                         onClick={(e) => handleDelete(email, e)}
                         disabled={actionInProgressId === email.id}
@@ -428,7 +431,7 @@ export function AiSummaryClient() {
                     {email.summary || email.snippet}
                   </div>
 
-                  {/* Card Bottom / Reply Actions (Clean blue and neutral styling) */}
+                  {/* Card Bottom / Reply Actions */}
                   {email.suggestedReply || email.hasAiMetadata ? (
                     <div className="pt-3 border-t border-gray-100 flex items-center gap-2 mt-auto">
                       <button 
@@ -463,12 +466,12 @@ export function AiSummaryClient() {
         </div>
       </div>
 
-      {/* Right Sidebar: EXACT same design as EmailDetailPeek (flex-1 rounded-tl-2xl border-l border-gray-200) */}
+      {/* Right Sidebar: EXACT same design, header height (h-[68px]), and rounded corners as EmailDetailPeek */}
       {activeSession && (
         <div className="flex flex-col h-full bg-white z-10 relative overflow-hidden transition-all duration-300 ease-in-out flex-1 rounded-tl-2xl border-l border-gray-200 min-w-[420px] max-w-[500px]">
           
           {/* Multi-Chat Pill Tabs Header */}
-          <div className="px-5 pt-3 pb-2.5 flex items-center gap-1.5 overflow-x-auto no-scrollbar border-b border-gray-100 bg-white">
+          <div className="px-5 pt-3 pb-2 flex items-center gap-1.5 overflow-x-auto no-scrollbar border-b border-gray-100 bg-white">
             {sessions.map((sess) => {
               const isActive = sess.id === activeSessionId;
               const sender = sess.email.sender_name?.split(' ')[0] || sess.email.sender_email?.split('@')[0] || 'Email';
@@ -482,7 +485,7 @@ export function AiSummaryClient() {
                       : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900'
                   }`}
                 >
-                  <Sparkles className={`w-3 h-3 ${isActive ? 'text-white' : 'text-purple-500'}`} />
+                  <Sparkles className={`w-3 h-3 ${isActive ? 'text-white' : 'text-blue-600'}`} />
                   <span className="truncate max-w-[110px]">{sender}</span>
                   {sess.status === 'working' || sess.status === 'sending' ? (
                     <Loader2 className={`w-3 h-3 animate-spin ${isActive ? 'text-white' : 'text-blue-600'}`} />
@@ -498,11 +501,11 @@ export function AiSummaryClient() {
             })}
           </div>
 
-          {/* Header Toolbar matching EmailDetailPeek (h-[68px], exact icon, close button) */}
+          {/* Header Toolbar matching EmailDetailPeek (EXACTLY h-[68px]) */}
           <div className="h-[68px] px-5 flex items-center justify-between border-b border-gray-100 flex-shrink-0">
             <div className="flex items-center gap-3 min-w-0">
-              {/* Same purple icon as priority inbox */}
-              <div className="p-2 bg-purple-50 text-purple-600 rounded-lg flex-shrink-0">
+              {/* Blue accent icon matching priority inbox */}
+              <div className="p-2 bg-blue-50 text-blue-600 rounded-lg flex-shrink-0">
                 <Sparkles className="w-5 h-5" />
               </div>
               <div className="flex flex-col min-w-0">
@@ -546,19 +549,19 @@ export function AiSummaryClient() {
                   /* Zero Agent Stream */
                   <div className="flex items-start gap-3">
                     <div className="mt-1 flex-shrink-0">
-                      <Sparkles className="w-4 h-4 text-purple-600" />
+                      <Sparkles className="w-4 h-4 text-blue-600" />
                     </div>
 
                     <div className="flex-1 space-y-4 min-w-0">
                       
-                      {/* Thought Process (Clean vertical lines, NO clunky box) */}
+                      {/* Thought Process (Clean vertical lines in accent blue, NO clunky box) */}
                       {msg.thoughts && msg.thoughts.length > 0 && (
-                        <div className="border-l-2 border-purple-300 pl-3 py-1 space-y-2.5">
+                        <div className="border-l-2 border-blue-400 pl-3 py-1 space-y-2.5">
                           {msg.thoughts.map((th) => (
                             <div key={th.id} className="flex items-center gap-2 text-xs">
                               {th.status === 'working' ? (
-                                <div className="flex items-center gap-2 text-purple-700 font-medium">
-                                  <span className="inline-block w-2.5 h-2.5 border-2 border-purple-600 border-t-transparent rounded-full animate-spin flex-shrink-0" />
+                                <div className="flex items-center gap-2 text-blue-700 font-medium">
+                                  <span className="inline-block w-2.5 h-2.5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin flex-shrink-0" />
                                   <span>{th.text}</span>
                                 </div>
                               ) : (
@@ -616,7 +619,7 @@ export function AiSummaryClient() {
                             <button
                               onClick={() => handleSendReply(activeSession)}
                               disabled={activeSession.status === 'sending' || activeSession.status === 'sent'}
-                              className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg flex items-center gap-2 shadow-sm transition-all disabled:opacity-50"
+                              className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-md flex items-center gap-2 shadow-sm transition-all disabled:opacity-50"
                             >
                               {activeSession.status === 'sending' ? (
                                 <>
@@ -647,7 +650,7 @@ export function AiSummaryClient() {
 
           </div>
 
-          {/* Bottom Chat Prompt Input Bar */}
+          {/* Bottom Chat Prompt Input Bar (Cohesive with composer buttons and inputs) */}
           <div className="p-4 border-t border-gray-100 bg-white flex items-center gap-2 flex-shrink-0">
             <input 
               type="text"
@@ -662,10 +665,11 @@ export function AiSummaryClient() {
             <button 
               onClick={() => handleSendCustomMessage(activeSession)}
               disabled={!userPromptInput.trim()}
-              className="p-2 bg-blue-600 hover:bg-blue-700 text-white rounded-full disabled:opacity-40 transition-colors shadow-sm"
+              className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-md transition-colors disabled:opacity-50 shadow-sm"
               title="Send to Zero"
             >
               <Send className="w-3.5 h-3.5" />
+              <span>Send</span>
             </button>
           </div>
 
