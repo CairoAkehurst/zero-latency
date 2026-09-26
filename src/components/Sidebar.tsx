@@ -27,7 +27,7 @@ export function Sidebar() {
         setLabels(userLabels.map((c: any) => ({
           id: c.id,
           name: c.name,
-          color: c.color?.backgroundColor ? `bg-[${c.color.backgroundColor}]` : 'bg-gray-400'
+          color: c.color?.backgroundColor || '#9ca3af'
         })));
       }
     } catch (e) {
@@ -218,7 +218,10 @@ export function Sidebar() {
                 onClick={() => window.dispatchEvent(new CustomEvent('filter-category', { detail: folder.name }))}
                 className="sidebar-link cursor-pointer hover:bg-gray-200/50 pr-8"
               >
-                <div className={clsx("w-2 h-2 rounded-full flex-shrink-0", folder.color.startsWith('bg-[') ? folder.color : 'bg-gray-400')} style={folder.color.startsWith('bg-[') ? { backgroundColor: folder.color.slice(4,-1) } : {}} />
+                <div 
+                  className="w-2.5 h-2.5 rounded-full flex-shrink-0 shadow-xs" 
+                  style={{ backgroundColor: folder.color }} 
+                />
                 <span className="truncate">{folder.name}</span>
               </Link>
               <button 

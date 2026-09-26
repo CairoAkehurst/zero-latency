@@ -32,6 +32,18 @@ const colorMap: Record<string, string> = {
   teal: "bg-teal-100 text-teal-700 border-teal-200",
 };
 
+function getBadgeStyle(color?: string) {
+  if (!color) return { className: "bg-gray-100 text-gray-700 border-gray-200", style: {} };
+  if (colorMap[color]) return { className: colorMap[color], style: {} };
+  if (color.startsWith('#') || color.startsWith('rgb')) {
+    return {
+      className: "border",
+      style: { backgroundColor: `${color}18`, color: color, borderColor: `${color}35` }
+    };
+  }
+  return { className: "bg-gray-100 text-gray-700 border-gray-200", style: {} };
+}
+
 import { formatEmailDate } from "@/utils/formatDate";
 
 export function EmailRow({ email, isSelected, isCompressed, isChecked, onToggleCheck }: EmailRowProps) {
@@ -57,14 +69,17 @@ export function EmailRow({ email, isSelected, isCompressed, isChecked, onToggleC
             {email.summary}
           </div>
         </div>
-        {email.category && (
-          <span className={clsx(
-            "absolute top-3 right-4 px-1.5 py-0.5 rounded text-[10px] font-medium border opacity-80",
-            colorMap[email.categoryColor] || "bg-gray-100 text-gray-700 border-gray-200"
-          )}>
-            {email.category.slice(0, 1)}
-          </span>
-        )}
+        {email.category && (() => {
+          const badge = getBadgeStyle(email.categoryColor);
+          return (
+            <span 
+              className={clsx("absolute top-3 right-4 px-1.5 py-0.5 rounded text-[10px] font-medium border opacity-80", badge.className)}
+              style={badge.style}
+            >
+              {email.category.slice(0, 1)}
+            </span>
+          );
+        })()}
       </div>
     );
   }
@@ -118,16 +133,19 @@ export function EmailRow({ email, isSelected, isCompressed, isChecked, onToggleC
       </div>
 
       {/* Category Badge */}
-      {email.category ? (
-        <div className="flex-shrink-0">
-          <span className={clsx(
-            "px-2.5 py-0.5 rounded-full text-xs font-medium border",
-            colorMap[email.categoryColor] || "bg-gray-100 text-gray-700 border-gray-200"
-          )}>
-            {email.category}
-          </span>
-        </div>
-      ) : email.hasAiMetadata ? (
+      {email.category ? (() => {
+        const badge = getBadgeStyle(email.categoryColor);
+        return (
+          <div className="flex-shrink-0">
+            <span 
+              className={clsx("px-2.5 py-0.5 rounded-full text-xs font-medium border", badge.className)}
+              style={badge.style}
+            >
+              {email.category}
+            </span>
+          </div>
+        );
+      })() : email.hasAiMetadata ? (
         <div className="flex-shrink-0">
           <span className="px-2.5 py-0.5 rounded-full text-xs font-medium border bg-gray-50 text-gray-500 border-gray-200">
             Uncategorized

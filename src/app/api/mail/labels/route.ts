@@ -23,21 +23,57 @@ export async function POST(request: Request) {
 
     const { gmail } = await getGmailClient();
 
+    // Allowed Gmail API label colors
+    const GMAIL_PALETTE = [
+      { backgroundColor: '#4a86e8', textColor: '#ffffff' }, // Blue
+      { backgroundColor: '#a479e2', textColor: '#ffffff' }, // Purple
+      { backgroundColor: '#16a766', textColor: '#ffffff' }, // Green
+      { backgroundColor: '#ffad47', textColor: '#ffffff' }, // Orange
+      { backgroundColor: '#f691b3', textColor: '#ffffff' }, // Pink
+      { backgroundColor: '#fb4c2f', textColor: '#ffffff' }, // Red
+      { backgroundColor: '#fad165', textColor: '#ffffff' }, // Yellow
+      { backgroundColor: '#43d692', textColor: '#ffffff' }, // Teal / Mint
+      { backgroundColor: '#b9e4d0', textColor: '#ffffff' }, // Soft green
+      { backgroundColor: '#f6c5be', textColor: '#ffffff' }, // Coral
+      { backgroundColor: '#c6f3de', textColor: '#ffffff' }, // Light mint
+      { backgroundColor: '#ffe6c7', textColor: '#ffffff' }, // Light peach
+      { backgroundColor: '#fef1d1', textColor: '#ffffff' }, // Light yellow
+    ];
+
     // 1. Check if label already exists to avoid 409 conflict
     const listRes = await gmail.users.labels.list({ userId: 'me' });
-    const existing = (listRes.data.labels || []).find(
+    const allLabels = listRes.data.labels || [];
+    const existing = allLabels.find(
       (l) => (l.name || '').toLowerCase() === trimmedName.toLowerCase()
     );
 
     let createdLabel = existing;
 
     if (!existing) {
+      // Find colors that haven't been used yet, or rotate from the beginning
+      const usedBgColors = new Set(
+        allLabels
+          .filter((l: any) => l.type === 'user' && l.color?.backgroundColor)
+          .map((l: any) => l.color.backgroundColor.toLowerCase())
+      );
+
+      let chosenColor = GMAIL_PALETTE.find(
+        (c) => !usedBgColors.has(c.backgroundColor.toLowerCase())
+      );
+
+      // If all colors have been used, pick in rotational order based on count of existing user labels
+      if (!chosenColor) {
+        const userLabelCount = allLabels.filter((l: any) => l.type === 'user').length;
+        chosenColor = GMAIL_PALETTE[userLabelCount % GMAIL_PALETTE.length];
+      }
+
       const createRes = await gmail.users.labels.create({
         userId: 'me',
         requestBody: {
           name: trimmedName,
           labelListVisibility: 'labelShow',
           messageListVisibility: 'show',
+          color: chosenColor
         }
       });
       createdLabel = createRes.data;

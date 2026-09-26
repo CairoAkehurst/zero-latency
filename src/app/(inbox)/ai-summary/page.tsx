@@ -63,7 +63,7 @@ export default async function AiSummaryPage() {
           );
           for (const l of userLabels) {
             if (l.id && l.name) {
-              const color = l.color?.backgroundColor ? `bg-[${l.color.backgroundColor}]` : 'blue';
+              const color = l.color?.backgroundColor || '#4a86e8';
               userLabelsMap.set(l.id, { id: l.id, name: l.name, color });
             }
           }

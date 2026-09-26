@@ -97,7 +97,7 @@ export function AutoLabelDialog({ onClose, onSuccess }: AutoLabelDialogProps) {
           <button 
             onClick={handleCreate}
             disabled={isBusy}
-            className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium rounded-lg shadow-sm transition-colors flex items-center gap-2 disabled:opacity-50"
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg shadow-sm transition-colors flex items-center gap-2 disabled:opacity-50"
           >
             {isBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Tag className="w-4 h-4" />}
             {isBusy ? "Saving..." : description.trim() ? "Create & auto-label" : "Create label"}

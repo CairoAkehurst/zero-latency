@@ -49,7 +49,7 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
   const [sendSuccess, setSendSuccess] = useState(false);
   const [replyMode, setReplyMode] = useState<'reply'|'replyAll'|'forward'|null>(null);
   const [showLabelMenu, setShowLabelMenu] = useState(false);
-  const [availableLabels, setAvailableLabels] = useState<Array<{ id: string; name: string }>>([]);
+  const [availableLabels, setAvailableLabels] = useState<Array<{ id: string; name: string; color?: string }>>([]);
   const [isLabeling, setIsLabeling] = useState(false);
 
   useEffect(() => {
@@ -58,7 +58,11 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
       .then(data => {
         if (data.labels) {
           const userLabels = data.labels.filter((l: any) => l.type === 'user');
-          setAvailableLabels(userLabels);
+          setAvailableLabels(userLabels.map((l: any) => ({
+            id: l.id,
+            name: l.name,
+            color: l.color?.backgroundColor || '#a855f7'
+          })));
         }
       })
       .catch(console.error);
@@ -273,7 +277,10 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
                         onClick={() => handleApplyLabel(lbl.id)}
                         className="w-full text-left px-3 py-1.5 hover:bg-gray-50 text-sm text-gray-700 flex items-center gap-2 truncate"
                       >
-                        <span className="w-2 h-2 rounded-full bg-purple-500 flex-shrink-0" />
+                        <span 
+                          className="w-2.5 h-2.5 rounded-full flex-shrink-0" 
+                          style={{ backgroundColor: lbl.color || '#a855f7' }}
+                        />
                         <span className="truncate">{lbl.name}</span>
                       </button>
                     ))
