@@ -593,33 +593,46 @@ export function AiSummaryClient() {
                         {email.summary || email.snippet}
                       </div>
 
-                      {/* Tailored Action Buttons (Max 3) + Write reply button */}
+                      {/* 3-Button Action Layout: 1 primary on top, 2 secondary on bottom */}
                       <div className="pt-3 border-t border-gray-100 flex flex-col gap-2 mt-auto">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          {smartActions.map((act, i) => (
-                            <button
-                              key={i}
-                              onClick={() => handleAutoReplyAction(email, act)}
-                              className={`px-3 py-2 text-xs font-semibold rounded-lg transition-colors flex items-center justify-center gap-1.5 shadow-sm ${
-                                act.style === 'primary'
-                                  ? 'bg-blue-600 hover:bg-blue-700 text-white flex-1'
-                                  : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
-                              }`}
-                            >
-                              <Check className="w-3.5 h-3.5" />
-                              <span className="truncate">{act.label}</span>
-                            </button>
-                          ))}
-                        </div>
-
-                        {/* Interactive AI Reply button */}
-                        <div className="flex items-center justify-end pt-1">
-                          <button 
-                            onClick={() => handleOpenAiReplySidebar(email)}
-                            className="text-xs text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1 transition-colors"
+                        {/* Top: Main expected reply button */}
+                        {smartActions.length > 0 && (
+                          <button
+                            onClick={() => handleAutoReplyAction(email, smartActions[0])}
+                            className="w-full px-3.5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg transition-colors flex items-center justify-center gap-2 shadow-sm"
                           >
-                            <Sparkles className="w-3.5 h-3.5" />
-                            <span>Reply with AI</span>
+                            <Check className="w-3.5 h-3.5 stroke-[2.5]" />
+                            <span className="truncate">{smartActions[0].label}</span>
+                          </button>
+                        )}
+
+                        {/* Bottom Row: Alternate reply action + Reply with AI button */}
+                        <div className="grid grid-cols-2 gap-2">
+                          {smartActions.length > 1 ? (
+                            <button
+                              onClick={() => handleAutoReplyAction(email, smartActions[1])}
+                              className="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-medium rounded-lg transition-colors flex items-center justify-center gap-1.5 truncate"
+                            >
+                              <Check className="w-3 h-3 text-gray-500 flex-shrink-0" />
+                              <span className="truncate">{smartActions[1].label}</span>
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => handleDismissFromPriority(email.id, {} as any)}
+                              className="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-medium rounded-lg transition-colors flex items-center justify-center gap-1.5 truncate"
+                            >
+                              <MinusCircle className="w-3 h-3 text-gray-500 flex-shrink-0" />
+                              <span className="truncate">Dismiss</span>
+                            </button>
+                          )}
+
+                          {/* Reply with AI button in identical button styling */}
+                          <button
+                            onClick={() => handleOpenAiReplySidebar(email)}
+                            className="px-3 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold rounded-lg transition-colors flex items-center justify-center gap-1.5 border border-blue-200/60 truncate shadow-xs"
+                          >
+                            <Sparkles className="w-3.5 h-3.5 text-blue-600 flex-shrink-0" />
+                            <span className="truncate">Reply with AI</span>
                           </button>
                         </div>
                       </div>

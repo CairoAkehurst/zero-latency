@@ -161,8 +161,8 @@ export function Sidebar() {
           <Link
             href="/ai-summary"
             className={clsx(
-              "sidebar-link cursor-pointer hover:bg-purple-50 text-purple-700 font-medium",
-              pathname === '/ai-summary' ? "bg-purple-50" : ""
+              "sidebar-link cursor-pointer hover:bg-blue-50/70 text-blue-700 font-medium",
+              pathname === '/ai-summary' ? "bg-blue-50/70 font-semibold" : ""
             )}
           >
             <Sparkles className="w-4 h-4 text-blue-600" />
