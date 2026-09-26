@@ -42,8 +42,15 @@ export function InboxClient({ initialEmails, initialNextPageToken }: { initialEm
   useEffect(() => {
     let q = 'in:inbox';
     if (activeCategory) {
-      q = `label:${activeCategory.replace(/\s+/g, '-')}`; // Simplified mapping for now, or just `label:${activeCategory}`
-      // Wait, Gmail expects the actual label name or ID. If it's a custom label, just 'label:MyLabel' works.
+      if (activeCategory === 'Sent') {
+        q = 'in:sent';
+      } else if (activeCategory === 'Drafts') {
+        q = 'in:draft';
+      } else if (activeCategory === 'All Mail') {
+        q = '';
+      } else {
+        q = `label:"${activeCategory}"`;
+      }
     }
     if (debouncedQuery.trim()) {
       q += ` ${debouncedQuery.trim()}`;
@@ -79,7 +86,12 @@ export function InboxClient({ initialEmails, initialNextPageToken }: { initialEm
   // Background Polling (Instant Sync)
   useEffect(() => {
     let q = 'in:inbox';
-    if (activeCategory) q = `label:${activeCategory}`;
+    if (activeCategory) {
+      if (activeCategory === 'Sent') q = 'in:sent';
+      else if (activeCategory === 'Drafts') q = 'in:draft';
+      else if (activeCategory === 'All Mail') q = '';
+      else q = `label:"${activeCategory}"`;
+    }
     if (debouncedQuery.trim()) q += ` ${debouncedQuery.trim()}`;
     
     const interval = setInterval(async () => {

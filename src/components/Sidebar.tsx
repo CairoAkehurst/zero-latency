@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { AutoLabelDialog } from "./AutoLabelDialog";
 import { Inbox, File, Send, Edit, MoreVertical, LogOut, Settings, LayoutTemplate, Plus, ChevronDown, Sparkles, Trash2, Keyboard } from "lucide-react";
 import clsx from "clsx";
 import { createClient } from "@/utils/supabase/client";
@@ -224,8 +225,14 @@ export function Sidebar() {
                 onClick={async (e) => {
                   e.preventDefault();
                   if (confirm(`Delete label ${folder.name}?`)) {
-                    await fetch(`/api/mail/labels?id=${folder.id}`, { method: 'DELETE' });
-                    fetchLabels();
+                    const res = await fetch(`/api/mail/labels?id=${folder.id}`, { method: 'DELETE' });
+                    if (res.ok) {
+                      await fetchLabels();
+                      window.dispatchEvent(new CustomEvent('refresh-inbox'));
+                    } else {
+                      const data = await res.json().catch(() => ({}));
+                      alert(`Failed to delete label from Gmail: ${data.error || 'Unknown error'}`);
+                    }
                   }
                 }}
                 className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
@@ -238,6 +245,15 @@ export function Sidebar() {
           
         </div>
       </div>
+    {isAddingLabel && (
+        <AutoLabelDialog 
+          onClose={() => setIsAddingLabel(false)} 
+          onSuccess={() => {
+            fetchLabels();
+            window.dispatchEvent(new CustomEvent('refresh-inbox'));
+          }} 
+        />
+      )}
     </aside>
   );
 

@@ -29,6 +29,19 @@ export async function getGmailClient() {
     refresh_token: userData.google_refresh_token,
   });
 
+  oauth2Client.on('tokens', async (tokens) => {
+    try {
+      const updateData: Record<string, any> = {};
+      if (tokens.access_token) updateData.google_access_token = tokens.access_token;
+      if (tokens.refresh_token) updateData.google_refresh_token = tokens.refresh_token;
+      if (Object.keys(updateData).length > 0) {
+        await supabase.from('users').update(updateData).eq('id', user.id);
+      }
+    } catch (err) {
+      console.error('Failed to update refreshed tokens:', err);
+    }
+  });
+
   return {
     gmail: google.gmail({ version: 'v1', auth: oauth2Client }),
     user,

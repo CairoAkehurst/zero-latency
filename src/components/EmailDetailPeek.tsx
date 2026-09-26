@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { X, Reply, ReplyAll, Forward, Check, Send, Loader2, Maximize2, Minimize2, Archive, Trash2, Mail, Clock, MoreVertical, CornerUpLeft, CornerUpRight, ChevronDown, Sparkles, Type, Paperclip, Link as LinkIcon, Image as ImageIcon, Bold, Italic, Underline, Highlighter } from "lucide-react";
+import { X, Reply, ReplyAll, Forward, Check, Send, Loader2, Maximize2, Minimize2, Archive, Trash2, Mail, Clock, MoreVertical, CornerUpLeft, CornerUpRight, ChevronDown, Sparkles, Type, Paperclip, Link as LinkIcon, Image as ImageIcon, Bold, Italic, Underline, Highlighter, Tag } from "lucide-react";
 import { formatEmailDate } from "@/utils/formatDate";
 import { useAccountDataStore } from "@/lib/client/store";
 
@@ -47,6 +47,44 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
   const [isSending, setIsSending] = useState(false);
   const [sendSuccess, setSendSuccess] = useState(false);
   const [replyMode, setReplyMode] = useState<'reply'|'replyAll'|'forward'|null>(null);
+  const [showLabelMenu, setShowLabelMenu] = useState(false);
+  const [availableLabels, setAvailableLabels] = useState<Array<{ id: string; name: string }>>([]);
+  const [isLabeling, setIsLabeling] = useState(false);
+
+  useEffect(() => {
+    fetch('/api/mail/labels')
+      .then(res => res.json())
+      .then(data => {
+        if (data.labels) {
+          const userLabels = data.labels.filter((l: any) => l.type === 'user');
+          setAvailableLabels(userLabels);
+        }
+      })
+      .catch(console.error);
+  }, []);
+
+  const handleApplyLabel = async (labelId: string) => {
+    if (!email) return;
+    setIsLabeling(true);
+    try {
+      const res = await fetch("/api/mail/modify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messageIds: [email.id], action: "modify", addLabelIds: [labelId] })
+      });
+      if (res.ok) {
+        setShowLabelMenu(false);
+        window.dispatchEvent(new CustomEvent('refresh-inbox'));
+      } else {
+        const err = await res.json().catch(() => ({}));
+        alert("Failed to apply label in Gmail: " + (err.error || "Unknown error"));
+      }
+    } catch (e: any) {
+      alert("Error applying label: " + e.message);
+    } finally {
+      setIsLabeling(false);
+    }
+  };
   const [showDetails, setShowDetails] = useState(false);
   
   const replyRef = useRef<HTMLDivElement>(null);
@@ -209,6 +247,41 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
           <button onClick={() => handleAction('unread')} className="p-2 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-full transition-colors" title="Mark unread">
             <Mail className="w-4 h-4" />
           </button>
+          {/* Label Button */}
+          <div className="relative">
+            <button 
+              onClick={() => setShowLabelMenu(!showLabelMenu)} 
+              className="p-2 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-full transition-colors flex items-center gap-1.5" 
+              title="Add Label in Gmail"
+            >
+              <Tag className="w-4 h-4" />
+            </button>
+            {showLabelMenu && (
+              <div className="absolute left-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-200 py-1.5 z-50 animate-in fade-in zoom-in-95">
+                <div className="px-3 py-1.5 text-xs font-semibold text-gray-400 border-b border-gray-100 uppercase tracking-wider">
+                  Apply Gmail Label
+                </div>
+                <div className="max-h-52 overflow-y-auto py-1">
+                  {availableLabels.length === 0 ? (
+                    <div className="px-3 py-2 text-xs text-gray-500">No custom labels in Gmail</div>
+                  ) : (
+                    availableLabels.map((lbl) => (
+                      <button
+                        key={lbl.id}
+                        disabled={isLabeling}
+                        onClick={() => handleApplyLabel(lbl.id)}
+                        className="w-full text-left px-3 py-1.5 hover:bg-gray-50 text-sm text-gray-700 flex items-center gap-2 truncate"
+                      >
+                        <span className="w-2 h-2 rounded-full bg-purple-500 flex-shrink-0" />
+                        <span className="truncate">{lbl.name}</span>
+                      </button>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
         </div>
         <div className="flex items-center gap-1">
           {onExpand && (
