@@ -22,7 +22,6 @@ export function Sidebar() {
       const res = await fetch('/api/mail/labels');
       const data = await res.json();
       if (res.ok && data.labels) {
-        // Filter out system labels for the UI list, or keep USER ones
         const userLabels = data.labels.filter((l: any) => l.type === 'user');
         setLabels(userLabels.map((c: any) => ({
           id: c.id,
@@ -76,6 +75,11 @@ export function Sidebar() {
     router.push("/login");
   };
 
+  const openSettings = (section: string) => {
+    setShowDropdown(false);
+    window.dispatchEvent(new CustomEvent('open-settings', { detail: section }));
+  };
+
   return (
     <aside className="w-64 flex-shrink-0 flex flex-col h-full bg-[#f7f7f5] text-sm text-gray-700 relative z-10">
       <div className="h-[68px] px-4 flex items-center justify-between relative flex-shrink-0 pt-[6px]">
@@ -108,23 +112,21 @@ export function Sidebar() {
               </div>
             </div>
             
-            <Link 
-              href="/settings" 
-              onClick={() => setShowDropdown(false)}
+            <button 
+              onClick={() => openSettings('inbox')}
               className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors text-left"
             >
               <Settings className="w-4 h-4" />
               Settings
-            </Link>
+            </button>
             
-            <Link 
-              href="/appearance" 
-              onClick={() => setShowDropdown(false)}
+            <button 
+              onClick={() => openSettings('inbox')} // Appearance is part of Inbox in the new modal
               className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors text-left"
             >
               <LayoutTemplate className="w-4 h-4" />
               Appearance
-            </Link>
+            </button>
             
             <div className="h-px bg-gray-100 my-1" />
             
@@ -225,8 +227,7 @@ export function Sidebar() {
     </aside>
   );
 
-  // Small helper so it doesn't complain about activeCategory not being defined
   function activeCategoryCheck() {
-    return false; // Real logic relies on custom events in InboxClient
+    return false;
   }
 }
