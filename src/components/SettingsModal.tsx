@@ -41,7 +41,7 @@ function Choice<T extends string>({ value, options, onChange, label }: { value: 
   );
 }
 
-function Row({ title, desc, children }: { title: string; desc?: string; children?: React.ReactNode }) {
+function Row({ title, desc, children }: { title: string; desc?: React.ReactNode; children?: React.ReactNode }) {
   return (
     <div className="zl-setting">
       <span className="zl-setting-text">
@@ -56,7 +56,7 @@ function Row({ title, desc, children }: { title: string; desc?: string; children
 export function SettingsModal({ section, setSection, onClose }: { section: string; setSection: (s: string) => void; onClose: () => void }) {
   const ref = useRef<HTMLDivElement>(null);
   const { theme, setTheme, threadStyle, setThreadStyle, autoAdvance, setAutoAdvance, fontSize, setFontSize } = useSettingsStore();
-  const { snippets, signatureEnabled, updateAccount } = useAccountDataStore();
+  const { snippets, filters, signatureEnabled, signatureText, updateAccount } = useAccountDataStore();
   const [editingSnippet, setEditingSnippet] = useState<any>(null);
   
   useEffect(() => {
@@ -158,16 +158,47 @@ export function SettingsModal({ section, setSection, onClose }: { section: strin
 
 
             {current.id === 'shortcuts' && (
-              <>
-                <Row title="Compose" desc="C" />
-                <Row title="Search" desc="/" />
-                <Row title="Reply" desc="R" />
-                <Row title="Archive" desc="E" />
-                <Row title="Delete" desc="#" />
-              </>
+              <div className="zl-form-grid">
+                <Row title="Compose" desc={<kbd className="zl-kbd">C</kbd>} />
+                <Row title="Search" desc={<kbd className="zl-kbd">/</kbd>} />
+                <Row title="Reply" desc={<kbd className="zl-kbd">R</kbd>} />
+                <Row title="Archive" desc={<kbd className="zl-kbd">E</kbd>} />
+                <Row title="Delete" desc={<kbd className="zl-kbd">#</kbd>} />
+              </div>
             )}
 
-{current.id !== 'inbox' && current.id !== 'account' && current.id !== 'snippets' && current.id !== 'shortcuts' && (<p className="zl-field-hint">These settings will be configurable in a future update.</p>)}
+{current.id === 'filters' && (
+              <>
+                <Row title="Filters" desc="Automatically categorize or archive incoming emails based on rules.">
+                  <button className="zl-btn zl-btn--secondary" onClick={() => updateAccount(d => ({ ...d, filters: [...(d.filters||[]), { id: Math.random().toString(), from: '*@example.com', label: 'Updates' }] }))}><Icon name="plus" />New filter</button>
+                </Row>
+                <div className="zl-list-card mt-4">
+                  {(!filters || filters.length === 0) ? <p className="zl-field-hint">No filters yet.</p> : null}
+                  {(filters||[]).map(f => (
+                    <div key={f.id} className="zl-list-card-row">
+                      <span className="zl-setting-text"><strong>If from {f.from}</strong><small>Apply label: {f.label}</small></span>
+                      <button className="zl-btn zl-btn--danger zl-btn--sm" onClick={() => updateAccount(d => ({ ...d, filters: d.filters.filter(x => x.id !== f.id) }))}>Delete</button>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+                {current.id === 'signature' && (
+              <>
+                <Row title="Enable signature" desc="Automatically append signature to new emails.">
+                  <input type="checkbox" checked={signatureEnabled} onChange={e => updateAccount(d => ({ ...d, signatureEnabled: e.target.checked }))} />
+                </Row>
+                {signatureEnabled && (
+                  <div className="zl-form-grid mt-4">
+                    <div className="zl-field">
+                      <label className="zl-field-label">Signature HTML</label>
+                      <textarea value={signatureText} onChange={e => updateAccount(d => ({ ...d, signatureText: e.target.value }))} className="zl-input zl-textarea" rows={4} />
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+                {current.id !== 'inbox' && current.id !== 'account' && current.id !== 'snippets' && current.id !== 'shortcuts' && current.id !== 'filters' && current.id !== 'signature' && (<p className="zl-field-hint">These settings will be configurable in a future update.</p>)}
           </div>
         </div>
       </div>

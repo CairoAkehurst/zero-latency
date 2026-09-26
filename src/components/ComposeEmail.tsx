@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useAccountDataStore } from "@/lib/client/store";
 import { X, Send, Loader2, Maximize2, Minimize2, Bold, Italic, Underline, Sparkles, Paperclip, Trash2 } from "lucide-react";
 
 interface ComposeEmailProps {
@@ -14,9 +15,22 @@ export function ComposeEmail({ onClose, onExpand, isFullView = false }: ComposeE
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
   const [isSending, setIsSending] = useState(false);
+  const { signatureEnabled, signatureText, snippets } = useAccountDataStore();
+  const [showSnippets, setShowSnippets] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
   const [showCcBcc, setShowCcBcc] = useState(false);
   const [ccText, setCcText] = useState("");
   const [bccText, setBccText] = useState("");
+
+
+  useEffect(() => {
+    if (signatureEnabled && !body) {
+      setBody("<br><br><div>" + signatureText.replace(/\n/g, '<br>') + "</div>");
+      const el = document.querySelector('[data-placeholder="Write, or press space for AI, “/” for commands"]');
+      if (el && !el.innerHTML) el.innerHTML = "<br><br><div>" + signatureText.replace(/\n/g, '<br>') + "</div>";
+    }
+  }, []);
+
 
   const handleSend = async () => {
     if (!to || !subject || !body) return alert("Please fill in all fields.");
@@ -25,7 +39,7 @@ export function ComposeEmail({ onClose, onExpand, isFullView = false }: ComposeE
       const res = await fetch("/api/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ toEmail: to, subject, body }),
+        body: JSON.stringify({ toEmail: to, ccEmail: ccText, bccEmail: bccText, subject, body }),
       });
       if (res.ok) {
         onClose();
@@ -116,8 +130,53 @@ export function ComposeEmail({ onClose, onExpand, isFullView = false }: ComposeE
               </div>
 
               <div className="flex items-center gap-2">
-                <button className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-colors flex items-center gap-1.5" title="Help me write">
-                  <Sparkles className="w-4 h-4 text-purple-500" />
+                <div className="relative">
+                  <button 
+                    onClick={() => setShowSnippets(!showSnippets)}
+                    className="p-1.5 text-gray-500 hover:bg-gray-100 rounded text-xs font-medium" 
+                    title="Insert Snippet"
+                  >
+                    {}
+                  </button>
+                  {showSnippets && (
+                    <div className="absolute bottom-full mb-1 left-0 w-48 bg-white border border-gray-200 shadow-lg rounded-lg py-1 z-50">
+                      {snippets.length === 0 ? (
+                        <div className="px-3 py-2 text-xs text-gray-500">No snippets configured.</div>
+                      ) : (
+                        snippets.map((s: any) => (
+                          <button
+                            key={s.id}
+                            className="w-full text-left px-3 py-1.5 hover:bg-gray-50 text-sm text-gray-700 truncate"
+                            onClick={() => {
+                              document.execCommand('insertHTML', false, s.body.replace(/\n/g, '<br>'));
+                              setShowSnippets(false);
+                            }}
+                          >
+                            {s.name}
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
+                <button onClick={async () => {
+                      const instruction = prompt("What should the AI write?");
+                      if (!instruction) return;
+                      setIsGenerating(true);
+                      try {
+                        const res = await fetch('/api/ai/write', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ instruction })
+                        });
+                        const data = await res.json();
+                        if (data.text) {
+                          document.execCommand('insertHTML', false, data.text.replace(/\n/g, '<br>'));
+                        }
+                      } catch(e) {}
+                      setIsGenerating(false);
+                    }} className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-colors flex items-center gap-1.5" title="Help me write">
+                  {isGenerating ? <Loader2 className="w-4 h-4 animate-spin text-purple-500" /> : <Sparkles className="w-4 h-4 text-purple-500" />}
                   <span className="text-xs font-medium text-purple-600">AI</span>
                 </button>
                 <button className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-colors" title="Attach file">

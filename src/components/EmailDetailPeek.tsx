@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { X, Reply, Check, Send, Loader2, Maximize2, Minimize2, Archive, Trash2, Mail, Clock, MoreVertical, CornerUpLeft, CornerUpRight, ChevronDown, Sparkles, Type, Paperclip, Link as LinkIcon, Image as ImageIcon, Bold, Italic, Underline, Highlighter } from "lucide-react";
 import { formatEmailDate } from "@/utils/formatDate";
+import { useAccountDataStore } from "@/lib/client/store";
 
 interface EmailDetailPeekProps {
   email: {
@@ -25,6 +26,8 @@ interface EmailDetailPeekProps {
     to_email?: string;
     cc?: string;
     bcc?: string;
+    message_id_header?: string;
+    references_header?: string;
   } | null;
   onClose: () => void;
   onExpand?: () => void;
@@ -33,6 +36,9 @@ interface EmailDetailPeekProps {
 
 export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }: EmailDetailPeekProps) {
   const [draftText, setDraftText] = useState("");
+  const { signatureEnabled, signatureText, snippets } = useAccountDataStore();
+  const [showSnippets, setShowSnippets] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
   const [showCcBcc, setShowCcBcc] = useState(false);
   const [showFormatting, setShowFormatting] = useState(false);
   const [toText, setToText] = useState("");
@@ -52,12 +58,37 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
         replyRef.current.innerHTML = "";
       }
       setDraftText("");
+      if (signatureEnabled) {
+        setDraftText("<br><br><div>" + signatureText.replace(/\n/g, '<br>') + "</div>");
+        if (replyRef.current) replyRef.current.innerHTML = "<br><br><div>" + signatureText.replace(/\n/g, '<br>') + "</div>";
+      }
       setCcText("");
       setBccText("");
       setShowCcBcc(false);
       setShowFormatting(false);
     }
   }, [email]);
+
+  
+  useEffect(() => {
+    const handleFocusReply = () => {
+      replyRef.current?.focus();
+      handleScrollToReply();
+    };
+    const handleArchive = () => handleAction('archive');
+    const handleTrash = () => handleAction('trash');
+
+    window.addEventListener('focus-reply', handleFocusReply);
+    window.addEventListener('shortcut-archive', handleArchive);
+    window.addEventListener('shortcut-trash', handleTrash);
+    
+    return () => {
+      window.removeEventListener('focus-reply', handleFocusReply);
+      window.removeEventListener('shortcut-archive', handleArchive);
+      window.removeEventListener('shortcut-trash', handleTrash);
+    };
+  }, [email]);
+
 
   if (!email) return null;
 
@@ -97,7 +128,8 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
           subject: email.subject,
           body: draftText, // now sends raw HTML
           threadId: email.google_thread_id,
-          messageId: email.google_message_id
+          messageId: email.message_id_header,
+          references: email.references_header
         }),
       });
       if (res.ok) {

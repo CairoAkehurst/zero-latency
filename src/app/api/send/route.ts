@@ -21,7 +21,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const { toEmail, ccEmail, bccEmail, subject, body, threadId, messageId } = await request.json();
+    const { toEmail, ccEmail, bccEmail, subject, body, threadId, messageId, references } = await request.json();
 
     if (!toEmail || !body) {
       return NextResponse.json({ error: 'Missing toEmail or body' }, { status: 400 });
@@ -51,8 +51,9 @@ export async function POST(request: Request) {
     if (bccEmail) messageParts.push(`Bcc: ${bccEmail}`);
 
     if (threadId) {
-      messageParts.push(`In-Reply-To: ${messageId || ''}`);
-      messageParts.push(`References: ${messageId || ''}`);
+      if (messageId) messageParts.push(`In-Reply-To: ${messageId}`);
+      const refStr = [references, messageId].filter(Boolean).join(' ');
+      if (refStr) messageParts.push(`References: ${refStr}`);
     }
 
     messageParts.push('', body); // empty line before body

@@ -41,7 +41,9 @@ export const useSettingsStore = create<SettingsState>()(
 interface AccountDataState {
   signatureOnReplies: boolean;
   signatureEnabled: boolean;
+  signatureText: string;
   snippets: Snippet[];
+  filters: { id: string; from: string; label: string }[];
   views: { id: string; name: string; notify: boolean }[];
   updateAccount: (fn: (d: AccountDataState) => Partial<AccountDataState>) => void;
 }
@@ -51,7 +53,9 @@ export const useAccountDataStore = create<AccountDataState>()(
     (set) => ({
       signatureOnReplies: false,
       signatureEnabled: true,
+      signatureText: "-- \nSent from AgentMail",
       snippets: [],
+      filters: [],
       views: [{ id: 'inbox', name: 'Inbox', notify: true }],
       updateAccount: (fn) => set((state) => fn(state)),
     }),

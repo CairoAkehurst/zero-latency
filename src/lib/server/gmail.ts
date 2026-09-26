@@ -48,6 +48,8 @@ export function extractEmailDetails(payload: any) {
   const cc = getHeader('Cc');
   const bcc = getHeader('Bcc');
   const dateHeader = getHeader('Date');
+  const message_id_header = getHeader('Message-ID');
+  const references_header = getHeader('References') || getHeader('In-Reply-To') || '';
   
   let sender_name = from;
   let sender_email = from;
@@ -95,6 +97,8 @@ export function extractEmailDetails(payload: any) {
     to_email: to,
     cc,
     bcc,
+    message_id_header,
+    references_header,
     timestamp: dateHeader ? new Date(dateHeader).toISOString() : new Date().toISOString(),
     body_text,
     body_html

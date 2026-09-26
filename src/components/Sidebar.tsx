@@ -81,7 +81,7 @@ export function Sidebar() {
   };
 
   return (
-    <aside className="w-64 flex-shrink-0 flex flex-col h-full bg-[#f7f7f5] text-sm text-gray-700 relative z-10">
+    <aside className="w-64 flex-shrink-0 flex flex-col h-full bg-transparent text-sm text-gray-700 relative z-10">
       <div className="h-[68px] px-4 flex items-center justify-between relative flex-shrink-0 pt-[6px]">
         <div 
           onClick={() => setShowDropdown(!showDropdown)}

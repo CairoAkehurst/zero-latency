@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { ShortcutHandler } from "@/components/ShortcutHandler";
 
 export const metadata: Metadata = {
   title: "AgentMail",
@@ -13,8 +14,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className="antialiased h-[100dvh] flex overflow-hidden bg-[#f7f7f5] pt-2">
+      <body className="antialiased h-[100dvh] flex overflow-hidden bg-[#f7f7f5] p-2 gap-2">
         {children}
+        <ShortcutHandler />
       </body>
     </html>
   );

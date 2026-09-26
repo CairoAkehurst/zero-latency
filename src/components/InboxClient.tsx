@@ -217,6 +217,18 @@ export function InboxClient({ initialEmails, initialNextPageToken }: { initialEm
     }
   };
 
+  
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  
+  useEffect(() => {
+    const handleFocusSearch = () => {
+      searchInputRef.current?.focus();
+    };
+    window.addEventListener('focus-search', handleFocusSearch);
+    return () => window.removeEventListener('focus-search', handleFocusSearch);
+  }, []);
+
+
   const loadMore = async () => {
     if (!nextPageToken || isLoadingMore) return;
     setIsLoadingMore(true);
@@ -332,6 +344,7 @@ export function InboxClient({ initialEmails, initialNextPageToken }: { initialEm
               <div className="relative w-64 flex items-center">
                 <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input 
+                  ref={searchInputRef}
                   type="text" 
                   placeholder="Search emails..." 
                   value={searchQuery}
