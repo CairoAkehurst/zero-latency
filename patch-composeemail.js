@@ -1,70 +1,8 @@
-"use client";
+const fs = require('fs');
+let content = fs.readFileSync('src/components/ComposeEmail.tsx', 'utf8');
 
-import { useState } from "react";
-import { X, Send, Loader2, Maximize2, Minimize2, Bold, Italic, Underline, Sparkles, Paperclip, Trash2 } from "lucide-react";
-
-interface ComposeEmailProps {
-  onClose: () => void;
-  onExpand?: () => void;
-  isFullView?: boolean;
-}
-
-export function ComposeEmail({ onClose, onExpand, isFullView = false }: ComposeEmailProps) {
-  const [to, setTo] = useState("");
-  const [subject, setSubject] = useState("");
-  const [body, setBody] = useState("");
-  const [isSending, setIsSending] = useState(false);
-  const [showCcBcc, setShowCcBcc] = useState(false);
-  const [ccText, setCcText] = useState("");
-  const [bccText, setBccText] = useState("");
-
-  const handleSend = async () => {
-    if (!to || !subject || !body) return alert("Please fill in all fields.");
-    setIsSending(true);
-    try {
-      const res = await fetch("/api/send", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ toEmail: to, subject, body }),
-      });
-      if (res.ok) {
-        onClose();
-      } else {
-        alert("Failed to send email");
-      }
-    } catch (err) {
-      console.error(err);
-      alert("Error sending email");
-    } finally {
-      setIsSending(false);
-    }
-  };
-
-  return (
-    <div className={`flex flex-col h-full bg-white z-10 relative overflow-hidden transition-all duration-300 ease-in-out flex-1 rounded-tl-2xl ${isFullView ? 'border-l-0' : 'border-l border-gray-100'}`}>
-      {/* Header */}
-      <div className="h-[68px] px-5 flex items-center justify-between border-b border-gray-100 bg-[#f7f7f5] flex-shrink-0">
-        <h2 className="font-semibold text-gray-900">New Message</h2>
-        <div className="flex items-center gap-1">
-          {onExpand && (
-            <button 
-              onClick={onExpand}
-              className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-200 rounded-md transition-colors"
-              title={isFullView ? "Minimize" : "Full screen"}
-            >
-              {isFullView ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
-            </button>
-          )}
-          <button 
-            onClick={onClose}
-            className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-200 rounded-md transition-colors"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
-
-      
+// Replace everything inside the Content div with the new unified Composer look.
+const newContent = `
       {/* Content */}
       <div className="flex-1 overflow-y-auto flex flex-col p-5">
         <div className="flex flex-col flex-1 shadow-sm border border-gray-200 rounded-xl bg-white focus-within:ring-1 focus-within:ring-blue-500 transition-all overflow-hidden relative">
@@ -133,3 +71,25 @@ export function ComposeEmail({ onClose, onExpand, isFullView = false }: ComposeE
     </div>
   );
 }
+`;
+
+const startIndex = content.indexOf('{/* Content */}');
+if (startIndex !== -1) {
+  content = content.substring(0, startIndex) + newContent;
+}
+
+// Add state for Cc/Bcc
+content = content.replace(
+  /const \[isSending, setIsSending\] = useState\(false\);/,
+  `const [isSending, setIsSending] = useState(false);\n  const [showCcBcc, setShowCcBcc] = useState(false);\n  const [ccText, setCcText] = useState("");\n  const [bccText, setBccText] = useState("");`
+);
+
+// Add missing lucide icons
+if (!content.includes('Trash2')) {
+  content = content.replace(
+    /import \{ X, Send, Loader2, Maximize2, Minimize2 \} from "lucide-react";/,
+    `import { X, Send, Loader2, Maximize2, Minimize2, Bold, Italic, Underline, Sparkles, Paperclip, Trash2 } from "lucide-react";`
+  );
+}
+
+fs.writeFileSync('src/components/ComposeEmail.tsx', content);

@@ -5,6 +5,9 @@ import { createPortal } from 'react-dom';
 import { Icon } from './icons';
 import { Popover } from './ui';
 
+import { useSettingsStore, useAccountDataStore } from '@/lib/client/store';
+
+
 const SECTIONS = [
   { id: 'inbox', label: 'Inbox', icon: 'inbox', group: 'Account' },
   { id: 'ai', label: 'AI', icon: 'sparkle', group: 'Account' },
@@ -52,10 +55,9 @@ function Row({ title, desc, children }: { title: string; desc?: string; children
 
 export function SettingsModal({ section, setSection, onClose }: { section: string; setSection: (s: string) => void; onClose: () => void }) {
   const ref = useRef<HTMLDivElement>(null);
-  const [theme, setTheme] = useState('system');
-  const [threadStyle, setThreadStyle] = useState('side');
-  const [autoAdvance, setAutoAdvance] = useState('next');
-  const [fontSize, setFontSize] = useState('default');
+  const { theme, setTheme, threadStyle, setThreadStyle, autoAdvance, setAutoAdvance, fontSize, setFontSize } = useSettingsStore();
+  const { snippets, signatureEnabled, updateAccount } = useAccountDataStore();
+  const [editingSnippet, setEditingSnippet] = useState<any>(null);
   
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { 
@@ -122,9 +124,50 @@ export function SettingsModal({ section, setSection, onClose }: { section: strin
               </>
             )}
 
-            {current.id !== 'inbox' && current.id !== 'account' && (
-              <p className="zl-field-hint">These settings will be configurable in a future update.</p>
+            
+            {current.id === 'snippets' && (
+              <>
+                <Row title="Snippets" desc="Reusable text. Put {{availability}} in a snippet to insert open times from your calendar.">
+                  <button className="zl-btn zl-btn--secondary" onClick={() => setEditingSnippet({ id: Math.random().toString(), name: '', body: '' })}><Icon name="plus" />New snippet</button>
+                </Row>
+                {editingSnippet ? (
+                  <div className="zl-form-grid">
+                    <div className="zl-field"><label className="zl-field-label">Name</label><input autoFocus value={editingSnippet.name} onChange={e => setEditingSnippet({...editingSnippet, name: e.target.value})} className="zl-input" /></div>
+                    <div className="zl-field"><label className="zl-field-label">Text</label><textarea value={editingSnippet.body} onChange={e => setEditingSnippet({...editingSnippet, body: e.target.value})} className="zl-input zl-textarea" rows={4} /></div>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button className="zl-btn zl-btn--primary" onClick={() => {
+                        updateAccount(d => ({ ...d, snippets: [...d.snippets.filter(s => s.id !== editingSnippet.id), editingSnippet] }));
+                        setEditingSnippet(null);
+                      }}>Save snippet</button>
+                      <button className="zl-btn zl-btn--ghost" onClick={() => setEditingSnippet(null)}>Cancel</button>
+                    </div>
+                  </div>
+                ) : null}
+                <div className="zl-list-card mt-4">
+                  {snippets.length === 0 && !editingSnippet ? <p className="zl-field-hint">No snippets yet.</p> : null}
+                  {snippets.map(s => (
+                    <div key={s.id} className="zl-list-card-row">
+                      <span className="zl-setting-text"><strong>{s.name}</strong><small>{s.body}</small></span>
+                      <button className="zl-btn zl-btn--text zl-btn--sm" onClick={() => setEditingSnippet(s)}>Edit</button>
+                      <button className="zl-btn zl-btn--danger zl-btn--sm" onClick={() => updateAccount(d => ({ ...d, snippets: d.snippets.filter(x => x.id !== s.id) }))}>Delete</button>
+                    </div>
+                  ))}
+                </div>
+              </>
             )}
+
+
+            {current.id === 'shortcuts' && (
+              <>
+                <Row title="Compose" desc="C" />
+                <Row title="Search" desc="/" />
+                <Row title="Reply" desc="R" />
+                <Row title="Archive" desc="E" />
+                <Row title="Delete" desc="#" />
+              </>
+            )}
+
+{current.id !== 'inbox' && current.id !== 'account' && current.id !== 'snippets' && current.id !== 'shortcuts' && (<p className="zl-field-hint">These settings will be configurable in a future update.</p>)}
           </div>
         </div>
       </div>

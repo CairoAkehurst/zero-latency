@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { Wand2, SlidersHorizontal, Settings, RefreshCw, Search, PenSquare, Trash2, Tag, Loader2 } from "lucide-react";
 import { EmailRow } from "@/components/EmailRow";
 import { EmailDetailPeek } from "@/components/EmailDetailPeek";
@@ -27,7 +27,110 @@ export function InboxClient({ initialEmails, initialNextPageToken }: { initialEm
   const [searchQuery, setSearchQuery] = useState("");
   const [isSyncing, setIsSyncing] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  
+  // Debounce search
+  const [debouncedQuery, setDebouncedQuery] = useState(searchQuery);
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedQuery(searchQuery), 500);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Fetch when search or category changes
+  useEffect(() => {
+    let q = 'in:inbox';
+    if (activeCategory) {
+      q = `label:${activeCategory.replace(/\s+/g, '-')}`; // Simplified mapping for now, or just `label:${activeCategory}`
+      // Wait, Gmail expects the actual label name or ID. If it's a custom label, just 'label:MyLabel' works.
+    }
+    if (debouncedQuery.trim()) {
+      q += ` ${debouncedQuery.trim()}`;
+    }
+    
+    let isMounted = true;
+    const fetchFiltered = async () => {
+      setIsSyncing(true);
+      try {
+        const res = await fetch(`/api/mail/threads?q=${encodeURIComponent(q)}`);
+        const data = await res.json();
+        if (isMounted && res.ok) {
+          setEmails(data.emails || []);
+          setNextPageToken(data.nextPageToken || null);
+        }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        if (isMounted) setIsSyncing(false);
+      }
+    };
+    
+    // Don't fetch on initial mount if we already have initialEmails and no query
+    if (debouncedQuery === "" && !activeCategory && emails === initialEmails) {
+      // do nothing
+    } else {
+      fetchFiltered();
+    }
+    
+    return () => { isMounted = false; };
+  }, [debouncedQuery, activeCategory]);
+
+  // Background Polling (Instant Sync)
+  useEffect(() => {
+    let q = 'in:inbox';
+    if (activeCategory) q = `label:${activeCategory}`;
+    if (debouncedQuery.trim()) q += ` ${debouncedQuery.trim()}`;
+    
+    const interval = setInterval(async () => {
+      try {
+        // Fetch only the latest 10 to check for new emails efficiently
+        const res = await fetch(`/api/mail/threads?maxResults=10&q=${encodeURIComponent(q)}`);
+        const data = await res.json();
+        if (res.ok && data.emails?.length > 0) {
+          // Merge new emails, keeping existing ones below them
+          setEmails(prev => {
+            const newEmails = [...prev];
+            let changed = false;
+            for (const incoming of data.emails) {
+              if (!newEmails.find(e => e.id === incoming.id)) {
+                newEmails.unshift(incoming); // Add to top
+                changed = true;
+              }
+            }
+            // Optional: update existing emails (like read status)
+            for (const incoming of data.emails) {
+              const idx = newEmails.findIndex(e => e.id === incoming.id);
+              if (idx !== -1 && newEmails[idx].is_unread !== incoming.is_unread) {
+                newEmails[idx] = { ...newEmails[idx], is_unread: incoming.is_unread };
+                changed = true;
+              }
+            }
+            return changed ? newEmails : prev;
+          });
+        }
+      } catch (e) {
+        // ignore background poll errors
+      }
+    }, 10000); // Poll every 10s
+    return () => clearInterval(interval);
+  }, [debouncedQuery, activeCategory]);
+  
+  // Intersection Observer for Infinite Scroll
+  const loadMoreRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting && nextPageToken && !isLoadingMore) {
+        loadMore();
+      }
+    }, { threshold: 0.1 });
+    
+    if (loadMoreRef.current) {
+      observer.observe(loadMoreRef.current);
+    }
+    
+    return () => observer.disconnect();
+  }, [nextPageToken, isLoadingMore]);
+
 
   useEffect(() => {
     const handleOpenCompose = () => {
@@ -64,22 +167,9 @@ export function InboxClient({ initialEmails, initialNextPageToken }: { initialEm
     emails.find(e => e.id === selectedEmailId) || null
   , [emails, selectedEmailId]);
 
-  const filteredEmails = useMemo(() => {
-    let result = emails;
-    if (activeCategory) {
-      result = result.filter(e => e.category === activeCategory);
-    }
-    if (searchQuery.trim()) {
-      const lowerQ = searchQuery.toLowerCase();
-      result = result.filter(e => 
-        e.sender_name?.toLowerCase().includes(lowerQ) ||
-        e.sender_email?.toLowerCase().includes(lowerQ) ||
-        e.subject?.toLowerCase().includes(lowerQ) ||
-        e.snippet?.toLowerCase().includes(lowerQ)
-      );
-    }
-    return result;
-  }, [emails, searchQuery, activeCategory]);
+  
+  const filteredEmails = emails; // Search and categories are now handled server-side
+
 
   const handleToggleCheck = (id: string, checked: boolean) => {
     const newSet = new Set(checkedEmailIds);
@@ -275,7 +365,9 @@ export function InboxClient({ initialEmails, initialNextPageToken }: { initialEm
             </div>
           )}
 
-          {/* Email List */}
+          
+        {/* Email List */}
+
           <div className="flex-1 overflow-y-auto pb-8">
             {filteredEmails.length === 0 ? (
               <div className="p-8 text-center text-gray-500 text-sm">No emails found. Try syncing or adjusting your search.</div>
