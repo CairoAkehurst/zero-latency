@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
-import { Wand2, SlidersHorizontal, Settings, RefreshCw, Search, PenSquare, Trash2, Tag } from "lucide-react";
+import { Wand2, SlidersHorizontal, Settings, RefreshCw, Search, PenSquare, Trash2, Tag, Loader2 } from "lucide-react";
 import { EmailRow } from "@/components/EmailRow";
 import { EmailDetailPeek } from "@/components/EmailDetailPeek";
 import { ComposeEmail } from "@/components/ComposeEmail";
@@ -9,8 +9,9 @@ import { FiltersPeek } from "@/components/FiltersPeek";
 import { createClient } from "@/utils/supabase/client";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function InboxClient({ initialEmails }: { initialEmails: any[] }) {
+export function InboxClient({ initialEmails, initialNextPageToken }: { initialEmails: any[], initialNextPageToken: string | null }) {
   const [emails, setEmails] = useState(initialEmails);
+  const [nextPageToken, setNextPageToken] = useState(initialNextPageToken);
   const [checkedEmailIds, setCheckedEmailIds] = useState<Set<string>>(new Set());
   const [selectedEmailId, setSelectedEmailId] = useState<string | null>(null);
   const [isFullView, setIsFullView] = useState(false);
@@ -19,6 +20,7 @@ export function InboxClient({ initialEmails }: { initialEmails: any[] }) {
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
 
   useEffect(() => {
@@ -98,7 +100,6 @@ export function InboxClient({ initialEmails }: { initialEmails: any[] }) {
       if (!res.ok) throw new Error("Failed to delete emails in Gmail");
     } catch (error: any) {
       alert(error.message);
-      // Ideally we would roll back the UI state here
     }
   };
 
@@ -113,6 +114,7 @@ export function InboxClient({ initialEmails }: { initialEmails: any[] }) {
       const data = await res.json();
       if (res.ok) {
         setEmails(data.emails || []);
+        setNextPageToken(data.nextPageToken || null);
         setSyncStatus(`Synced successfully!`);
       } else {
         setSyncStatus(`Sync error: ${data.error || res.statusText}`);
@@ -122,6 +124,23 @@ export function InboxClient({ initialEmails }: { initialEmails: any[] }) {
     } finally {
       setIsSyncing(false);
       setTimeout(() => setSyncStatus(null), 3000);
+    }
+  };
+
+  const loadMore = async () => {
+    if (!nextPageToken || isLoadingMore) return;
+    setIsLoadingMore(true);
+    try {
+      const res = await fetch(`/api/mail/threads?pageToken=${nextPageToken}`);
+      const data = await res.json();
+      if (res.ok) {
+        setEmails(prev => [...prev, ...(data.emails || [])]);
+        setNextPageToken(data.nextPageToken || null);
+      }
+    } catch (err) {
+      console.error("Failed to load more emails", err);
+    } finally {
+      setIsLoadingMore(false);
     }
   };
 
@@ -243,7 +262,7 @@ export function InboxClient({ initialEmails }: { initialEmails: any[] }) {
         )}
 
         {/* Email List */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto pb-8">
           {filteredEmails.length === 0 ? (
             <div className="p-8 text-center text-gray-500 text-sm">No emails found. Try syncing or adjusting your search.</div>
           ) : (
@@ -270,6 +289,19 @@ export function InboxClient({ initialEmails }: { initialEmails: any[] }) {
                 />
               </div>
             ))
+          )}
+          
+          {nextPageToken && !searchQuery && (
+            <div className="p-4 flex justify-center border-t border-gray-100">
+              <button
+                onClick={loadMore}
+                disabled={isLoadingMore}
+                className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-full text-sm font-medium transition-colors disabled:opacity-50"
+              >
+                {isLoadingMore ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                {isLoadingMore ? "Loading..." : "Load older emails"}
+              </button>
+            </div>
           )}
         </div>
       </div>

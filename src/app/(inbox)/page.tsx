@@ -13,6 +13,8 @@ export default async function InboxPage() {
   }
 
   let mappedEmails: any[] = [];
+  let nextPageToken: string | null = null;
+
   try {
     const { gmail } = await getGmailClient();
     const response = await gmail.users.messages.list({
@@ -21,6 +23,7 @@ export default async function InboxPage() {
       q: 'in:inbox'
     });
 
+    nextPageToken = response.data.nextPageToken || null;
     const messagesList = response.data.messages || [];
     
     if (messagesList.length > 0) {
@@ -35,7 +38,7 @@ export default async function InboxPage() {
             });
             const parsed = extractEmailDetails(detail.data.payload);
             return {
-              id: msg.id, // Using Gmail message ID as our primary ID in the UI
+              id: msg.id,
               google_message_id: msg.id,
               google_thread_id: detail.data.threadId,
               snippet: detail.data.snippet,
@@ -78,10 +81,6 @@ export default async function InboxPage() {
 
         return {
           ...email,
-          sender_name: email.senderName,
-          sender_email: email.senderEmail,
-          body_html: email.bodyHtml,
-          body_text: email.bodyText,
           summary: meta?.tldr || email.snippet,
           category: category?.name || null,
           categoryColor: category?.color || 'gray',
@@ -96,7 +95,7 @@ export default async function InboxPage() {
 
   return (
     <div className="flex-1 h-full overflow-hidden">
-      <InboxClient initialEmails={mappedEmails} />
+      <InboxClient initialEmails={mappedEmails} initialNextPageToken={nextPageToken} />
     </div>
   );
 }

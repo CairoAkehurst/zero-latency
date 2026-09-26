@@ -7,6 +7,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const q = searchParams.get('q') || 'in:inbox';
     const maxResults = Number(searchParams.get('maxResults')) || 20;
+    const pageToken = searchParams.get('pageToken') || undefined;
 
     const { gmail, user } = await getGmailClient();
     const supabase = await createClient();
@@ -15,12 +16,13 @@ export async function GET(request: Request) {
     const response = await gmail.users.messages.list({
       userId: 'me',
       maxResults,
-      q
+      q,
+      pageToken
     });
 
     const messagesList = response.data.messages || [];
     if (messagesList.length === 0) {
-      return NextResponse.json({ emails: [] });
+      return NextResponse.json({ emails: [], nextPageToken: null });
     }
 
     // 2. Fetch full details for these messages (in parallel)
@@ -90,7 +92,10 @@ export async function GET(request: Request) {
       };
     });
 
-    return NextResponse.json({ emails: mappedEmails });
+    return NextResponse.json({ 
+      emails: mappedEmails, 
+      nextPageToken: response.data.nextPageToken || null 
+    });
 
   } catch (error: any) {
     console.error('Mail Threads API Error:', error);

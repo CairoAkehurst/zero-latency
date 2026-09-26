@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Edit, Inbox, Send, File, ChevronDown, LogOut, Plus } from "lucide-react";
+import { Edit, Inbox, Send, File, ChevronDown, LogOut, Plus, Settings, LayoutTemplate } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import clsx from "clsx";
@@ -48,15 +48,17 @@ export function Sidebar() {
         body: JSON.stringify({ name: newLabelName.trim() })
       });
       
+      const data = await res.json();
       if (res.ok) {
         setNewLabelName("");
         setIsAddingLabel(false);
         fetchLabels();
       } else {
-        alert("Failed to create label in Gmail");
+        alert(`Failed to create label in Gmail: ${data.error || 'Unknown error'}`);
       }
     } catch (e) {
       console.error(e);
+      alert("Failed to create label in Gmail");
     }
   };
 
@@ -92,7 +94,40 @@ export function Sidebar() {
         </div>
 
         {showDropdown && (
-          <div className="absolute top-12 left-4 w-48 bg-white border border-gray-100 rounded-lg shadow-lg py-1 z-50">
+          <div className="absolute top-12 left-4 w-56 bg-white border border-gray-100 rounded-lg shadow-lg py-1 z-50">
+            <div className="px-3 py-2 border-b border-gray-100 mb-1">
+              <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Accounts</div>
+              <div className="flex items-center gap-2 mt-2">
+                {user?.user_metadata?.avatar_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={user.user_metadata.avatar_url} alt="Avatar" className="w-6 h-6 rounded-full" />
+                ) : (
+                  <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-gray-300 to-gray-400" />
+                )}
+                <div className="text-sm font-medium truncate">{user?.user_metadata?.full_name || user?.email || "Account"}</div>
+              </div>
+            </div>
+            
+            <Link 
+              href="/settings" 
+              onClick={() => setShowDropdown(false)}
+              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors text-left"
+            >
+              <Settings className="w-4 h-4" />
+              Settings
+            </Link>
+            
+            <Link 
+              href="/appearance" 
+              onClick={() => setShowDropdown(false)}
+              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors text-left"
+            >
+              <LayoutTemplate className="w-4 h-4" />
+              Appearance
+            </Link>
+            
+            <div className="h-px bg-gray-100 my-1" />
+            
             <button 
               onClick={handleSignOut}
               className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors text-left"
@@ -114,15 +149,17 @@ export function Sidebar() {
 
       <div className="flex-1 overflow-y-auto px-2 space-y-6 mt-4">
         <div className="space-y-0.5">
-          <div
+          <Link
+            href="/"
             onClick={() => window.dispatchEvent(new CustomEvent('filter-category', { detail: 'Inbox' }))}
             className={clsx(
-              "sidebar-link cursor-pointer hover:bg-gray-200/50"
+              "sidebar-link cursor-pointer hover:bg-gray-200/50",
+              pathname === '/' && !activeCategoryCheck() ? "bg-gray-200/50 font-medium" : ""
             )}
           >
             <Inbox className="w-4 h-4" />
             <span>Inbox</span>
-          </div>
+          </Link>
           
           <div className="pt-2 pb-1 px-3 flex items-center justify-between text-xs font-semibold text-gray-400 tracking-wider">
             <span>LABELS</span>
@@ -134,14 +171,15 @@ export function Sidebar() {
             </button>
           </div>
           {labels.map((folder) => (
-            <div 
+            <Link 
+              href="/"
               key={folder.name} 
               onClick={() => window.dispatchEvent(new CustomEvent('filter-category', { detail: folder.name }))}
               className="sidebar-link group cursor-pointer hover:bg-gray-200/50"
             >
               <div className={clsx("w-2 h-2 rounded-full flex-shrink-0", folder.color.startsWith('bg-[') ? folder.color : 'bg-gray-400')} style={folder.color.startsWith('bg-[') ? { backgroundColor: folder.color.slice(4,-1) } : {}} />
               <span className="truncate">{folder.name}</span>
-            </div>
+            </Link>
           ))}
           {isAddingLabel && (
             <div className="sidebar-link px-3">
@@ -170,20 +208,25 @@ export function Sidebar() {
           <div className="pt-2 pb-1 px-3 text-xs font-semibold text-gray-400 tracking-wider">
             MAIL
           </div>
-          <div className="sidebar-link">
+          <Link href="/" className="sidebar-link">
             <Inbox className="w-4 h-4" />
             <span>All Mail</span>
-          </div>
-          <div className="sidebar-link">
+          </Link>
+          <Link href="/" className="sidebar-link">
             <Send className="w-4 h-4" />
             <span>Sent</span>
-          </div>
-          <div className="sidebar-link">
+          </Link>
+          <Link href="/" className="sidebar-link">
             <File className="w-4 h-4" />
             <span>Drafts</span>
-          </div>
+          </Link>
         </div>
       </div>
     </aside>
   );
+
+  // Small helper so it doesn't complain about activeCategory not being defined
+  function activeCategoryCheck() {
+    return false; // Real logic relies on custom events in InboxClient
+  }
 }

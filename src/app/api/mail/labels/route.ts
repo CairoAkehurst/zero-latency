@@ -13,15 +13,10 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const { name, labelListVisibility, messageListVisibility, color } = await request.json();
+    const { name, color } = await request.json();
     const { gmail } = await getGmailClient();
     
-    const payload: any = {
-      name,
-      labelListVisibility: labelListVisibility || 'labelShow',
-      messageListVisibility: messageListVisibility || 'show'
-    };
-
+    const payload: any = { name };
     if (color) {
       payload.color = color;
     }
@@ -33,6 +28,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ label: response.data });
   } catch (error: any) {
+    console.error("Label creation error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
