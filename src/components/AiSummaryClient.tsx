@@ -318,6 +318,7 @@ export function AiSummaryClient({
   const handleDelete = async (email: any, e: React.MouseEvent) => {
     e.stopPropagation();
     setActionInProgressId(email.id);
+    const previousEmails = emails;
     setEmails(prev => prev.filter(item => item.id !== email.id));
 
     try {
@@ -326,11 +327,14 @@ export function AiSummaryClient({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ messageIds: [email.id], action: "trash" })
       });
-      if (res.ok) {
-        window.dispatchEvent(new CustomEvent('refresh-inbox'));
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to delete email in Gmail");
       }
+      window.dispatchEvent(new CustomEvent('refresh-inbox'));
     } catch (err) {
       console.error(err);
+      setEmails(previousEmails);
     } finally {
       setActionInProgressId(null);
     }

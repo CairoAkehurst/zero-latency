@@ -204,6 +204,7 @@ export function InboxClient({ initialEmails, initialNextPageToken }: { initialEm
   const handleDeleteSelected = async () => {
     if (checkedEmailIds.size === 0) return;
     const idsToDelete = Array.from(checkedEmailIds);
+    const deletedEmails = filteredEmails.filter(email => idsToDelete.includes(email.id));
     
     // Optimistic UI update
     setEmails(prev => prev.filter(e => !idsToDelete.includes(e.id)));
@@ -215,8 +216,12 @@ export function InboxClient({ initialEmails, initialNextPageToken }: { initialEm
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ messageIds: idsToDelete, action: "trash" })
       });
-      if (!res.ok) throw new Error("Failed to delete emails in Gmail");
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to delete emails in Gmail");
+      }
     } catch (error: any) {
+      setEmails(prev => [...deletedEmails, ...prev]);
       alert(error.message);
     }
   };

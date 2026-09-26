@@ -11,8 +11,20 @@ export async function POST(request: Request) {
     }
 
     if (action === 'trash') {
+      // Inbox rows represent Gmail conversations. Trash the whole thread so
+      // older messages in that conversation cannot keep it in the inbox.
+      const threadIds = await Promise.all(messageIds.map(async (id: string) => {
+        const message = await gmail.users.messages.get({
+          userId: 'me',
+          id,
+          format: 'minimal',
+        });
+        return message.data.threadId;
+      }));
       await Promise.all(
-        messageIds.map(id => gmail.users.messages.trash({ userId: 'me', id }))
+        [...new Set(threadIds.filter((id): id is string => Boolean(id)))].map(id =>
+          gmail.users.threads.trash({ userId: 'me', id })
+        )
       );
       return NextResponse.json({ success: true, action: 'trash' });
     }
