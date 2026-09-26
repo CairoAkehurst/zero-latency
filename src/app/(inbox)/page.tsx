@@ -51,20 +51,31 @@ export default async function InboxPage() {
       );
       
       const validMessages = detailedMessages.filter(Boolean) as any[];
-      const messageIds = validMessages.map(m => m.google_message_id);
 
+      // Fetch user custom labels that actually exist in Gmail
+      let userLabelsMap = new Map<string, { id: string; name: string; color: string }>();
+      try {
+        const labelsRes = await gmail.users.labels.list({ userId: 'me' });
+        const rawLabels = labelsRes.data.labels || [];
+        const userLabels = rawLabels.filter((l: any) => 
+          l.type === 'user' && 
+          !['CATEGORY_PROMOTIONS', 'CATEGORY_UPDATES', 'CATEGORY_SOCIAL', 'CATEGORY_FORUMS'].includes(l.name)
+        );
+        for (const l of userLabels) {
+          if (l.id && l.name) {
+            const color = l.color?.backgroundColor ? `bg-[${l.color.backgroundColor}]` : 'blue';
+            userLabelsMap.set(l.id, { id: l.id, name: l.name, color });
+          }
+        }
+      } catch (lErr) {
+        console.error('Failed to fetch user labels in page.tsx:', lErr);
+      }
+
+      // Fetch AI Metadata (only tldr & suggested_reply, NOT old dummy categories)
+      const messageIds = validMessages.map(m => m.google_message_id);
       const { data: aiMetadata } = await supabase
         .from('email_ai_metadata')
-        .select(`
-          google_message_id,
-          tldr,
-          action_required,
-          suggested_reply,
-          categories (
-            name,
-            color
-          )
-        `)
+        .select('google_message_id, tldr, suggested_reply')
         .in('google_message_id', messageIds)
         .eq('user_id', user.id);
 
@@ -77,13 +88,24 @@ export default async function InboxPage() {
 
       mappedEmails = validMessages.map(email => {
         const meta = aiMap.get(email.google_message_id);
-        const category = meta?.categories;
+        
+        // Find matching custom label from Gmail
+        let matchedLabel: { name: string; color: string } | null = null;
+        if (email.labelIds && Array.isArray(email.labelIds)) {
+          for (const lId of email.labelIds) {
+            if (userLabelsMap.has(lId)) {
+              const found = userLabelsMap.get(lId)!;
+              matchedLabel = { name: found.name, color: found.color };
+              break;
+            }
+          }
+        }
 
         return {
           ...email,
           summary: meta?.tldr || email.snippet,
-          category: category?.name || null,
-          categoryColor: category?.color || 'gray',
+          category: matchedLabel ? matchedLabel.name : null,
+          categoryColor: matchedLabel ? matchedLabel.color : 'gray',
           suggestedReply: meta?.suggested_reply,
           hasAiMetadata: !!meta
         };
