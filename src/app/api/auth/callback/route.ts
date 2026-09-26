@@ -3,13 +3,16 @@ import { createClient } from '@/utils/supabase/server';
 
 /**
  * Direct Google OAuth callback — exchanges the authorization code with Google
- * directly, then uses Supabase signInWithIdToken to create a valid Supabase
- * session. Also stores Google tokens in the users table for Gmail API access.
+ * directly, then creates a valid Supabase session. Also stores Google tokens
+ * in the users table for Gmail API access.
  */
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const origin = process.env.APP_URL || url.origin;
-  const fail = (msg: string) => NextResponse.redirect(`${origin}/login?error=${encodeURIComponent(msg)}`);
+  const fail = (msg: string) => {
+    console.error('[auth/callback] FAIL:', msg);
+    return NextResponse.redirect(`${origin}/login?error=${encodeURIComponent(msg)}`);
+  };
 
   const code = url.searchParams.get('code');
   const state = url.searchParams.get('state');
@@ -33,6 +36,8 @@ export async function GET(request: Request) {
 
   // Exchange authorization code for tokens with Google directly
   const redirectUri = `${origin}/api/auth/callback`;
+  console.log('[auth/callback] Exchanging code with Google, redirect_uri:', redirectUri);
+
   const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -52,15 +57,20 @@ export async function GET(request: Request) {
   }
 
   const tokens = await tokenRes.json();
-  // tokens contains: access_token, refresh_token, id_token, expires_in, scope, token_type
+  console.log('[auth/callback] Got tokens from Google. Has id_token:', !!tokens.id_token, 'Has refresh_token:', !!tokens.refresh_token);
 
   if (!tokens.id_token) {
     return fail('Google did not return an ID token.');
   }
 
-  // Use Supabase signInWithIdToken to create a valid Supabase session
-  // This validates the Google ID token and creates/signs-in the user in Supabase
+  // Decode the ID token to get user info (it's a JWT, middle part is the payload)
+  const idPayload = JSON.parse(Buffer.from(tokens.id_token.split('.')[1], 'base64').toString());
+  console.log('[auth/callback] Google user:', idPayload.email, 'sub:', idPayload.sub);
+
+  // Try to create a Supabase session via signInWithIdToken
   const supabase = await createClient();
+  let userId: string | null = null;
+
   const { data, error: signInError } = await supabase.auth.signInWithIdToken({
     provider: 'google',
     token: tokens.id_token,
@@ -68,16 +78,24 @@ export async function GET(request: Request) {
   });
 
   if (signInError) {
-    console.error('[auth/callback] Supabase signInWithIdToken failed:', signInError);
-    return fail(`Authentication failed: ${signInError.message}`);
+    console.error('[auth/callback] signInWithIdToken failed:', signInError.message);
+    console.error('[auth/callback] This usually means the Google Client ID in Supabase Auth settings does not match the one used to generate this token.');
+    console.error('[auth/callback] Token aud:', idPayload.aud);
+
+    // Fallback: try signing in with email/password or create user via admin
+    // For now, return an actionable error
+    return fail(`Supabase auth failed: ${signInError.message}. Make sure the Google Client ID in Supabase Auth > Providers > Google matches: ${idPayload.aud}`);
   }
 
-  if (!data.user) {
-    return fail('Authentication failed: no user returned.');
+  userId = data.user?.id ?? null;
+  console.log('[auth/callback] Supabase session created for user:', userId);
+
+  if (!userId) {
+    return fail('Authentication succeeded but no user ID was returned.');
   }
 
   // Store Google tokens in the users table for Gmail API access (sync/send routes need these)
-  const user = data.user;
+  const user = data.user!;
   const { error: upsertError } = await supabase.from('users').upsert({
     id: user.id,
     email: user.email ?? '',
@@ -89,10 +107,9 @@ export async function GET(request: Request) {
 
   if (upsertError) {
     console.error('[auth/callback] Failed to store Google tokens:', upsertError);
-    // Don't fail the login — the user can still see their inbox, just sync might not work
   }
 
-  // Clear the CSRF state cookie
+  // Clear the CSRF state cookie and redirect to inbox
   const response = NextResponse.redirect(`${origin}/`);
   response.cookies.set('oauth_state', '', {
     httpOnly: true,
