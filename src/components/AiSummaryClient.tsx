@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, Sparkles, Check, Archive, Trash2, X, Send, Bot, User, Edit3, Plus, MessageSquare, ChevronDown, CheckCircle2 } from "lucide-react";
+import { Loader2, Sparkles, Check, Archive, Trash2, X, Send, Bot, User, Edit3, MessageSquare } from "lucide-react";
 import { formatEmailDate } from "@/utils/formatDate";
 
 interface AgentThought {
@@ -24,10 +24,10 @@ interface ChatMessage {
 interface AgentSession {
   id: string; // email.id
   email: any;
-  messages: ChatMessage[];
   draftReply: string;
   isEditingDraft: boolean;
   status: 'idle' | 'working' | 'ready' | 'sending' | 'sent';
+  messages: ChatMessage[];
 }
 
 export function AiSummaryClient() {
@@ -128,7 +128,7 @@ export function AiSummaryClient() {
       { id: '3', text: 'Drafting tailored professional response', status: 'working' as const },
     ];
 
-    const fallbackDraft = email.suggestedReply || `Hi ${email.sender_name ? email.sender_name.split(' ')[0] : 'there'},\n\nThank you for reaching out. I have reviewed your message and wanted to confirm that everything looks good on my end.\n\nBest regards,`;
+    const fallbackDraft = email.suggestedReply || `Hi ${email.sender_name ? email.sender_name.split(' ')[0] : 'there'},\n\nThank you for reaching out. I have reviewed your note and everything looks good on my end.\n\nBest regards,`;
 
     const newSession: AgentSession = {
       id: email.id,
@@ -286,7 +286,7 @@ export function AiSummaryClient() {
         setTimeout(() => {
           setSessions(prev => prev.filter(s => s.id !== session.id));
           setActiveSessionId(prev => (prev === session.id ? null : prev));
-        }, 2200);
+        }, 2000);
       } else {
         setSessions(prev => prev.map(s => s.id === session.id ? { ...s, status: 'ready' } : s));
       }
@@ -321,7 +321,6 @@ export function AiSummaryClient() {
       };
     }));
 
-    // Generate updated response
     setTimeout(() => {
       const updatedDraft = `${session.draftReply}\n\nP.S. ${userText}`;
       setSessions(prev => prev.map(s => {
@@ -348,7 +347,7 @@ export function AiSummaryClient() {
     return (
       <div className="flex-1 flex flex-col h-full bg-white relative">
         <div className="flex items-center justify-center h-full">
-          <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+          <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
         </div>
       </div>
     );
@@ -362,12 +361,12 @@ export function AiSummaryClient() {
         className="flex flex-col h-full flex-shrink-0 transition-all duration-300 ease-in-out min-w-0 overflow-hidden"
         style={{ width: activeSession ? 'calc(100% - 460px)' : '100%' }}
       >
-        {/* Header Toolbar */}
+        {/* Header Toolbar matching Email Detail View / Inbox headers */}
         <header className="h-[68px] px-6 flex items-center justify-between border-b border-gray-100 flex-shrink-0">
           <div className="flex items-center gap-3">
             <Sparkles className="w-5 h-5 text-purple-600" />
             <h1 className="text-[18px] font-semibold text-gray-900 tracking-tight">Priority Inbox</h1>
-            <span className="text-sm text-gray-400 font-normal">AI summaries & autonomous actions</span>
+            <span className="text-sm text-gray-400 font-normal">Top summaries & suggested actions</span>
           </div>
         </header>
 
@@ -402,7 +401,7 @@ export function AiSummaryClient() {
 
                     <div className="flex items-center gap-1 flex-shrink-0">
                       <span className="text-xs text-gray-400 mr-1.5">{formatEmailDate(email.timestamp)}</span>
-                      {/* Archive Button */}
+                      {/* Archive Button (Directly archives, no popups) */}
                       <button 
                         onClick={(e) => handleArchive(email, e)}
                         disabled={actionInProgressId === email.id}
@@ -411,7 +410,7 @@ export function AiSummaryClient() {
                       >
                         <Archive className="w-4 h-4" />
                       </button>
-                      {/* Delete Button */}
+                      {/* Delete Button (Directly moves to trash, no popups) */}
                       <button 
                         onClick={(e) => handleDelete(email, e)}
                         disabled={actionInProgressId === email.id}
@@ -424,17 +423,17 @@ export function AiSummaryClient() {
                   </div>
                   
                   {/* Summary Body */}
-                  <div className="flex-1 text-sm text-gray-700 leading-relaxed mb-4 bg-gray-50/70 p-3 rounded-lg border border-gray-100">
+                  <div className="flex-1 text-sm text-gray-700 leading-relaxed mb-4">
                     <span className="font-medium text-gray-900 mr-1">Summary:</span>
                     {email.summary || email.snippet}
                   </div>
 
-                  {/* Card Bottom / Reply Actions */}
+                  {/* Card Bottom / Reply Actions (Clean blue and neutral styling) */}
                   {email.suggestedReply || email.hasAiMetadata ? (
                     <div className="pt-3 border-t border-gray-100 flex items-center gap-2 mt-auto">
                       <button 
                         onClick={() => handleApproveReply(email)}
-                        className="flex-1 px-3 py-2 bg-gray-900 text-white text-xs font-medium rounded-lg hover:bg-gray-800 transition-colors flex items-center justify-center gap-1.5 shadow-sm"
+                        className="flex-1 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg transition-colors flex items-center justify-center gap-1.5 shadow-sm"
                       >
                         <Check className="w-3.5 h-3.5" />
                         Approve Reply
@@ -451,7 +450,7 @@ export function AiSummaryClient() {
                       <span className="text-xs text-gray-400 italic">No automated actions suggested.</span>
                       <button 
                         onClick={() => handleApproveReply(email)}
-                        className="text-xs text-purple-600 hover:text-purple-700 font-medium"
+                        className="text-xs text-blue-600 hover:text-blue-700 font-medium"
                       >
                         Write reply
                       </button>
@@ -464,64 +463,64 @@ export function AiSummaryClient() {
         </div>
       </div>
 
-      {/* Right Sidebar: Exact same design as EmailDetailPeek + Gemini Chat with multi-tab header */}
+      {/* Right Sidebar: EXACT same design as EmailDetailPeek (flex-1 rounded-tl-2xl border-l border-gray-200) */}
       {activeSession && (
-        <div className="flex flex-col h-full bg-white z-10 relative overflow-hidden transition-all duration-300 ease-in-out flex-1 rounded-tl-2xl border-l border-gray-200 shadow-sm min-w-[420px] max-w-[500px]">
+        <div className="flex flex-col h-full bg-white z-10 relative overflow-hidden transition-all duration-300 ease-in-out flex-1 rounded-tl-2xl border-l border-gray-200 min-w-[420px] max-w-[500px]">
           
-          {/* Multi-Tab Top Bar */}
-          <div className="bg-gray-50/80 border-b border-gray-200 px-3 pt-2.5 flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+          {/* Multi-Chat Pill Tabs Header */}
+          <div className="px-5 pt-3 pb-2.5 flex items-center gap-1.5 overflow-x-auto no-scrollbar border-b border-gray-100 bg-white">
             {sessions.map((sess) => {
               const isActive = sess.id === activeSessionId;
               const sender = sess.email.sender_name?.split(' ')[0] || sess.email.sender_email?.split('@')[0] || 'Email';
               return (
-                <div
+                <button
                   key={sess.id}
                   onClick={() => setActiveSessionId(sess.id)}
-                  className={`flex items-center gap-2 px-3 py-1.5 text-xs rounded-t-lg font-medium cursor-pointer transition-all border-t border-x ${
+                  className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-all flex-shrink-0 ${
                     isActive
-                      ? 'bg-white text-gray-900 border-gray-200 shadow-sm -mb-px'
-                      : 'bg-transparent text-gray-500 hover:text-gray-800 border-transparent hover:bg-gray-200/50'
+                      ? 'bg-blue-600 text-white shadow-sm'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900'
                   }`}
                 >
-                  <Sparkles className={`w-3.5 h-3.5 ${isActive ? 'text-purple-600' : 'text-gray-400'}`} />
-                  <span className="truncate max-w-[120px]">{sender}</span>
+                  <Sparkles className={`w-3 h-3 ${isActive ? 'text-white' : 'text-purple-500'}`} />
+                  <span className="truncate max-w-[110px]">{sender}</span>
                   {sess.status === 'working' || sess.status === 'sending' ? (
-                    <Loader2 className="w-3 h-3 animate-spin text-purple-600 ml-1" />
-                  ) : sess.status === 'sent' ? (
-                    <CheckCircle2 className="w-3 h-3 text-green-600 ml-1" />
+                    <Loader2 className={`w-3 h-3 animate-spin ${isActive ? 'text-white' : 'text-blue-600'}`} />
                   ) : null}
-                  <button 
+                  <span 
                     onClick={(e) => handleCloseSession(sess.id, e)}
-                    className="p-0.5 hover:bg-gray-200 rounded text-gray-400 hover:text-gray-600 ml-1"
+                    className={`p-0.5 rounded-full hover:bg-black/10 transition-colors ml-0.5 ${isActive ? 'text-white/80 hover:text-white' : 'text-gray-400 hover:text-gray-700'}`}
                   >
                     <X className="w-3 h-3" />
-                  </button>
-                </div>
+                  </span>
+                </button>
               );
             })}
           </div>
 
-          {/* Header Toolbar matching EmailDetailPeek */}
-          <div className="h-[60px] px-5 flex items-center justify-between border-b border-gray-100 flex-shrink-0">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-purple-600 to-indigo-600 flex items-center justify-center text-white shadow-sm flex-shrink-0">
-                <Sparkles className="w-4 h-4" />
+          {/* Header Toolbar matching EmailDetailPeek (h-[68px], exact icon, close button) */}
+          <div className="h-[68px] px-5 flex items-center justify-between border-b border-gray-100 flex-shrink-0">
+            <div className="flex items-center gap-3 min-w-0">
+              {/* Same purple icon as priority inbox */}
+              <div className="p-2 bg-purple-50 text-purple-600 rounded-lg flex-shrink-0">
+                <Sparkles className="w-5 h-5" />
               </div>
               <div className="flex flex-col min-w-0">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-sm font-semibold text-gray-900 truncate">
-                    Gemini Agent
+                <div className="flex items-center gap-2">
+                  <span className="text-base font-bold text-gray-900 truncate">
+                    Zero
                   </span>
-                  <span className="text-[10px] font-medium px-1.5 py-0.2 rounded-full bg-purple-50 text-purple-600 border border-purple-200/60">
-                    {activeSession.status === 'working' ? 'Working' : activeSession.status === 'sending' ? 'Sending' : activeSession.status === 'sent' ? 'Sent' : 'Ready'}
+                  <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-100">
+                    {activeSession.status === 'working' ? 'Working...' : activeSession.status === 'sending' ? 'Sending...' : activeSession.status === 'sent' ? 'Sent' : 'Ready'}
                   </span>
                 </div>
-                <span className="text-xs text-gray-400 truncate max-w-[240px]">
+                <span className="text-xs text-gray-500 truncate max-w-[240px]">
                   {activeSession.email.subject || activeSession.email.sender_email}
                 </span>
               </div>
             </div>
 
+            {/* Standard circular hover X close button from EmailDetailPeek */}
             <button 
               onClick={() => setActiveSessionId(null)}
               className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
@@ -531,121 +530,107 @@ export function AiSummaryClient() {
             </button>
           </div>
 
-          {/* Gemini Chat Body */}
-          <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-4 bg-white">
+          {/* Chat Stream Body */}
+          <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-5 bg-white">
             
             {activeSession.messages.map((msg) => (
-              <div key={msg.id} className="flex flex-col gap-2">
+              <div key={msg.id} className="flex flex-col gap-3">
                 {msg.sender === 'user' ? (
-                  /* User Prompt Bubble */
+                  /* User Prompt Stream */
                   <div className="flex items-start gap-2.5 justify-end">
                     <div className="bg-gray-100 text-gray-800 text-xs px-3.5 py-2.5 rounded-2xl rounded-tr-sm max-w-[85%] leading-relaxed">
                       {msg.content}
                     </div>
-                    <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 flex-shrink-0 text-[10px] font-semibold mt-0.5">
-                      <User className="w-3.5 h-3.5" />
-                    </div>
                   </div>
                 ) : (
-                  /* Gemini Response with Thinking Lines */
-                  <div className="flex items-start gap-2.5">
-                    <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-purple-600 to-indigo-600 flex items-center justify-center text-white flex-shrink-0 shadow-sm mt-0.5">
-                      <Sparkles className="w-3.5 h-3.5" />
+                  /* Zero Agent Stream */
+                  <div className="flex items-start gap-3">
+                    <div className="mt-1 flex-shrink-0">
+                      <Sparkles className="w-4 h-4 text-purple-600" />
                     </div>
 
-                    <div className="flex-1 space-y-3 min-w-0">
+                    <div className="flex-1 space-y-4 min-w-0">
                       
-                      {/* Gemini Thought Process / Vertical Lines */}
+                      {/* Thought Process (Clean vertical lines, NO clunky box) */}
                       {msg.thoughts && msg.thoughts.length > 0 && (
-                        <div className="bg-purple-50/40 border border-purple-100/70 rounded-xl p-3 space-y-2">
-                          <div className="text-[11px] font-medium text-purple-700 flex items-center gap-1.5">
-                            <span className="w-1.5 h-1.5 rounded-full bg-purple-600 animate-pulse" />
-                            Thinking process
-                          </div>
-                          <div className="border-l-2 border-purple-200 pl-3 space-y-2 py-0.5">
-                            {msg.thoughts.map((th) => (
-                              <div key={th.id} className="flex items-center gap-2 text-xs">
-                                {th.status === 'working' ? (
-                                  <div className="flex items-center gap-1.5 text-purple-700 font-medium">
-                                    <span className="inline-block w-2.5 h-2.5 border-2 border-purple-600 border-t-transparent rounded-full animate-spin flex-shrink-0" />
-                                    <span>{th.text}</span>
-                                  </div>
-                                ) : (
-                                  <div className="flex items-center gap-1.5 text-gray-600">
-                                    <Check className="w-3.5 h-3.5 text-green-600 flex-shrink-0" />
-                                    <span>{th.text}</span>
-                                  </div>
-                                )}
-                              </div>
-                            ))}
-                          </div>
+                        <div className="border-l-2 border-purple-300 pl-3 py-1 space-y-2.5">
+                          {msg.thoughts.map((th) => (
+                            <div key={th.id} className="flex items-center gap-2 text-xs">
+                              {th.status === 'working' ? (
+                                <div className="flex items-center gap-2 text-purple-700 font-medium">
+                                  <span className="inline-block w-2.5 h-2.5 border-2 border-purple-600 border-t-transparent rounded-full animate-spin flex-shrink-0" />
+                                  <span>{th.text}</span>
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-2 text-gray-600">
+                                  <Check className="w-3.5 h-3.5 text-blue-600 flex-shrink-0" />
+                                  <span>{th.text}</span>
+                                </div>
+                              )}
+                            </div>
+                          ))}
                         </div>
                       )}
 
-                      {/* Final message text or delivery message */}
+                      {/* Final message text or delivery notice */}
                       {msg.content && (
-                        <div className="text-xs text-gray-800 bg-gray-50 border border-gray-100 p-3 rounded-xl leading-relaxed">
+                        <div className="text-xs text-gray-700 leading-relaxed font-sans">
                           {msg.content}
                         </div>
                       )}
 
-                      {/* Suggested Reply Card Inline */}
+                      {/* Inline Suggested Reply */}
                       {msg.suggestedReply && (
-                        <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-                          <div className="bg-gray-50/80 px-3.5 py-2 border-b border-gray-100 flex items-center justify-between text-xs">
-                            <span className="font-semibold text-gray-700 flex items-center gap-1.5">
-                              <Bot className="w-3.5 h-3.5 text-purple-600" />
-                              Suggested Reply Draft
-                            </span>
+                        <div className="space-y-2 mt-2 animate-in fade-in duration-200">
+                          <div className="flex items-center justify-between text-xs text-gray-500">
+                            <span className="font-semibold text-gray-700">Suggested Reply</span>
                             <button
                               onClick={() => {
                                 setSessions(prev => prev.map(s => s.id === activeSession.id ? { ...s, isEditingDraft: !s.isEditingDraft } : s));
                               }}
-                              className="text-purple-600 hover:text-purple-700 font-medium flex items-center gap-1 text-[11px]"
+                              className="text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1 text-[11px]"
                             >
                               <Edit3 className="w-3 h-3" />
                               {activeSession.isEditingDraft ? 'Save' : 'Edit'}
                             </button>
                           </div>
 
-                          <div className="p-3.5">
-                            {activeSession.isEditingDraft ? (
-                              <textarea
-                                value={activeSession.draftReply}
-                                onChange={(e) => {
-                                  const val = e.target.value;
-                                  setSessions(prev => prev.map(s => s.id === activeSession.id ? { ...s, draftReply: val } : s));
-                                }}
-                                className="w-full text-xs text-gray-800 p-2.5 bg-gray-50/50 border border-purple-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500/20 resize-none font-sans leading-relaxed"
-                                rows={6}
-                              />
-                            ) : (
-                              <div className="text-xs text-gray-800 leading-relaxed whitespace-pre-wrap font-sans">
-                                {activeSession.draftReply}
-                              </div>
-                            )}
-                          </div>
+                          {activeSession.isEditingDraft ? (
+                            <textarea
+                              value={activeSession.draftReply}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setSessions(prev => prev.map(s => s.id === activeSession.id ? { ...s, draftReply: val } : s));
+                              }}
+                              className="w-full text-xs text-gray-800 p-3 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 resize-none font-sans leading-relaxed"
+                              rows={6}
+                            />
+                          ) : (
+                            <div className="text-xs text-gray-800 leading-relaxed whitespace-pre-wrap font-sans p-3.5 bg-gray-50/80 rounded-xl border border-gray-100">
+                              {activeSession.draftReply}
+                            </div>
+                          )}
 
-                          {/* Quick Action Button within Card */}
-                          <div className="px-3.5 py-2.5 bg-gray-50/50 border-t border-gray-100 flex items-center justify-end gap-2">
+                          {/* Primary Blue Action Button */}
+                          <div className="flex items-center justify-end pt-1">
                             <button
                               onClick={() => handleSendReply(activeSession)}
                               disabled={activeSession.status === 'sending' || activeSession.status === 'sent'}
-                              className="px-4 py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold rounded-lg flex items-center gap-1.5 shadow-sm transition-all disabled:opacity-50"
+                              className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg flex items-center gap-2 shadow-sm transition-all disabled:opacity-50"
                             >
                               {activeSession.status === 'sending' ? (
                                 <>
-                                  <Loader2 className="w-3 h-3 animate-spin" />
+                                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
                                   Sending...
                                 </>
                               ) : activeSession.status === 'sent' ? (
                                 <>
-                                  <Check className="w-3 h-3" />
+                                  <Check className="w-3.5 h-3.5" />
                                   Sent!
                                 </>
                               ) : (
                                 <>
-                                  <Send className="w-3 h-3" />
+                                  <Send className="w-3.5 h-3.5" />
                                   Approve & Send
                                 </>
                               )}
@@ -662,23 +647,23 @@ export function AiSummaryClient() {
 
           </div>
 
-          {/* Gemini Chat Input Bar */}
-          <div className="p-3.5 border-t border-gray-100 bg-white flex items-center gap-2 flex-shrink-0">
+          {/* Bottom Chat Prompt Input Bar */}
+          <div className="p-4 border-t border-gray-100 bg-white flex items-center gap-2 flex-shrink-0">
             <input 
               type="text"
-              placeholder="Ask Gemini to refine reply or perform task..."
+              placeholder="Ask Zero to refine or make changes..."
               value={userPromptInput}
               onChange={(e) => setUserPromptInput(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') handleSendCustomMessage(activeSession);
               }}
-              className="flex-1 px-3.5 py-2 text-xs bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all placeholder:text-gray-400"
+              className="flex-1 px-4 py-2 text-xs bg-gray-50 border border-gray-200 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all placeholder:text-gray-400"
             />
             <button 
               onClick={() => handleSendCustomMessage(activeSession)}
               disabled={!userPromptInput.trim()}
-              className="p-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl disabled:opacity-40 transition-colors shadow-sm"
-              title="Send instruction to Gemini"
+              className="p-2 bg-blue-600 hover:bg-blue-700 text-white rounded-full disabled:opacity-40 transition-colors shadow-sm"
+              title="Send to Zero"
             >
               <Send className="w-3.5 h-3.5" />
             </button>
