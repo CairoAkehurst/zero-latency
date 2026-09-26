@@ -66,7 +66,7 @@ export function AiSummaryClient() {
             <Sparkles className="w-6 h-6" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">AI Priority Inbox</h1>
+            <h1 className="text-2xl font-bold text-gray-900">Priority Inbox</h1>
             <p className="text-gray-500 text-sm">Your latest emails summarized by AI with suggested actions.</p>
           </div>
         </div>

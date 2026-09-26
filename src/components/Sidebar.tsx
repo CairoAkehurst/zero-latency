@@ -165,7 +165,7 @@ export function Sidebar() {
             )}
           >
             <Sparkles className="w-4 h-4 text-purple-600" />
-            <span>AI Priority</span>
+            <span>Priority</span>
           </Link>
           
           <Link

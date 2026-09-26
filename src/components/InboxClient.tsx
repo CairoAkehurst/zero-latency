@@ -29,6 +29,7 @@ export function InboxClient({ initialEmails, initialNextPageToken }: { initialEm
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
   
   // Debounce search
   const [debouncedQuery, setDebouncedQuery] = useState(searchQuery);
@@ -73,7 +74,7 @@ export function InboxClient({ initialEmails, initialNextPageToken }: { initialEm
     }
     
     return () => { isMounted = false; };
-  }, [debouncedQuery, activeCategory]);
+  }, [debouncedQuery, activeCategory, refreshKey]);
 
   // Background Polling (Instant Sync)
   useEffect(() => {
@@ -115,21 +116,7 @@ export function InboxClient({ initialEmails, initialNextPageToken }: { initialEm
     return () => clearInterval(interval);
   }, [debouncedQuery, activeCategory]);
   
-  // Intersection Observer for Infinite Scroll
-  const loadMoreRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const observer = new IntersectionObserver((entries) => {
-      if (entries[0].isIntersecting && nextPageToken && !isLoadingMore) {
-        loadMore();
-      }
-    }, { threshold: 0.1 });
-    
-    if (loadMoreRef.current) {
-      observer.observe(loadMoreRef.current);
-    }
-    
-    return () => observer.disconnect();
-  }, [nextPageToken, isLoadingMore]);
+  // Infinite Scroll handled via onScroll on container
 
 
   useEffect(() => {
@@ -266,6 +253,16 @@ export function InboxClient({ initialEmails, initialNextPageToken }: { initialEm
     }
   };
 
+  
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+    if (scrollHeight - scrollTop <= clientHeight * 1.5) {
+      if (nextPageToken && !isLoadingMore) {
+        loadMore();
+      }
+    }
+  };
+
   return (
     <>
       <div className="flex h-full relative overflow-hidden min-h-0">
@@ -368,7 +365,7 @@ export function InboxClient({ initialEmails, initialNextPageToken }: { initialEm
           
         {/* Email List */}
 
-          <div className="flex-1 overflow-y-auto pb-8">
+          <div className="flex-1 overflow-y-auto pb-8" onScroll={handleScroll}>
             {filteredEmails.length === 0 ? (
               <div className="p-8 text-center text-gray-500 text-sm">No emails found. Try syncing or adjusting your search.</div>
             ) : (
