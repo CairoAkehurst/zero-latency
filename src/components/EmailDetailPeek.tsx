@@ -51,6 +51,9 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
   const [showLabelMenu, setShowLabelMenu] = useState(false);
   const [availableLabels, setAvailableLabels] = useState<Array<{ id: string; name: string; color?: string }>>([]);
   const [isLabeling, setIsLabeling] = useState(false);
+  const [threadMessages, setThreadMessages] = useState<any[]>([]);
+  const [isLoadingThread, setIsLoadingThread] = useState(false);
+  const [expandedMessageIds, setExpandedMessageIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     fetch('/api/mail/labels')
@@ -110,6 +113,35 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
       setBccText("");
       setShowCcBcc(false);
       setShowFormatting(false);
+
+      // Fetch full thread if google_thread_id is present
+      const targetThreadId = email.google_thread_id;
+      if (targetThreadId) {
+        setIsLoadingThread(true);
+        fetch(`/api/mail/thread?threadId=${encodeURIComponent(targetThreadId)}`)
+          .then(res => res.json())
+          .then(data => {
+            if (data.messages && Array.isArray(data.messages)) {
+              setThreadMessages(data.messages);
+              // Expand the latest message by default
+              if (data.messages.length > 0) {
+                const latest = data.messages[data.messages.length - 1];
+                setExpandedMessageIds(new Set([latest.id]));
+              }
+            } else {
+              setThreadMessages([]);
+            }
+          })
+          .catch(err => {
+            console.error("Failed to fetch thread messages:", err);
+            setThreadMessages([]);
+          })
+          .finally(() => {
+            setIsLoadingThread(false);
+          });
+      } else {
+        setThreadMessages([]);
+      }
     }
   }, [email]);
 
@@ -159,6 +191,27 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
     if (replyRef.current) setDraftText(replyRef.current.innerHTML);
   };
 
+  const refetchThread = async () => {
+    if (!email?.google_thread_id) return;
+    setIsLoadingThread(true);
+    try {
+      const res = await fetch(`/api/mail/thread?threadId=${encodeURIComponent(email.google_thread_id)}`);
+      const data = await res.json();
+      if (data.messages && Array.isArray(data.messages)) {
+        setThreadMessages(data.messages);
+        // Auto-expand latest
+        if (data.messages.length > 0) {
+          const latest = data.messages[data.messages.length - 1];
+          setExpandedMessageIds(new Set([latest.id]));
+        }
+      }
+    } catch (err) {
+      console.error("Failed to refetch thread:", err);
+    } finally {
+      setIsLoadingThread(false);
+    }
+  };
+
   const handleSend = async () => {
     setIsSending(true);
     try {
@@ -184,6 +237,11 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
         console.error("Calendar invite error:", calErr);
       }
 
+      // Determine the latest message's message_id_header for proper threading
+      const latestMsg = threadMessages.length > 0 ? threadMessages[threadMessages.length - 1] : null;
+      const replyToMessageId = latestMsg?.message_id_header || email.message_id_header;
+      const replyToReferences = latestMsg?.references_header || email.references_header;
+
       const res = await fetch("/api/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -194,17 +252,20 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
           subject: email.subject,
           body: outgoingBody,
           threadId: email.google_thread_id,
-          messageId: email.message_id_header,
-          references: email.references_header
+          messageId: replyToMessageId,
+          references: replyToReferences
         }),
       });
       if (res.ok) {
         setSendSuccess(true);
-        setTimeout(() => {
+        handleDiscard();
+        setReplyMode(null);
+        // Refetch thread to show the sent reply in the thread view
+        setTimeout(async () => {
           setSendSuccess(false);
-          handleDiscard();
-          onClose();
-        }, 2000);
+          await refetchThread();
+          window.dispatchEvent(new CustomEvent('refresh-inbox'));
+        }, 1500);
       } else {
         alert("Failed to send email");
       }
@@ -345,114 +406,155 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
           )}
         </h1>
 
-        {/* Sender Info Row */}
-        <div className="flex items-start justify-between w-full">
-          <div className="flex gap-4">
-            <Avatar 
-              name={email.sender_name} 
-              email={email.sender_email} 
-              size="lg" 
-              className="w-10 h-10 shadow-xs border border-gray-100" 
-            />
-            <div className="flex flex-col">
-              <div className="flex items-baseline gap-2">
-                <span className="text-base font-bold text-gray-900">{email.sender_name || email.sender_email}</span>
-                {email.sender_name && (
-                  <span className="text-xs text-gray-500">&lt;{email.sender_email}&gt;</span>
-                )}
-              </div>
-              <div 
-                className="flex items-center gap-1 mt-0.5 text-xs text-gray-500 cursor-pointer hover:text-gray-700 w-fit"
-                onClick={() => setShowDetails(!showDetails)}
-              >
-                <span>to me</span>
-                <ChevronDown className={`w-3 h-3 transition-transform ${showDetails ? 'rotate-180' : ''}`} />
-              </div>
-              
-              {/* Details Dropdown */}
-              {showDetails && (
-                <div className="mt-4 p-4 rounded-lg border border-gray-200 bg-white shadow-sm text-sm grid grid-cols-[max-content_1fr] gap-x-4 gap-y-2 text-gray-600">
-                  <div className="text-right text-gray-400">From:</div>
-                  <div className="font-medium text-gray-900">{email.sender_name} &lt;{email.sender_email}&gt;</div>
-                  
-                  <div className="text-right text-gray-400">To:</div>
-                  <div>{email.to_email || "you@zerolatency.com"}</div>
-                  
-                  {email.cc && (
-                    <>
-                      <div className="text-right text-gray-400">Cc:</div>
-                      <div>{email.cc}</div>
-                    </>
-                  )}
-                  {email.bcc && (
-                    <>
-                      <div className="text-right text-gray-400">Bcc:</div>
-                      <div>{email.bcc}</div>
-                    </>
-                  )}
-                  <div className="text-right text-gray-400">Date:</div>
-                  <div>{formattedFullDate}</div>
-                  
-                  <div className="text-right text-gray-400">Subject:</div>
-                  <div>{email.subject}</div>
-                </div>
+        {/* Thread header row */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <h2 className="text-sm font-medium text-gray-500">
+              {isLoadingThread ? (
+                <span className="flex items-center gap-1.5"><Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading thread...</span>
+              ) : threadMessages.length > 0 ? (
+                `${threadMessages.length} message${threadMessages.length !== 1 ? 's' : ''}`
+              ) : (
+                null
               )}
-            </div>
+            </h2>
           </div>
-
-          <div className="flex items-center gap-3 text-gray-400">
-            <span className="text-xs mr-2">{formatEmailDate(email.timestamp)}</span>
-            <button 
-              onClick={handleScrollToReply}
-              className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium transition-colors flex items-center gap-2 shadow-sm"
-            >
-              <Reply className="w-3.5 h-3.5" />
-              Reply
-            </button>
-            <button className="p-2 hover:bg-gray-100 rounded-full transition-colors" title="More">
-              <MoreVertical className="w-4 h-4" />
-            </button>
-          </div>
+          <button 
+            onClick={() => { setReplyMode('reply'); setTimeout(() => { replyRef.current?.focus(); handleScrollToReply(); }, 50); }}
+            className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium transition-colors flex items-center gap-2 shadow-sm"
+          >
+            <Reply className="w-3.5 h-3.5" />
+            Reply
+          </button>
         </div>
 
         {/* AI Overview Box */}
         {email.summary && (
-          <div className="w-full my-2 bg-white border border-blue-200 rounded-xl px-5 py-4">
-            <div className="text-sm font-semibold text-blue-600 mb-1">
-              AI Summary
-            </div>
-            <p className="text-sm text-gray-800 leading-relaxed">
-              {email.summary}
-            </p>
+          <div className="w-full bg-white border border-blue-200 rounded-xl px-5 py-4">
+            <div className="text-sm font-semibold text-blue-600 mb-1">AI Summary</div>
+            <p className="text-sm text-gray-800 leading-relaxed">{email.summary}</p>
           </div>
         )}
 
-        {/* Email Body */}
-        <div className="w-full">
-          {email.body_html ? (
-            <div className="w-full pr-2 max-h-[50vh] overflow-y-auto">
-              <iframe 
-                sandbox="allow-popups allow-popups-to-escape-sandbox allow-same-origin"
-                srcDoc={email.body_html} 
-                className="w-full min-h-[60px] border-none bg-white" 
-                title="Email Body"
-                onLoad={(e) => {
-                  const iframe = e.target as HTMLIFrameElement;
-                  try {
-                    iframe.style.height = '0px';
-                    iframe.style.height = (iframe.contentWindow?.document.documentElement.scrollHeight || 60) + 'px';
-                  } catch (e) {
-                    // Ignore cross-origin errors if any
-                  }
-                }}
-              />
+        {/* Threaded Messages / Email Body */}
+        {threadMessages.length > 0 ? (
+          <div className="w-full flex flex-col gap-2">
+            {threadMessages.map((msg, idx) => {
+              const isLatest = idx === threadMessages.length - 1;
+              const isExpanded = expandedMessageIds.has(msg.id);
+              const isSent = msg.is_sent;
+              const senderName = isSent ? 'You' : (msg.sender_name || msg.sender_email || 'Unknown');
+              const senderEmail = isSent ? '' : msg.sender_email;
+              const msgDate = msg.timestamp ? new Date(msg.timestamp) : null;
+              const msgDateStr = msgDate && !isNaN(msgDate.getTime())
+                ? msgDate.toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+                : (msg.timestamp || '');
+
+              return (
+                <div
+                  key={msg.id}
+                  className={`rounded-xl border transition-all ${isLatest ? 'border-gray-200 bg-white shadow-sm' : 'border-gray-100 bg-gray-50/50'}`}
+                >
+                  {/* Message Header – click to toggle expand/collapse */}
+                  <div
+                    className={`flex items-center gap-3 px-4 py-3 cursor-pointer select-none rounded-xl ${isExpanded ? 'rounded-b-none border-b border-gray-100' : ''}`}
+                    onClick={() => {
+                      setExpandedMessageIds(prev => {
+                        const next = new Set(prev);
+                        if (next.has(msg.id)) { next.delete(msg.id); } else { next.add(msg.id); }
+                        return next;
+                      });
+                    }}
+                  >
+                    <Avatar
+                      name={isSent ? 'You' : (msg.sender_name || '')}
+                      email={isSent ? '' : (msg.sender_email || '')}
+                      size="sm"
+                      className="w-8 h-8 flex-shrink-0 border border-gray-100"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-baseline gap-2">
+                        <span className={`text-sm font-semibold ${isSent ? 'text-blue-700' : 'text-gray-900'}`}>
+                          {senderName}
+                        </span>
+                        {isSent && (
+                          <span className="text-xs bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded font-medium flex-shrink-0">Sent</span>
+                        )}
+                        {!isSent && senderEmail && (
+                          <span className="text-xs text-gray-400 truncate">&lt;{senderEmail}&gt;</span>
+                        )}
+                      </div>
+                      {!isExpanded && (
+                        <p className="text-xs text-gray-400 truncate mt-0.5">{msg.snippet || ''}</p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <span className="text-xs text-gray-400">{msgDateStr}</span>
+                      <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                    </div>
+                  </div>
+
+                  {/* Message Body */}
+                  {isExpanded && (
+                    <div className="px-4 py-4">
+                      {msg.body_html ? (
+                        <iframe
+                          sandbox="allow-popups allow-popups-to-escape-sandbox allow-same-origin"
+                          srcDoc={msg.body_html}
+                          className="w-full min-h-[60px] border-none bg-white"
+                          title={`Message from ${senderName}`}
+                          onLoad={(e) => {
+                            const iframe = e.target as HTMLIFrameElement;
+                            try {
+                              iframe.style.height = '0px';
+                              iframe.style.height = (iframe.contentWindow?.document.documentElement.scrollHeight || 60) + 'px';
+                            } catch (_) {}
+                          }}
+                        />
+                      ) : (
+                        <div className="text-sm text-gray-800 whitespace-pre-wrap font-sans leading-relaxed">
+                          {msg.body_text || msg.snippet || 'No content'}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        ) : !isLoadingThread ? (
+          /* Fallback single-email view when thread couldn't load */
+          <>
+            <div className="flex items-start gap-4 w-full">
+              <Avatar name={email.sender_name} email={email.sender_email} size="lg" className="w-10 h-10 shadow-xs border border-gray-100 flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-baseline gap-2">
+                  <span className="text-base font-bold text-gray-900">{email.sender_name || email.sender_email}</span>
+                  {email.sender_name && <span className="text-xs text-gray-500">&lt;{email.sender_email}&gt;</span>}
+                </div>
+                <div className="text-xs text-gray-400 mt-0.5">{formatEmailDate(email.timestamp)}</div>
+              </div>
             </div>
-          ) : (
-            <div className="text-sm text-gray-800 whitespace-pre-wrap font-sans leading-relaxed pr-2 max-h-[50vh] overflow-y-auto">
-              {email.body_text || 'No content'}
+            <div className="w-full">
+              {email.body_html ? (
+                <iframe
+                  sandbox="allow-popups allow-popups-to-escape-sandbox allow-same-origin"
+                  srcDoc={email.body_html}
+                  className="w-full min-h-[60px] border-none bg-white"
+                  title="Email Body"
+                  onLoad={(e) => {
+                    const iframe = e.target as HTMLIFrameElement;
+                    try { iframe.style.height = '0px'; iframe.style.height = (iframe.contentWindow?.document.documentElement.scrollHeight || 60) + 'px'; } catch (_) {}
+                  }}
+                />
+              ) : (
+                <div className="text-sm text-gray-800 whitespace-pre-wrap font-sans leading-relaxed">
+                  {email.body_text || 'No content'}
+                </div>
+              )}
             </div>
-          )}
-        </div>
+          </>
+        ) : null}
 
         {/* Permanent Reply Section */}
         <div className="w-full mt-2 pb-12">
