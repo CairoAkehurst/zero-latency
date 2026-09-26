@@ -29,10 +29,13 @@ const eventTones = [
   'border-rose-200 bg-rose-50 text-rose-900 before:bg-rose-500',
   'border-cyan-200 bg-cyan-50 text-cyan-950 before:bg-cyan-500',
 ];
-const toneForEvent = (event: CalendarEvent) => {
+const eventDots = ['bg-blue-500', 'bg-emerald-500', 'bg-violet-500', 'bg-amber-500', 'bg-rose-500', 'bg-cyan-500'];
+const toneIndexForEvent = (event: CalendarEvent) => {
   const key = event.id || event.summary || 'calendar';
-  const hash = [...key].reduce((value, character) => value + character.charCodeAt(0), 0);
-  return eventTones[hash % eventTones.length];
+  return [...key].reduce((value, character) => value + character.charCodeAt(0), 0) % eventTones.length;
+};
+const toneForEvent = (event: CalendarEvent) => {
+  return eventTones[toneIndexForEvent(event)];
 };
 
 export default function CalendarPage() {
@@ -59,7 +62,7 @@ export default function CalendarPage() {
   const loadEvents = useCallback(async () => {
     const timeMin = new Date(range.start.getFullYear(), range.start.getMonth(), range.start.getDate()).toISOString();
     const timeMax = new Date(range.end.getFullYear(), range.end.getMonth(), range.end.getDate() + 1).toISOString();
-    const response = await fetch(`/api/calendar/events?timeMin=${encodeURIComponent(timeMin)}&timeMax=${encodeURIComponent(timeMax)}`);
+    const response = await fetch(`/api/calendar/events?timeMin=${encodeURIComponent(timeMin)}&timeMax=${encodeURIComponent(timeMax)}`, { cache: 'no-store' });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || 'Could not load calendar');
     return data.events as CalendarEvent[];
@@ -67,14 +70,34 @@ export default function CalendarPage() {
 
   useEffect(() => {
     let active = true;
-    loadEvents().then((loadedEvents) => {
-      if (active) setEvents(loadedEvents);
-    }).catch((loadError: unknown) => {
-      if (active) setError(messageOf(loadError));
-    }).finally(() => {
-      if (active) setLoading(false);
-    });
-    return () => { active = false; };
+    let refreshing = false;
+    let initialLoad = true;
+    const refresh = async () => {
+      if (refreshing) return;
+      refreshing = true;
+      try {
+        const loadedEvents = await loadEvents();
+        if (active) {
+          setEvents(loadedEvents);
+          setSelectedEvent((current) => current ? loadedEvents.find((event) => event.id === current.id) || null : null);
+          setError('');
+        }
+      } catch (loadError: unknown) {
+        if (active) setError(messageOf(loadError));
+      } finally {
+        if (active && initialLoad) setLoading(false);
+        initialLoad = false;
+        refreshing = false;
+      }
+    };
+    void refresh();
+    const interval = window.setInterval(refresh, 30_000);
+    window.addEventListener('focus', refresh);
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+      window.removeEventListener('focus', refresh);
+    };
   }, [loadEvents]);
 
   const days = useMemo(() => {
@@ -140,10 +163,12 @@ export default function CalendarPage() {
 
   const dayEvents = (day: Date) => events.filter((event) => isSameDay(dateOf(event), day));
   const meetLink = (event: CalendarEvent) => event.conferenceData?.entryPoints?.find((entry) => entry.entryPointType === 'video')?.uri;
+  const activeViewIndex = (['Day', 'Week', 'Month'] as View[]).indexOf(view);
 
   return (
-    <div className="flex h-full min-h-0 flex-col bg-white text-[13px] text-gray-800">
-      <header className="flex min-h-[58px] flex-wrap items-center gap-2 border-b border-gray-100 bg-[#f7f7f5] px-4 py-2.5 sm:px-5">
+    <div className="flex h-full min-h-0 bg-white text-[13px] text-gray-800">
+      <section className="flex min-w-0 flex-1 flex-col bg-white">
+      <header className="flex min-h-[58px] flex-wrap items-center gap-2 border-b border-gray-100 bg-white px-4 py-2.5 sm:px-5">
         <div className="flex items-center gap-2 text-gray-800">
           <CalendarDays className="h-[18px] w-[18px] text-gray-500" />
           <span className="text-[15px] font-semibold tracking-tight">Calendar</span>
@@ -155,24 +180,27 @@ export default function CalendarPage() {
         </div>
         <h1 className="min-w-[170px] text-[17px] font-semibold tracking-tight text-gray-800">{rangeTitle}</h1>
         <div className="ml-auto flex items-center gap-2.5">
-          <div className="flex rounded-md border border-gray-200 bg-white p-0.5 shadow-sm">
-            {(['Day', 'Week', 'Month'] as View[]).map((option) => (
-              <button key={option} onClick={() => setView(option)} className={`rounded px-2.5 py-1 text-[11px] font-medium transition-colors ${view === option ? 'bg-gray-100 text-gray-900 shadow-sm' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-800'}`}>{option}</button>
-            ))}
+          <div className="rounded-full bg-gray-100 p-1">
+            <div className="relative flex h-7 w-[168px] items-center">
+              <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 left-0 w-1/3 rounded-full bg-white shadow-sm ring-1 ring-black/[0.04] transition-transform duration-200 ease-out" style={{ transform: `translateX(${activeViewIndex * 100}%)` }} />
+              {(['Day', 'Week', 'Month'] as View[]).map((option) => (
+                <button key={option} aria-pressed={view === option} onClick={() => setView(option)} className={`relative z-10 flex h-full flex-1 items-center justify-center rounded-full text-[11px] font-medium transition-colors ${view === option ? 'text-gray-900' : 'text-gray-500 hover:text-gray-800'}`}>{option}</button>
+              ))}
+            </div>
           </div>
           <button onClick={() => openCreate()} className="flex items-center gap-1.5 rounded-md bg-gray-900 px-3 py-1.5 text-[12px] font-medium text-white shadow-sm transition-colors hover:bg-gray-700"><Plus className="h-3.5 w-3.5" /><span className="hidden sm:inline">New event</span></button>
         </div>
       </header>
 
       {error && <div role="alert" className="mx-5 mt-3 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">{error}</div>}
-      <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden px-3 pb-3 pt-2 sm:px-4">
-        {view === 'Month' && <div className="grid grid-cols-7 border-b border-gray-200 bg-gray-50/70">{['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((name) => <div key={name} className="py-2 text-center text-[10px] font-semibold uppercase tracking-[0.08em] text-gray-500">{name}</div>)}</div>}
-        {view !== 'Month' && <div className={`grid border-b border-gray-200 bg-gray-50/70 ${view === 'Day' ? 'grid-cols-[46px_minmax(0,1fr)]' : 'grid-cols-[46px_repeat(7,minmax(0,1fr))]'}`}>
+      <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-white px-3 pb-3 pt-2 sm:px-4">
+        {view === 'Month' && <div className="grid grid-cols-7 border-b border-gray-200 bg-white">{['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((name) => <div key={name} className="py-2 text-center text-[10px] font-semibold uppercase tracking-[0.08em] text-gray-500">{name}</div>)}</div>}
+        {view !== 'Month' && <div className={`grid border-b border-gray-200 bg-white ${view === 'Day' ? 'grid-cols-[46px_minmax(0,1fr)]' : 'grid-cols-[46px_repeat(7,minmax(0,1fr))]'}`}>
           <div />{days.map((day) => <button key={day.toISOString()} onClick={() => setCursor(day)} className="py-2 text-center hover:bg-gray-100"><div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-gray-500">{format(day, 'EEE')}</div><div className={`mx-auto mt-1 flex h-7 w-7 items-center justify-center rounded-full text-xs font-medium ${isSameDay(day, new Date()) ? 'bg-blue-600 text-white' : 'text-gray-800'}`}>{format(day, 'd')}</div></button>)}
         </div>}
         {view === 'Month' ? <div className="grid min-h-0 flex-1 grid-cols-7 grid-rows-6 overflow-auto rounded-b-lg border-l border-gray-200">
           {days.map((day) => (
-            <div key={day.toISOString()} onClick={() => openCreate(day)} className={`group relative min-h-[110px] cursor-pointer border-b border-r border-gray-200 p-1.5 transition-colors ${!isSameMonth(day, cursor) ? 'bg-gray-50/60' : isSameDay(day, new Date()) ? 'bg-blue-50/30' : 'bg-white hover:bg-gray-50/70'}`}>
+            <div key={day.toISOString()} onClick={() => openCreate(day)} className="group relative min-h-[110px] cursor-pointer border-b border-r border-gray-200 bg-white p-1.5 transition-colors hover:bg-gray-50/40">
               <div className="mb-1 flex items-center justify-between px-0.5"><span className={`flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-medium ${isSameDay(day, new Date()) ? 'bg-blue-600 text-white' : isSameMonth(day, cursor) ? 'text-gray-700' : 'text-gray-400'}`}>{format(day, 'd')}</span><button onClick={(event) => { event.stopPropagation(); openCreate(day); }} className="rounded-md p-1 text-gray-400 opacity-0 transition hover:bg-gray-100 hover:text-gray-700 group-hover:opacity-100" aria-label={`Create event ${format(day, 'MMM d')}`}><Plus className="h-3.5 w-3.5" /></button></div>
               <div className="space-y-1">
                 {dayEvents(day).slice(0, 4).map((event) => (
@@ -186,8 +214,8 @@ export default function CalendarPage() {
             </div>
           ))}
         </div> : <div className={`grid min-h-0 flex-1 overflow-auto rounded-b-lg border-l border-gray-200 ${view === 'Day' ? 'grid-cols-[46px_minmax(0,1fr)]' : 'grid-cols-[46px_repeat(7,minmax(150px,1fr))]'}`} onMouseUp={finishTimeSelection}>
-          <div className="relative border-r border-gray-200 bg-gray-50/50" style={{ height: `${16 * 64}px` }}>{Array.from({ length: 16 }, (_, index) => index + 6).map((hour) => <div key={hour} className="absolute right-2 -translate-y-1/2 text-[10px] tabular-nums text-gray-400" style={{ top: `${(hour - 6) * 64}px` }}>{format(new Date(2000, 0, 1, hour), 'ha').toLowerCase()}</div>)}</div>
-          {days.map((day) => <div key={day.toISOString()} className={`relative border-r border-gray-200 ${isSameDay(day, new Date()) ? 'bg-blue-50/20' : 'bg-white'}`} style={{ height: `${16 * 64}px` }}>
+          <div className="relative border-r border-gray-200 bg-white" style={{ height: `${16 * 64}px` }}>{Array.from({ length: 16 }, (_, index) => index + 6).map((hour) => <div key={hour} className="absolute right-2 text-[10px] tabular-nums text-gray-400" style={{ top: `${(hour - 6) * 64 + 8}px` }}>{format(new Date(2000, 0, 1, hour), 'ha').toLowerCase()}</div>)}</div>
+          {days.map((day) => <div key={day.toISOString()} className="relative border-r border-gray-200 bg-white" style={{ height: `${16 * 64}px` }}>
             {Array.from({ length: 16 }, (_, index) => index + 6).map((hour) => <div key={hour} onMouseDown={(event) => { if (event.button === 0) { event.preventDefault(); beginTimeSelection(day, hour); } }} onMouseEnter={() => updateTimeSelection(day, hour)} className="absolute left-0 right-0 z-0 h-16 border-b border-gray-100 transition-colors hover:bg-blue-50/40" style={{ top: `${(hour - 6) * 64}px` }} />)}
             {dragSelection && isSelecting && (isSameDay(dragSelection.start, day) || isSameDay(dragSelection.end, day)) && (() => {
               const slot = isSameDay(dragSelection.start, day) ? dragSelection.start : dragSelection.end;
@@ -206,6 +234,27 @@ export default function CalendarPage() {
         {loading && <div className="pointer-events-none absolute bottom-8 right-10 rounded-full bg-white/90 px-3 py-1.5 text-xs text-gray-500 shadow">Loading events…</div>}
         {!loading && !events.length && !error && <div className="pointer-events-none absolute bottom-8 right-10 rounded-full bg-white/90 px-3 py-1.5 text-xs text-gray-400 shadow">Your calendar is up to date</div>}
       </div>
+      </section>
+
+      {selectedEvent && <aside className="z-20 flex h-full w-full max-w-[400px] shrink-0 flex-col border-l border-gray-200 bg-white shadow-[-8px_0_24px_rgba(15,23,42,0.04)]">
+        <header className="flex h-[68px] shrink-0 items-center justify-between border-b border-gray-100 px-5">
+          <div className="flex items-center gap-2"><span className={`h-2.5 w-2.5 rounded-full ${eventDots[toneIndexForEvent(selectedEvent)]}`} /><span className="text-sm font-semibold text-gray-800">Event details</span></div>
+          <button onClick={() => setSelectedEvent(null)} aria-label="Close event details" className="rounded-md p-1.5 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700"><X className="h-4 w-4" /></button>
+        </header>
+        <div className="flex-1 overflow-y-auto px-6 py-6">
+          <h2 className="text-xl font-semibold leading-7 tracking-tight text-gray-900">{selectedEvent.summary || 'Event'}</h2>
+          <div className="mt-5 space-y-5">
+            <div className="flex gap-3"><Clock3 className="mt-0.5 h-4 w-4 shrink-0 text-gray-400" /><div><p className="text-sm font-medium text-gray-800">{format(dateOf(selectedEvent), 'EEEE, MMMM d, yyyy')}</p><p className="mt-1 text-[12px] text-gray-500">{selectedEvent.start?.dateTime ? `${format(dateOf(selectedEvent), 'h:mm a')} – ${format(new Date(selectedEvent.end?.dateTime || selectedEvent.start.dateTime), 'h:mm a')}` : 'All day'}</p></div></div>
+            {selectedEvent.location && <div className="flex gap-3"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-gray-400" /><div><p className="text-sm font-medium text-gray-800">Location</p><p className="mt-1 break-words text-[12px] text-gray-500">{selectedEvent.location}</p></div></div>}
+            {selectedEvent.attendees?.length ? <div className="flex gap-3"><Users className="mt-0.5 h-4 w-4 shrink-0 text-gray-400" /><div className="min-w-0 flex-1"><p className="text-sm font-medium text-gray-800">Guests</p><div className="mt-2 space-y-2">{selectedEvent.attendees.map((attendee) => <div key={attendee.email} className="flex min-w-0 items-center gap-2"><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gray-100 text-[10px] font-semibold uppercase text-gray-600">{attendee.email?.[0] || '?'}</span><span className="truncate text-[12px] text-gray-600">{attendee.email}</span><span className="ml-auto shrink-0 text-[10px] capitalize text-gray-400">{attendee.responseStatus || 'invited'}</span></div>)}</div></div></div> : null}
+            {selectedEvent.description && <div className="flex gap-3"><div className="h-4 w-4 shrink-0" /><div><p className="text-sm font-medium text-gray-800">Description</p><p className="mt-1 whitespace-pre-wrap text-[12px] leading-5 text-gray-500">{selectedEvent.description}</p></div></div>}
+          </div>
+        </div>
+        <div className="flex shrink-0 flex-wrap gap-2 border-t border-gray-100 px-5 py-4">
+          {meetLink(selectedEvent) && <a href={meetLink(selectedEvent)!} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-full bg-blue-600 px-4 py-2 text-[12px] font-medium text-white transition hover:bg-blue-700"><Video className="h-3.5 w-3.5" />Join Google Meet</a>}
+          {selectedEvent.htmlLink && <a href={selectedEvent.htmlLink} target="_blank" rel="noreferrer" className="rounded-full border border-gray-200 px-4 py-2 text-[12px] font-medium text-gray-700 transition hover:bg-gray-50">Open in Google Calendar</a>}
+        </div>
+      </aside>}
 
       {showCreate && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget) setShowCreate(false); }}>
         <form onSubmit={saveEvent} className="w-full max-w-lg overflow-hidden rounded-2xl bg-white shadow-2xl">
@@ -223,15 +272,6 @@ export default function CalendarPage() {
         </form>
       </div>}
 
-      {selectedEvent && <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/20 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget) setSelectedEvent(null); }}>
-        <div className="w-full max-w-md rounded-xl bg-white p-5 shadow-xl">
-          <div className="flex items-start justify-between gap-4"><div><h2 className="text-lg font-medium text-gray-900">{selectedEvent.summary || 'Event'}</h2><p className="mt-1 text-sm text-gray-500">{selectedEvent.start?.dateTime ? `${format(dateOf(selectedEvent), 'EEEE, MMMM d · h:mm a')} – ${format(new Date(selectedEvent.end?.dateTime || selectedEvent.start.dateTime), 'h:mm a')}` : format(dateOf(selectedEvent), 'EEEE, MMMM d')}</p></div><button onClick={() => setSelectedEvent(null)} aria-label="Close" className="rounded-full p-2 text-gray-500 hover:bg-gray-100"><X className="h-4 w-4" /></button></div>
-          {selectedEvent.location && <p className="mt-4 flex items-center gap-2 text-sm text-gray-600"><MapPin className="h-4 w-4" />{selectedEvent.location}</p>}
-          {selectedEvent.attendees?.length ? <p className="mt-3 flex items-center gap-2 text-sm text-gray-600"><Users className="h-4 w-4" />{selectedEvent.attendees.map((attendee) => attendee.email).filter(Boolean).join(', ')}</p> : null}
-          {selectedEvent.description && <p className="mt-4 whitespace-pre-wrap text-sm text-gray-600">{selectedEvent.description}</p>}
-          <div className="mt-5 flex gap-2">{meetLink(selectedEvent) && <a href={meetLink(selectedEvent)!} target="_blank" rel="noreferrer" className="rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white">Join with Google Meet</a>}{selectedEvent.htmlLink && <a href={selectedEvent.htmlLink} target="_blank" rel="noreferrer" className="rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-700">Open in Google Calendar</a>}</div>
-        </div>
-      </div>}
     </div>
   );
 }
