@@ -1,37 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { createClient } from "@/utils/supabase/client";
 
 export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleLogin = async () => {
-    try {
-      setIsLoading(true);
-      const supabase = createClient();
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
-          scopes: "https://www.googleapis.com/auth/gmail.modify https://www.googleapis.com/auth/calendar",
-          queryParams: {
-            access_type: "offline",
-            prompt: "consent",
-          },
-        },
-      });
-
-      if (error) {
-        console.error("Login error:", error.message);
-        alert(`Login failed: ${error.message}`);
-      }
-    } catch (err: any) {
-      console.error("Unexpected error:", err);
-      alert(`Unexpected error: ${err.message || String(err)}`);
-    } finally {
-      setIsLoading(false);
-    }
+  const handleLogin = () => {
+    setIsLoading(true);
+    // Redirect to our direct Google OAuth route (bypasses Supabase's broken OAuth redirect)
+    window.location.href = '/api/auth/login';
   };
 
   return (
