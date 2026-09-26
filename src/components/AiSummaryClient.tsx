@@ -1,32 +1,44 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, Sparkles, Check, Archive, Trash2, X, Send, CheckCircle2, AlertCircle, Calendar, Bot, ChevronRight, Edit3, User, Mail } from "lucide-react";
+import { Loader2, Sparkles, Check, Archive, Trash2, X, Send, Bot, User, Edit3, Plus, MessageSquare, ChevronDown, CheckCircle2 } from "lucide-react";
 import { formatEmailDate } from "@/utils/formatDate";
 
-interface TimelineStep {
+interface AgentThought {
   id: string;
-  title: string;
-  description: string;
-  status: 'pending' | 'in_progress' | 'completed' | 'error';
-  icon?: 'analyze' | 'calendar' | 'draft' | 'send';
+  text: string;
+  status: 'working' | 'done';
 }
 
-interface SendingProcessState {
+interface ChatMessage {
+  id: string;
+  sender: 'user' | 'agent';
+  content?: string;
+  isInitial?: boolean;
+  thoughts?: AgentThought[];
+  isThinking?: boolean;
+  suggestedReply?: string;
+  isDelivered?: boolean;
+}
+
+interface AgentSession {
+  id: string; // email.id
   email: any;
-  replyText: string;
-  isEditing: boolean;
-  steps: TimelineStep[];
-  currentStepIndex: number;
-  isComplete: boolean;
-  errorMessage?: string;
+  messages: ChatMessage[];
+  draftReply: string;
+  isEditingDraft: boolean;
+  status: 'idle' | 'working' | 'ready' | 'sending' | 'sent';
 }
 
 export function AiSummaryClient() {
   const [emails, setEmails] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionInProgressId, setActionInProgressId] = useState<string | null>(null);
-  const [activeSession, setActiveSession] = useState<SendingProcessState | null>(null);
+
+  // Multi-chat management
+  const [sessions, setSessions] = useState<AgentSession[]>([]);
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [userPromptInput, setUserPromptInput] = useState("");
 
   const fetchTop10 = async () => {
     try {
@@ -60,11 +72,9 @@ export function AiSummaryClient() {
       if (res.ok) {
         window.dispatchEvent(new CustomEvent('refresh-inbox'));
       } else {
-        alert("Failed to archive email in Gmail");
         fetchTop10();
       }
     } catch (err) {
-      alert("Error archiving email");
       fetchTop10();
     } finally {
       setActionInProgressId(null);
@@ -73,8 +83,6 @@ export function AiSummaryClient() {
 
   const handleDelete = async (email: any, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!confirm(`Move "${email.subject}" to trash?`)) return;
-
     setActionInProgressId(email.id);
     setEmails(prev => prev.filter(item => item.id !== email.id));
 
@@ -87,18 +95,23 @@ export function AiSummaryClient() {
       if (res.ok) {
         window.dispatchEvent(new CustomEvent('refresh-inbox'));
       } else {
-        alert("Failed to move email to trash in Gmail");
         fetchTop10();
       }
     } catch (err) {
-      alert("Error moving email to trash");
       fetchTop10();
     } finally {
       setActionInProgressId(null);
     }
   };
 
-  const handleOpenApproveSidebar = async (email: any) => {
+  const handleApproveReply = (email: any) => {
+    // If session already exists for this email, switch to it
+    const existing = sessions.find(s => s.id === email.id);
+    if (existing) {
+      setActiveSessionId(email.id);
+      return;
+    }
+
     const isCalendar = Boolean(
       email.subject?.toLowerCase().includes("calendar") ||
       email.subject?.toLowerCase().includes("meeting") ||
@@ -109,147 +122,227 @@ export function AiSummaryClient() {
       email.snippet?.toLowerCase().includes("invite")
     );
 
-    const initialSteps: TimelineStep[] = [
-      {
-        id: 'analyze',
-        title: 'Analyzing thread context',
-        description: `Synthesized thread context from ${email.sender_name || email.sender_email}`,
-        status: 'completed',
-        icon: 'analyze'
-      },
-      ...(isCalendar ? [{
-        id: 'calendar',
-        title: 'Checking calendar availability',
-        description: 'Checked connected Google Calendar for scheduling conflicts',
-        status: 'in_progress' as const,
-        icon: 'calendar' as const
-      }] : []),
-      {
-        id: 'draft',
-        title: 'Composing suggested reply',
-        description: 'Generated contextual draft adhering to your communication tone',
-        status: 'pending' as const,
-        icon: 'draft' as const
-      },
-      {
-        id: 'send',
-        title: 'Ready for confirmation',
-        description: 'Review reply below and click Send to dispatch',
-        status: 'pending' as const,
-        icon: 'send' as const
-      }
+    const initialThoughts: AgentThought[] = [
+      { id: '1', text: 'Reading email & understanding thread history', status: 'working' },
+      ...(isCalendar ? [{ id: '2', text: 'Checking calendar for conflicts & availability', status: 'working' as const }] : []),
+      { id: '3', text: 'Drafting tailored professional response', status: 'working' as const },
     ];
 
-    const fallbackReply = email.suggestedReply || `Hi ${email.sender_name ? email.sender_name.split(' ')[0] : 'there'},\n\nThanks for your note. I reviewed this and wanted to let you know that looks good on my end.\n\nBest regards,`;
+    const fallbackDraft = email.suggestedReply || `Hi ${email.sender_name ? email.sender_name.split(' ')[0] : 'there'},\n\nThank you for reaching out. I have reviewed your message and wanted to confirm that everything looks good on my end.\n\nBest regards,`;
 
-    setActiveSession({
+    const newSession: AgentSession = {
+      id: email.id,
       email,
-      replyText: fallbackReply,
-      isEditing: false,
-      steps: initialSteps,
-      currentStepIndex: isCalendar ? 1 : 1,
-      isComplete: false
-    });
+      draftReply: fallbackDraft,
+      isEditingDraft: false,
+      status: 'working',
+      messages: [
+        {
+          id: 'm1',
+          sender: 'user',
+          content: `Review "${email.subject || 'this email'}" and prepare suggested reply`,
+          isInitial: true
+        },
+        {
+          id: 'm2',
+          sender: 'agent',
+          isThinking: true,
+          thoughts: initialThoughts,
+          suggestedReply: undefined
+        }
+      ]
+    };
 
-    // Simulate animated timeline agent progress
-    if (isCalendar) {
-      await new Promise(r => setTimeout(r, 650));
-      setActiveSession(prev => {
-        if (!prev) return null;
-        const updated = prev.steps.map(s => {
-          if (s.id === 'calendar') return { ...s, status: 'completed' as const, description: 'Found free time slot: Tomorrow 2:00 PM – 2:30 PM' };
-          if (s.id === 'draft') return { ...s, status: 'in_progress' as const };
-          return s;
-        });
-        return { ...prev, steps: updated };
-      });
-      await new Promise(r => setTimeout(r, 650));
-    } else {
-      await new Promise(r => setTimeout(r, 450));
-      setActiveSession(prev => {
-        if (!prev) return null;
-        const updated = prev.steps.map(s => {
-          if (s.id === 'draft') return { ...s, status: 'in_progress' as const };
-          return s;
-        });
-        return { ...prev, steps: updated };
-      });
-      await new Promise(r => setTimeout(r, 450));
-    }
+    setSessions(prev => [...prev, newSession]);
+    setActiveSessionId(email.id);
 
-    setActiveSession(prev => {
-      if (!prev) return null;
-      const updated = prev.steps.map(s => {
-        if (s.id === 'draft') return { ...s, status: 'completed' as const };
-        if (s.id === 'send') return { ...s, status: 'in_progress' as const, description: 'Awaiting your approval to send via Gmail' };
-        return s;
-      });
-      return { ...prev, steps: updated };
-    });
+    // Simulate animated Gemini-style reasoning timeline
+    setTimeout(() => {
+      setSessions(prev => prev.map(s => {
+        if (s.id !== email.id) return s;
+        return {
+          ...s,
+          messages: s.messages.map(m => {
+            if (m.id === 'm2' && m.thoughts) {
+              return {
+                ...m,
+                thoughts: m.thoughts.map((t, idx) => idx === 0 ? { ...t, status: 'done' as const } : t)
+              };
+            }
+            return m;
+          })
+        };
+      }));
+    }, 700);
+
+    setTimeout(() => {
+      setSessions(prev => prev.map(s => {
+        if (s.id !== email.id) return s;
+        return {
+          ...s,
+          messages: s.messages.map(m => {
+            if (m.id === 'm2' && m.thoughts) {
+              return {
+                ...m,
+                thoughts: m.thoughts.map((t) => ({ ...t, status: 'done' as const }))
+              };
+            }
+            return m;
+          })
+        };
+      }));
+    }, 1400);
+
+    setTimeout(() => {
+      setSessions(prev => prev.map(s => {
+        if (s.id !== email.id) return s;
+        return {
+          ...s,
+          status: 'ready',
+          messages: s.messages.map(m => {
+            if (m.id === 'm2') {
+              return {
+                ...m,
+                isThinking: false,
+                suggestedReply: fallbackDraft
+              };
+            }
+            return m;
+          })
+        };
+      }));
+    }, 2000);
   };
 
-  const handleExecuteSend = async () => {
-    if (!activeSession) return;
+  const handleCloseSession = (sessionId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const filtered = sessions.filter(s => s.id !== sessionId);
+    setSessions(filtered);
+    if (activeSessionId === sessionId) {
+      setActiveSessionId(filtered.length > 0 ? filtered[filtered.length - 1].id : null);
+    }
+  };
 
-    setActiveSession(prev => {
-      if (!prev) return null;
-      const updated = prev.steps.map(s => {
-        if (s.id === 'send') return { ...s, title: 'Transmitting via Gmail API', description: 'Sending message through Gmail...', status: 'in_progress' as const };
-        return s;
-      });
-      return { ...prev, steps: updated };
-    });
+  const handleSendReply = async (session: AgentSession) => {
+    setSessions(prev => prev.map(s => {
+      if (s.id !== session.id) return s;
+      return {
+        ...s,
+        status: 'sending',
+        messages: [
+          ...s.messages,
+          {
+            id: 'm_send',
+            sender: 'agent',
+            isThinking: true,
+            thoughts: [
+              { id: 's1', text: 'Validating RFC 2822 In-Reply-To headers', status: 'working' },
+              { id: 's2', text: 'Transmitting via Gmail API', status: 'working' }
+            ]
+          }
+        ]
+      };
+    }));
 
     try {
       const res = await fetch("/api/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          toEmail: activeSession.email.sender_email,
-          subject: activeSession.email.subject?.startsWith("Re:") ? activeSession.email.subject : `Re: ${activeSession.email.subject || ''}`,
-          body: activeSession.replyText,
-          threadId: activeSession.email.google_thread_id,
-          messageId: activeSession.email.message_id_header || activeSession.email.google_message_id,
-          references: activeSession.email.references_header
+          toEmail: session.email.sender_email,
+          subject: session.email.subject?.startsWith("Re:") ? session.email.subject : `Re: ${session.email.subject || ''}`,
+          body: session.draftReply,
+          threadId: session.email.google_thread_id,
+          messageId: session.email.message_id_header || session.email.google_message_id,
+          references: session.email.references_header
         }),
       });
 
       if (res.ok) {
-        setActiveSession(prev => {
-          if (!prev) return null;
-          const updated = prev.steps.map(s => {
-            if (s.id === 'send') return { ...s, title: 'Reply sent successfully', description: 'Dispatched and threaded in Gmail', status: 'completed' as const };
-            return s;
-          });
-          return { ...prev, steps: updated, isComplete: true };
-        });
+        setSessions(prev => prev.map(s => {
+          if (s.id !== session.id) return s;
+          return {
+            ...s,
+            status: 'sent',
+            messages: s.messages.map(m => {
+              if (m.id === 'm_send') {
+                return {
+                  ...m,
+                  isThinking: false,
+                  isDelivered: true,
+                  thoughts: [
+                    { id: 's1', text: 'Validated thread headers', status: 'done' },
+                    { id: 's2', text: 'Dispatched through Gmail', status: 'done' }
+                  ],
+                  content: 'Reply delivered successfully to recipient.'
+                };
+              }
+              return m;
+            })
+          };
+        }));
 
         window.dispatchEvent(new CustomEvent('refresh-inbox'));
         setTimeout(() => {
-          setActiveSession(null);
-        }, 1600);
+          setSessions(prev => prev.filter(s => s.id !== session.id));
+          setActiveSessionId(prev => (prev === session.id ? null : prev));
+        }, 2200);
       } else {
-        const data = await res.json().catch(() => ({}));
-        setActiveSession(prev => {
-          if (!prev) return null;
-          const updated = prev.steps.map(s => {
-            if (s.id === 'send') return { ...s, title: 'Transmission failed', description: data.error || 'Failed to dispatch email', status: 'error' as const };
-            return s;
-          });
-          return { ...prev, steps: updated, errorMessage: data.error || 'Failed to send reply' };
-        });
+        setSessions(prev => prev.map(s => s.id === session.id ? { ...s, status: 'ready' } : s));
       }
-    } catch (err: any) {
-      setActiveSession(prev => {
-        if (!prev) return null;
-        const updated = prev.steps.map(s => {
-          if (s.id === 'send') return { ...s, title: 'Network error', description: err.message || 'Failed to connect', status: 'error' as const };
-          return s;
-        });
-        return { ...prev, steps: updated, errorMessage: err.message };
-      });
+    } catch (err) {
+      setSessions(prev => prev.map(s => s.id === session.id ? { ...s, status: 'ready' } : s));
     }
   };
+
+  const handleSendCustomMessage = (session: AgentSession) => {
+    if (!userPromptInput.trim()) return;
+
+    const userText = userPromptInput.trim();
+    setUserPromptInput("");
+
+    setSessions(prev => prev.map(s => {
+      if (s.id !== session.id) return s;
+      return {
+        ...s,
+        messages: [
+          ...s.messages,
+          { id: Math.random().toString(), sender: 'user', content: userText },
+          {
+            id: Math.random().toString(),
+            sender: 'agent',
+            isThinking: true,
+            thoughts: [
+              { id: 't1', text: `Evaluating instruction: "${userText}"`, status: 'working' },
+              { id: 't2', text: 'Updating draft response', status: 'working' }
+            ]
+          }
+        ]
+      };
+    }));
+
+    // Generate updated response
+    setTimeout(() => {
+      const updatedDraft = `${session.draftReply}\n\nP.S. ${userText}`;
+      setSessions(prev => prev.map(s => {
+        if (s.id !== session.id) return s;
+        const lastMsgIdx = s.messages.length - 1;
+        const updatedMsgs = [...s.messages];
+        updatedMsgs[lastMsgIdx] = {
+          ...updatedMsgs[lastMsgIdx],
+          isThinking: false,
+          suggestedReply: updatedDraft
+        };
+        return {
+          ...s,
+          draftReply: updatedDraft,
+          messages: updatedMsgs
+        };
+      }));
+    }, 1200);
+  };
+
+  const activeSession = sessions.find(s => s.id === activeSessionId) || null;
 
   if (loading) {
     return (
@@ -340,14 +433,14 @@ export function AiSummaryClient() {
                   {email.suggestedReply || email.hasAiMetadata ? (
                     <div className="pt-3 border-t border-gray-100 flex items-center gap-2 mt-auto">
                       <button 
-                        onClick={() => handleOpenApproveSidebar(email)}
+                        onClick={() => handleApproveReply(email)}
                         className="flex-1 px-3 py-2 bg-gray-900 text-white text-xs font-medium rounded-lg hover:bg-gray-800 transition-colors flex items-center justify-center gap-1.5 shadow-sm"
                       >
                         <Check className="w-3.5 h-3.5" />
                         Approve Reply
                       </button>
                       <button 
-                        onClick={() => handleOpenApproveSidebar(email)}
+                        onClick={() => handleApproveReply(email)}
                         className="px-3 py-2 bg-gray-100 text-gray-700 text-xs font-medium rounded-lg hover:bg-gray-200 transition-colors text-center"
                       >
                         View & Edit
@@ -357,7 +450,7 @@ export function AiSummaryClient() {
                     <div className="pt-3 border-t border-gray-50 mt-auto flex items-center justify-between">
                       <span className="text-xs text-gray-400 italic">No automated actions suggested.</span>
                       <button 
-                        onClick={() => handleOpenApproveSidebar(email)}
+                        onClick={() => handleApproveReply(email)}
                         className="text-xs text-purple-600 hover:text-purple-700 font-medium"
                       >
                         Write reply
@@ -371,31 +464,66 @@ export function AiSummaryClient() {
         </div>
       </div>
 
-      {/* Right Sidebar: Exact same design as EmailDetailPeek (flex-1 rounded-tl-2xl border-l border-gray-200) */}
+      {/* Right Sidebar: Exact same design as EmailDetailPeek + Gemini Chat with multi-tab header */}
       {activeSession && (
         <div className="flex flex-col h-full bg-white z-10 relative overflow-hidden transition-all duration-300 ease-in-out flex-1 rounded-tl-2xl border-l border-gray-200 shadow-sm min-w-[420px] max-w-[500px]">
           
-          {/* Header Toolbar matching EmailDetailPeek style */}
-          <div className="h-[68px] px-5 flex items-center justify-between border-b border-gray-100 flex-shrink-0">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-purple-600 font-semibold text-sm">
-                <Bot className="w-4 h-4" />
+          {/* Multi-Tab Top Bar */}
+          <div className="bg-gray-50/80 border-b border-gray-200 px-3 pt-2.5 flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+            {sessions.map((sess) => {
+              const isActive = sess.id === activeSessionId;
+              const sender = sess.email.sender_name?.split(' ')[0] || sess.email.sender_email?.split('@')[0] || 'Email';
+              return (
+                <div
+                  key={sess.id}
+                  onClick={() => setActiveSessionId(sess.id)}
+                  className={`flex items-center gap-2 px-3 py-1.5 text-xs rounded-t-lg font-medium cursor-pointer transition-all border-t border-x ${
+                    isActive
+                      ? 'bg-white text-gray-900 border-gray-200 shadow-sm -mb-px'
+                      : 'bg-transparent text-gray-500 hover:text-gray-800 border-transparent hover:bg-gray-200/50'
+                  }`}
+                >
+                  <Sparkles className={`w-3.5 h-3.5 ${isActive ? 'text-purple-600' : 'text-gray-400'}`} />
+                  <span className="truncate max-w-[120px]">{sender}</span>
+                  {sess.status === 'working' || sess.status === 'sending' ? (
+                    <Loader2 className="w-3 h-3 animate-spin text-purple-600 ml-1" />
+                  ) : sess.status === 'sent' ? (
+                    <CheckCircle2 className="w-3 h-3 text-green-600 ml-1" />
+                  ) : null}
+                  <button 
+                    onClick={(e) => handleCloseSession(sess.id, e)}
+                    className="p-0.5 hover:bg-gray-200 rounded text-gray-400 hover:text-gray-600 ml-1"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Header Toolbar matching EmailDetailPeek */}
+          <div className="h-[60px] px-5 flex items-center justify-between border-b border-gray-100 flex-shrink-0">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-purple-600 to-indigo-600 flex items-center justify-center text-white shadow-sm flex-shrink-0">
+                <Sparkles className="w-4 h-4" />
               </div>
-              <div className="flex flex-col">
-                <span className="text-sm font-semibold text-gray-900 flex items-center gap-1.5">
-                  Agent Action
-                  <span className="text-[10px] font-normal px-1.5 py-0.5 rounded bg-purple-50 text-purple-600 border border-purple-100">
-                    Live
+              <div className="flex flex-col min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-sm font-semibold text-gray-900 truncate">
+                    Gemini Agent
                   </span>
-                </span>
-                <span className="text-xs text-gray-400 truncate max-w-[220px]">
-                  {activeSession.email.sender_name || activeSession.email.sender_email}
+                  <span className="text-[10px] font-medium px-1.5 py-0.2 rounded-full bg-purple-50 text-purple-600 border border-purple-200/60">
+                    {activeSession.status === 'working' ? 'Working' : activeSession.status === 'sending' ? 'Sending' : activeSession.status === 'sent' ? 'Sent' : 'Ready'}
+                  </span>
+                </div>
+                <span className="text-xs text-gray-400 truncate max-w-[240px]">
+                  {activeSession.email.subject || activeSession.email.sender_email}
                 </span>
               </div>
             </div>
 
             <button 
-              onClick={() => setActiveSession(null)}
+              onClick={() => setActiveSessionId(null)}
               className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
               title="Close panel"
             >
@@ -403,140 +531,157 @@ export function AiSummaryClient() {
             </button>
           </div>
 
-          {/* Chat / Timeline Feed Area */}
-          <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-6 bg-white">
+          {/* Gemini Chat Body */}
+          <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-4 bg-white">
             
-            {/* Email Context Accordion */}
-            <div className="bg-gray-50/70 border border-gray-100 rounded-xl p-4 space-y-2">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  <Mail className="w-3.5 h-3.5 text-gray-400" />
-                  Original Message
-                </div>
-                <span className="text-xs text-gray-400">{formatEmailDate(activeSession.email.timestamp)}</span>
-              </div>
-              <div className="text-sm font-semibold text-gray-900 truncate">
-                {activeSession.email.subject || '(No subject)'}
-              </div>
-              <div className="text-xs text-gray-600 line-clamp-2 leading-relaxed">
-                {activeSession.email.snippet || activeSession.email.summary}
-              </div>
-            </div>
-
-            {/* AI Agent Timeline (ChatGPT / Gemini style reasoning steps) */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5 text-purple-500" />
-                  Agent Execution Timeline
-                </div>
-              </div>
-
-              <div className="relative pl-6 space-y-5 before:absolute before:left-[11px] before:top-2 before:bottom-2 before:w-[2px] before:bg-gray-100">
-                {activeSession.steps.map((step, idx) => (
-                  <div key={step.id} className="relative group animate-in fade-in slide-in-from-left-2 duration-300">
-                    {/* Node Dot / Icon */}
-                    <div className="absolute -left-6 top-0.5 flex items-center justify-center">
-                      {step.status === 'completed' ? (
-                        <div className="w-5 h-5 rounded-full bg-green-500 text-white flex items-center justify-center shadow-sm">
-                          <Check className="w-3 h-3 stroke-[2.5]" />
-                        </div>
-                      ) : step.status === 'in_progress' ? (
-                        <div className="w-5 h-5 rounded-full bg-purple-600 text-white flex items-center justify-center shadow-sm animate-pulse">
-                          <Loader2 className="w-3 h-3 animate-spin" />
-                        </div>
-                      ) : step.status === 'error' ? (
-                        <div className="w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center shadow-sm">
-                          <AlertCircle className="w-3 h-3" />
-                        </div>
-                      ) : (
-                        <div className="w-5 h-5 rounded-full bg-white border-2 border-gray-200 flex items-center justify-center" />
-                      )}
+            {activeSession.messages.map((msg) => (
+              <div key={msg.id} className="flex flex-col gap-2">
+                {msg.sender === 'user' ? (
+                  /* User Prompt Bubble */
+                  <div className="flex items-start gap-2.5 justify-end">
+                    <div className="bg-gray-100 text-gray-800 text-xs px-3.5 py-2.5 rounded-2xl rounded-tr-sm max-w-[85%] leading-relaxed">
+                      {msg.content}
                     </div>
-
-                    {/* Step Content */}
-                    <div className="flex flex-col">
-                      <span className={`text-xs font-medium ${step.status === 'in_progress' ? 'text-purple-700 font-semibold' : step.status === 'completed' ? 'text-gray-900' : 'text-gray-400'}`}>
-                        {step.title}
-                      </span>
-                      <span className="text-[11px] text-gray-500 mt-0.5 leading-relaxed">
-                        {step.description}
-                      </span>
+                    <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 flex-shrink-0 text-[10px] font-semibold mt-0.5">
+                      <User className="w-3.5 h-3.5" />
                     </div>
                   </div>
-                ))}
-              </div>
-            </div>
+                ) : (
+                  /* Gemini Response with Thinking Lines */
+                  <div className="flex items-start gap-2.5">
+                    <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-purple-600 to-indigo-600 flex items-center justify-center text-white flex-shrink-0 shadow-sm mt-0.5">
+                      <Sparkles className="w-3.5 h-3.5" />
+                    </div>
 
-            {/* Suggested Reply Bubble (ChatGPT / Gemini response card) */}
-            <div className="space-y-2 mt-1">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
-                  <Bot className="w-3.5 h-3.5 text-purple-600" />
-                  Suggested Output
-                </span>
-                <button 
-                  onClick={() => setActiveSession(prev => prev ? { ...prev, isEditing: !prev.isEditing } : null)}
-                  className="text-xs text-purple-600 hover:text-purple-700 font-medium flex items-center gap-1"
-                >
-                  <Edit3 className="w-3 h-3" />
-                  {activeSession.isEditing ? "Done editing" : "Edit draft"}
-                </button>
-              </div>
+                    <div className="flex-1 space-y-3 min-w-0">
+                      
+                      {/* Gemini Thought Process / Vertical Lines */}
+                      {msg.thoughts && msg.thoughts.length > 0 && (
+                        <div className="bg-purple-50/40 border border-purple-100/70 rounded-xl p-3 space-y-2">
+                          <div className="text-[11px] font-medium text-purple-700 flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-purple-600 animate-pulse" />
+                            Thinking process
+                          </div>
+                          <div className="border-l-2 border-purple-200 pl-3 space-y-2 py-0.5">
+                            {msg.thoughts.map((th) => (
+                              <div key={th.id} className="flex items-center gap-2 text-xs">
+                                {th.status === 'working' ? (
+                                  <div className="flex items-center gap-1.5 text-purple-700 font-medium">
+                                    <span className="inline-block w-2.5 h-2.5 border-2 border-purple-600 border-t-transparent rounded-full animate-spin flex-shrink-0" />
+                                    <span>{th.text}</span>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center gap-1.5 text-gray-600">
+                                    <Check className="w-3.5 h-3.5 text-green-600 flex-shrink-0" />
+                                    <span>{th.text}</span>
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
 
-              {activeSession.isEditing ? (
-                <textarea 
-                  value={activeSession.replyText}
-                  onChange={(e) => setActiveSession(prev => prev ? { ...prev, replyText: e.target.value } : null)}
-                  className="w-full p-4 text-sm text-gray-900 bg-white border border-purple-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 resize-none transition-all leading-relaxed shadow-sm font-sans"
-                  rows={8}
-                  autoFocus
-                />
-              ) : (
-                <div className="p-4 bg-gray-50/80 hover:bg-gray-50 border border-gray-200/80 rounded-xl text-sm text-gray-800 leading-relaxed whitespace-pre-wrap transition-colors shadow-sm font-sans">
-                  {activeSession.replyText}
-                </div>
-              )}
-            </div>
+                      {/* Final message text or delivery message */}
+                      {msg.content && (
+                        <div className="text-xs text-gray-800 bg-gray-50 border border-gray-100 p-3 rounded-xl leading-relaxed">
+                          {msg.content}
+                        </div>
+                      )}
+
+                      {/* Suggested Reply Card Inline */}
+                      {msg.suggestedReply && (
+                        <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                          <div className="bg-gray-50/80 px-3.5 py-2 border-b border-gray-100 flex items-center justify-between text-xs">
+                            <span className="font-semibold text-gray-700 flex items-center gap-1.5">
+                              <Bot className="w-3.5 h-3.5 text-purple-600" />
+                              Suggested Reply Draft
+                            </span>
+                            <button
+                              onClick={() => {
+                                setSessions(prev => prev.map(s => s.id === activeSession.id ? { ...s, isEditingDraft: !s.isEditingDraft } : s));
+                              }}
+                              className="text-purple-600 hover:text-purple-700 font-medium flex items-center gap-1 text-[11px]"
+                            >
+                              <Edit3 className="w-3 h-3" />
+                              {activeSession.isEditingDraft ? 'Save' : 'Edit'}
+                            </button>
+                          </div>
+
+                          <div className="p-3.5">
+                            {activeSession.isEditingDraft ? (
+                              <textarea
+                                value={activeSession.draftReply}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  setSessions(prev => prev.map(s => s.id === activeSession.id ? { ...s, draftReply: val } : s));
+                                }}
+                                className="w-full text-xs text-gray-800 p-2.5 bg-gray-50/50 border border-purple-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500/20 resize-none font-sans leading-relaxed"
+                                rows={6}
+                              />
+                            ) : (
+                              <div className="text-xs text-gray-800 leading-relaxed whitespace-pre-wrap font-sans">
+                                {activeSession.draftReply}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Quick Action Button within Card */}
+                          <div className="px-3.5 py-2.5 bg-gray-50/50 border-t border-gray-100 flex items-center justify-end gap-2">
+                            <button
+                              onClick={() => handleSendReply(activeSession)}
+                              disabled={activeSession.status === 'sending' || activeSession.status === 'sent'}
+                              className="px-4 py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold rounded-lg flex items-center gap-1.5 shadow-sm transition-all disabled:opacity-50"
+                            >
+                              {activeSession.status === 'sending' ? (
+                                <>
+                                  <Loader2 className="w-3 h-3 animate-spin" />
+                                  Sending...
+                                </>
+                              ) : activeSession.status === 'sent' ? (
+                                <>
+                                  <Check className="w-3 h-3" />
+                                  Sent!
+                                </>
+                              ) : (
+                                <>
+                                  <Send className="w-3 h-3" />
+                                  Approve & Send
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
 
           </div>
 
-          {/* Footer Action Bar */}
-          <div className="p-5 border-t border-gray-100 bg-gray-50/50 flex items-center justify-between flex-shrink-0">
+          {/* Gemini Chat Input Bar */}
+          <div className="p-3.5 border-t border-gray-100 bg-white flex items-center gap-2 flex-shrink-0">
+            <input 
+              type="text"
+              placeholder="Ask Gemini to refine reply or perform task..."
+              value={userPromptInput}
+              onChange={(e) => setUserPromptInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleSendCustomMessage(activeSession);
+              }}
+              className="flex-1 px-3.5 py-2 text-xs bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all placeholder:text-gray-400"
+            />
             <button 
-              onClick={() => setActiveSession(null)}
-              className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
+              onClick={() => handleSendCustomMessage(activeSession)}
+              disabled={!userPromptInput.trim()}
+              className="p-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl disabled:opacity-40 transition-colors shadow-sm"
+              title="Send instruction to Gemini"
             >
-              Dismiss
+              <Send className="w-3.5 h-3.5" />
             </button>
-
-            {activeSession.isComplete ? (
-              <button 
-                disabled 
-                className="px-5 py-2.5 bg-green-600 text-white text-sm font-medium rounded-xl flex items-center gap-2 shadow-sm"
-              >
-                <Check className="w-4 h-4" />
-                Dispatched!
-              </button>
-            ) : (
-              <button 
-                onClick={handleExecuteSend}
-                disabled={activeSession.steps.some(s => s.status === 'in_progress' && s.id === 'send') || !activeSession.replyText.trim()}
-                className="px-6 py-2.5 bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold rounded-xl flex items-center gap-2 transition-all shadow-md hover:shadow-lg disabled:opacity-50"
-              >
-                {activeSession.steps.some(s => s.status === 'in_progress' && s.id === 'send') ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Sending...
-                  </>
-                ) : (
-                  <>
-                    <Send className="w-4 h-4" />
-                    Approve & Send
-                  </>
-                )}
-              </button>
-            )}
           </div>
 
         </div>

@@ -224,7 +224,8 @@ export function Sidebar() {
               <button 
                 onClick={async (e) => {
                   e.preventDefault();
-                  if (confirm(`Delete label ${folder.name}?`)) {
+                  // Directly delete without annoying confirm popup
+                  {
                     const res = await fetch(`/api/mail/labels?id=${folder.id}`, { method: 'DELETE' });
                     if (res.ok) {
                       await fetchLabels();
