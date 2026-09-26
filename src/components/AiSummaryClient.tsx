@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, Sparkles, Check, Trash2, X, Send, Bot, User, Edit3, MessageSquare, EyeOff, MinusCircle, RefreshCw } from "lucide-react";
+import { Loader2, Sparkles, Check, Trash2, X, Send, Bot, User, Edit3, MessageSquare, EyeOff, MinusCircle, RefreshCw, Calendar } from "lucide-react";
 import { formatEmailDate } from "@/utils/formatDate";
 import { Avatar } from "@/components/Avatar";
 import { useAiToneStore } from "@/lib/client/store";
@@ -405,11 +405,34 @@ export function AiSummaryClient({
       });
 
       if (res.ok) {
-        setBackgroundTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: 'Sent' } : t));
+        // Also check if a calendar invite should be automatically dispatched
+        try {
+          const calRes = await fetch("/api/calendar/invite", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              emailSubject: email.subject || '',
+              emailBody: email.snippet || email.summary || '',
+              recipientEmail: email.sender_email,
+              recipientName: email.sender_name || '',
+              replyText: replyBody
+            })
+          });
+          const calData = await calRes.json();
+          if (calData.created) {
+            setBackgroundTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: 'Sent & Invite Dispatched 📅' } : t));
+          } else {
+            setBackgroundTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: 'Sent' } : t));
+          }
+        } catch (calErr) {
+          console.error("Calendar invite error:", calErr);
+          setBackgroundTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: 'Sent' } : t));
+        }
+
         window.dispatchEvent(new CustomEvent('refresh-inbox'));
         setTimeout(() => {
           setBackgroundTasks(prev => prev.filter(t => t.id !== taskId));
-        }, 3000);
+        }, 3500);
       } else {
         setBackgroundTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: 'Failed' } : t));
         setTimeout(() => {
@@ -587,6 +610,30 @@ export function AiSummaryClient({
         // Automatically remove the email from the priority inbox without deleting it
         setEmails(prev => prev.filter(item => item.id !== session.email.id));
 
+        // Check if a calendar invite should be created
+        let inviteCreated = false;
+        let eventSummary = '';
+        try {
+          const calRes = await fetch("/api/calendar/invite", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              emailSubject: session.email.subject || '',
+              emailBody: session.email.snippet || session.email.summary || '',
+              recipientEmail: session.email.sender_email,
+              recipientName: session.email.sender_name || '',
+              replyText: session.draftReply
+            })
+          });
+          const calData = await calRes.json();
+          if (calData.created) {
+            inviteCreated = true;
+            eventSummary = calData.summary || 'Meeting';
+          }
+        } catch (calErr) {
+          console.error("Calendar invite error:", calErr);
+        }
+
         setSessions(prev => prev.map(s => {
           if (s.id !== session.id) return s;
           return {
@@ -594,15 +641,19 @@ export function AiSummaryClient({
             status: 'sent',
             messages: s.messages.map(m => {
               if (m.id === 'm_send') {
+                const finalThoughts: AgentThought[] = [
+                  { id: 's1', text: 'Validated thread headers', status: 'done' },
+                  { id: 's2', text: 'Dispatched through Gmail', status: 'done' },
+                  ...(inviteCreated ? [{ id: 's3', text: `Google Calendar invite created & sent: "${eventSummary}" 📅`, status: 'done' as const }] : [])
+                ];
                 return {
                   ...m,
                   isThinking: false,
                   isDelivered: true,
-                  thoughts: [
-                    { id: 's1', text: 'Validated thread headers', status: 'done' },
-                    { id: 's2', text: 'Dispatched through Gmail', status: 'done' }
-                  ],
-                  content: 'Reply delivered successfully to recipient.'
+                  thoughts: finalThoughts,
+                  content: inviteCreated 
+                    ? `Reply delivered and Google Calendar invite auto-sent to ${session.email.sender_email}!` 
+                    : 'Reply delivered successfully to recipient.'
                 };
               }
               return m;
@@ -614,7 +665,7 @@ export function AiSummaryClient({
         setTimeout(() => {
           setSessions(prev => prev.filter(s => s.id !== session.id));
           setActiveSessionId(prev => (prev === session.id ? null : prev));
-        }, 2000);
+        }, inviteCreated ? 3500 : 2000);
       } else {
         setSessions(prev => prev.map(s => s.id === session.id ? { ...s, status: 'ready' } : s));
       }

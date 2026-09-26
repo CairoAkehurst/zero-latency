@@ -44,6 +44,55 @@ export async function getGmailClient() {
 
   return {
     gmail: google.gmail({ version: 'v1', auth: oauth2Client }),
+    calendar: google.calendar({ version: 'v3', auth: oauth2Client }),
+    user,
+    userId: 'me'
+  };
+}
+
+export async function getCalendarClient() {
+  const supabase = await createClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    throw new Error('Unauthorized');
+  }
+
+  const { data: userData, error: userError } = await supabase
+    .from('users')
+    .select('google_access_token, google_refresh_token')
+    .eq('id', user.id)
+    .single();
+
+  if (userError || !userData?.google_refresh_token) {
+    throw new Error('Google tokens not found');
+  }
+
+  const oauth2Client = new google.auth.OAuth2(
+    process.env.GOOGLE_CLIENT_ID,
+    process.env.GOOGLE_CLIENT_SECRET
+  );
+
+  oauth2Client.setCredentials({
+    access_token: userData.google_access_token,
+    refresh_token: userData.google_refresh_token,
+  });
+
+  oauth2Client.on('tokens', async (tokens) => {
+    try {
+      const updateData: Record<string, any> = {};
+      if (tokens.access_token) updateData.google_access_token = tokens.access_token;
+      if (tokens.refresh_token) updateData.google_refresh_token = tokens.refresh_token;
+      if (Object.keys(updateData).length > 0) {
+        await supabase.from('users').update(updateData).eq('id', user.id);
+      }
+    } catch (err) {
+      console.error('Failed to update refreshed tokens:', err);
+    }
+  });
+
+  return {
+    calendar: google.calendar({ version: 'v3', auth: oauth2Client }),
     user,
     userId: 'me'
   };

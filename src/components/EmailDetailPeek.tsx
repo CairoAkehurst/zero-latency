@@ -177,6 +177,23 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
         }),
       });
       if (res.ok) {
+        // Also check if a calendar invite should be auto-sent
+        try {
+          fetch("/api/calendar/invite", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              emailSubject: email.subject || '',
+              emailBody: email.body_text || email.snippet || '',
+              recipientEmail: toText,
+              recipientName: email.sender_name || '',
+              replyText: draftText
+            })
+          }).catch(console.error);
+        } catch (e) {
+          // Non-blocking
+        }
+
         setSendSuccess(true);
         setTimeout(() => {
           setSendSuccess(false);
