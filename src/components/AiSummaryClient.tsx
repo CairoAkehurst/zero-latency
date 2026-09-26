@@ -133,10 +133,18 @@ function computeSmartActions(email: any): SmartAction[] {
   return actions.slice(0, 3);
 }
 
-export function AiSummaryClient() {
-  const [emails, setEmails] = useState<any[]>([]);
-  const [nextPageToken, setNextPageToken] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+interface AiSummaryClientProps {
+  initialEmails?: any[];
+  initialNextPageToken?: string | null;
+}
+
+export function AiSummaryClient({
+  initialEmails = [],
+  initialNextPageToken = null,
+}: AiSummaryClientProps) {
+  const [emails, setEmails] = useState<any[]>(initialEmails);
+  const [nextPageToken, setNextPageToken] = useState<string | null>(initialNextPageToken);
+  const [loading, setLoading] = useState(initialEmails.length === 0);
   const [loadingMore, setLoadingMore] = useState(false);
   const [actionInProgressId, setActionInProgressId] = useState<string | null>(null);
 
@@ -172,7 +180,9 @@ export function AiSummaryClient() {
   };
 
   useEffect(() => {
-    fetchEmails();
+    if (initialEmails.length === 0) {
+      fetchEmails();
+    }
   }, []);
 
   const handleLoadMore = () => {
@@ -508,16 +518,10 @@ export function AiSummaryClient() {
         className="flex flex-col h-full flex-shrink-0 transition-all duration-300 ease-in-out min-w-0 overflow-hidden"
         style={{ width: activeSession ? 'calc(100% - 460px)' : '100%' }}
       >
-        {/* Header Toolbar matching Info Pane height exactly: h-[68px] */}
+        {/* Header Toolbar matching Info Pane / Inbox height exactly: h-[68px] */}
         <header className="h-[68px] px-6 flex items-center justify-between border-b border-gray-100 flex-shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-50 text-blue-600 rounded-lg flex-shrink-0">
-              <Sparkles className="w-5 h-5" />
-            </div>
-            <div className="flex flex-col">
-              <h1 className="text-[17px] font-semibold text-gray-900 tracking-tight">Priority Inbox</h1>
-              <span className="text-xs text-gray-400 font-normal">Smart tailored actions & automated replies</span>
-            </div>
+          <div className="flex items-center gap-4">
+            <h1 className="text-xl font-semibold text-gray-900 leading-none">Priority Inbox</h1>
           </div>
 
           {/* Top Corner Agent Working Indicator */}
@@ -630,10 +634,10 @@ export function AiSummaryClient() {
                             </button>
                           )}
 
-                          {/* Reply with AI button in identical button styling */}
+                          {/* Reply with AI button in clean secondary styling with blue text and icon */}
                           <button
                             onClick={() => handleOpenAiReplySidebar(email)}
-                            className="px-3 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold rounded-lg transition-colors flex items-center justify-center gap-1.5 border border-blue-200/60 truncate shadow-xs"
+                            className="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-blue-600 text-xs font-medium rounded-lg transition-colors flex items-center justify-center gap-1.5 truncate"
                           >
                             <Sparkles className="w-3.5 h-3.5 text-blue-600 flex-shrink-0" />
                             <span className="truncate">Reply with AI</span>
