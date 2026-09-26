@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import { addDays, addMonths, endOfMonth, endOfWeek, format, isSameDay, isSameMonth, startOfMonth, startOfWeek, subMonths } from 'date-fns';
-import { CalendarDays, ChevronLeft, ChevronRight, Clock3, MapPin, Plus, Users, Video, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Clock3, MapPin, Plus, Users, Video, X } from 'lucide-react';
 
 type CalendarEvent = {
   id: string;
@@ -40,7 +40,7 @@ const toneForEvent = (event: CalendarEvent) => {
 
 export default function CalendarPage() {
   const [cursor, setCursor] = useState(() => new Date());
-  const [view, setView] = useState<View>('Month');
+  const [view, setView] = useState<View>('Week');
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -113,6 +113,8 @@ export default function CalendarPage() {
   const openCreate = (day?: Date, startAt?: Date, endAt?: Date) => {
     const start = startAt || (day ? new Date(day.getFullYear(), day.getMonth(), day.getDate(), 10) : new Date(Date.now() + 60 * 60 * 1000));
     const end = endAt || new Date(start.getTime() + 60 * 60 * 1000);
+    setSelectedEvent(null);
+    setError('');
     setForm((current) => ({ ...current, summary: '', description: '', start: localInput(start), end: localInput(end), attendeeEmail: '', location: '' }));
     setShowCreate(true);
   };
@@ -169,10 +171,7 @@ export default function CalendarPage() {
     <div className="flex h-full min-h-0 bg-white text-[13px] text-gray-800">
       <section className="flex min-w-0 flex-1 flex-col bg-white">
       <header className="flex min-h-[58px] flex-wrap items-center gap-2 border-b border-gray-100 bg-white px-4 py-2.5 sm:px-5">
-        <div className="flex items-center gap-2 text-gray-800">
-          <CalendarDays className="h-[18px] w-[18px] text-gray-500" />
-          <span className="text-[15px] font-semibold tracking-tight">Calendar</span>
-        </div>
+        <h1 className="text-xl font-semibold leading-none text-gray-900">Calendar</h1>
         <button onClick={() => setCursor(new Date())} className="ml-2 rounded-md border border-gray-200 bg-white px-3 py-1.5 text-[12px] font-medium text-gray-700 shadow-sm hover:bg-gray-50">Today</button>
         <div className="flex items-center">
           <button aria-label="Previous" onClick={() => changeRange(-1)} className="rounded-md p-1.5 text-gray-500 hover:bg-gray-200/70 hover:text-gray-800"><ChevronLeft className="h-4 w-4" /></button>
@@ -188,7 +187,7 @@ export default function CalendarPage() {
               ))}
             </div>
           </div>
-          <button onClick={() => openCreate()} className="flex items-center gap-1.5 rounded-md bg-gray-900 px-3 py-1.5 text-[12px] font-medium text-white shadow-sm transition-colors hover:bg-gray-700"><Plus className="h-3.5 w-3.5" /><span className="hidden sm:inline">New event</span></button>
+          <button onClick={() => openCreate()} className="flex items-center gap-1.5 rounded-full bg-blue-50 px-3.5 py-1.5 text-[12px] font-medium text-blue-600 transition-colors hover:bg-blue-100"><Plus className="h-3.5 w-3.5" /><span className="hidden sm:inline">New event</span></button>
         </div>
       </header>
 
@@ -236,8 +235,8 @@ export default function CalendarPage() {
       </div>
       </section>
 
-      {selectedEvent && <aside className="z-20 flex h-full w-full max-w-[400px] shrink-0 flex-col border-l border-gray-200 bg-white shadow-[-8px_0_24px_rgba(15,23,42,0.04)]">
-        <header className="flex h-[68px] shrink-0 items-center justify-between border-b border-gray-100 px-5">
+      {selectedEvent && <aside className="z-20 flex h-full w-[420px] max-w-[45vw] shrink-0 flex-col rounded-tl-2xl border-l border-gray-200 bg-white transition-all duration-300 ease-in-out">
+        <header className="flex h-[68px] shrink-0 items-center justify-between border-b border-gray-100 bg-[#f7f7f5] px-5">
           <div className="flex items-center gap-2"><span className={`h-2.5 w-2.5 rounded-full ${eventDots[toneIndexForEvent(selectedEvent)]}`} /><span className="text-sm font-semibold text-gray-800">Event details</span></div>
           <button onClick={() => setSelectedEvent(null)} aria-label="Close event details" className="rounded-md p-1.5 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700"><X className="h-4 w-4" /></button>
         </header>
@@ -256,21 +255,25 @@ export default function CalendarPage() {
         </div>
       </aside>}
 
-      {showCreate && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget) setShowCreate(false); }}>
-        <form onSubmit={saveEvent} className="w-full max-w-lg overflow-hidden rounded-2xl bg-white shadow-2xl">
-          <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4"><h2 className="text-lg font-medium text-gray-800">Create event</h2><button type="button" onClick={() => setShowCreate(false)} aria-label="Close" className="rounded-full p-2 text-gray-500 hover:bg-gray-100"><X className="h-4 w-4" /></button></div>
-          <div className="space-y-4 px-6 py-5">
+      {showCreate && <aside className="z-20 flex h-full w-[420px] max-w-[45vw] shrink-0 flex-col rounded-tl-2xl border-l border-gray-200 bg-white transition-all duration-300 ease-in-out">
+        <header className="flex h-[68px] shrink-0 items-center justify-between border-b border-gray-100 bg-[#f7f7f5] px-5">
+          <h2 className="text-sm font-semibold text-gray-900">New event</h2>
+          <button type="button" onClick={() => setShowCreate(false)} aria-label="Close event form" className="rounded-md p-1.5 text-gray-400 transition hover:bg-gray-200/70 hover:text-gray-700"><X className="h-4 w-4" /></button>
+        </header>
+        <form onSubmit={saveEvent} className="flex min-h-0 flex-1 flex-col">
+          <div className="flex-1 space-y-4 overflow-y-auto px-5 py-5">
             <input required autoFocus value={form.summary} onChange={(event) => setForm({ ...form, summary: event.target.value })} placeholder="Add title" className="w-full border-0 border-b border-gray-200 px-0 py-2 text-xl text-gray-900 outline-none focus:border-blue-500 focus:ring-0" />
-            <label className="flex items-center gap-3 text-sm text-gray-500"><Clock3 className="h-4 w-4" /><span className="w-16">Starts</span><input required type="datetime-local" value={form.start} onChange={(event) => setForm({ ...form, start: event.target.value })} className="min-w-0 flex-1 rounded-md border border-gray-200 px-2 py-2 text-gray-800" /></label>
-            <label className="flex items-center gap-3 text-sm text-gray-500"><Clock3 className="h-4 w-4" /><span className="w-16">Ends</span><input required type="datetime-local" value={form.end} onChange={(event) => setForm({ ...form, end: event.target.value })} className="min-w-0 flex-1 rounded-md border border-gray-200 px-2 py-2 text-gray-800" /></label>
-            <label className="flex items-center gap-3 text-sm text-gray-500"><Users className="h-4 w-4" /><span className="w-16">Guest</span><input type="email" value={form.attendeeEmail} onChange={(event) => setForm({ ...form, attendeeEmail: event.target.value })} placeholder="Add guest email" className="min-w-0 flex-1 rounded-md border border-gray-200 px-3 py-2 text-gray-800" /></label>
-            <label className="flex items-center gap-3 text-sm text-gray-500"><MapPin className="h-4 w-4" /><span className="w-16">Location</span><input value={form.location} onChange={(event) => setForm({ ...form, location: event.target.value })} placeholder="Add location or meeting link" className="min-w-0 flex-1 rounded-md border border-gray-200 px-3 py-2 text-gray-800" /></label>
-            <textarea value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} placeholder="Add description" rows={3} className="w-full resize-y rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-800" />
-            <p className="flex items-center gap-2 text-xs text-gray-500"><Video className="h-4 w-4" />A Google Meet link will be added automatically.</p>
+            <label className="flex items-center gap-3 text-[12px] text-gray-500"><Clock3 className="h-4 w-4 shrink-0" /><span className="w-14 shrink-0">Starts</span><input required type="datetime-local" value={form.start} onChange={(event) => setForm({ ...form, start: event.target.value })} className="min-w-0 flex-1 rounded-md border border-gray-200 px-2 py-2 text-[12px] text-gray-800 focus:border-blue-400 focus:outline-none" /></label>
+            <label className="flex items-center gap-3 text-[12px] text-gray-500"><Clock3 className="h-4 w-4 shrink-0" /><span className="w-14 shrink-0">Ends</span><input required type="datetime-local" value={form.end} onChange={(event) => setForm({ ...form, end: event.target.value })} className="min-w-0 flex-1 rounded-md border border-gray-200 px-2 py-2 text-[12px] text-gray-800 focus:border-blue-400 focus:outline-none" /></label>
+            <label className="flex items-center gap-3 text-[12px] text-gray-500"><Users className="h-4 w-4 shrink-0" /><span className="w-14 shrink-0">Guests</span><input type="email" value={form.attendeeEmail} onChange={(event) => setForm({ ...form, attendeeEmail: event.target.value })} placeholder="Add guest email" className="min-w-0 flex-1 rounded-md border border-gray-200 px-3 py-2 text-[12px] text-gray-800 focus:border-blue-400 focus:outline-none" /></label>
+            <label className="flex items-center gap-3 text-[12px] text-gray-500"><MapPin className="h-4 w-4 shrink-0" /><span className="w-14 shrink-0">Location</span><input value={form.location} onChange={(event) => setForm({ ...form, location: event.target.value })} placeholder="Add a location" className="min-w-0 flex-1 rounded-md border border-gray-200 px-3 py-2 text-[12px] text-gray-800 focus:border-blue-400 focus:outline-none" /></label>
+            <textarea value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} placeholder="Add description" rows={4} className="w-full resize-y rounded-md border border-gray-200 px-3 py-2 text-[12px] text-gray-800 focus:border-blue-400 focus:outline-none" />
+            <p className="flex items-center gap-2 text-[11px] text-gray-500"><Video className="h-4 w-4" />Google Meet link will be added automatically.</p>
+            {error && <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-[11px] text-red-700">{error}</p>}
           </div>
-          <div className="flex justify-end gap-2 border-t border-gray-100 px-6 py-4"><button type="button" onClick={() => setShowCreate(false)} className="rounded-md px-4 py-2 text-sm text-gray-600 hover:bg-gray-50">Cancel</button><button disabled={saving} className="rounded-md bg-blue-600 px-5 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60">{saving ? 'Saving…' : 'Save'}</button></div>
+          <div className="flex shrink-0 justify-end gap-2 border-t border-gray-100 px-5 py-4"><button type="button" onClick={() => setShowCreate(false)} className="rounded-full px-4 py-2 text-[12px] font-medium text-gray-600 transition hover:bg-gray-100">Cancel</button><button disabled={saving} className="rounded-full bg-blue-50 px-4 py-2 text-[12px] font-medium text-blue-600 transition hover:bg-blue-100 disabled:opacity-60">{saving ? 'Saving…' : 'Save event'}</button></div>
         </form>
-      </div>}
+      </aside>}
 
     </div>
   );
