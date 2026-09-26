@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Loader2, Sparkles, Check, Trash2, X, Send, Bot, User, Edit3, MessageSquare, EyeOff, MinusCircle, RefreshCw, Calendar } from "lucide-react";
+import { useEffect, useState, useRef } from "react";
+import { Loader2, Sparkles, Check, Trash2, X, Send, Bot, User, Edit3, MessageSquare, EyeOff, MinusCircle, RefreshCw, Calendar, Search } from "lucide-react";
 import { formatEmailDate } from "@/utils/formatDate";
 import { Avatar } from "@/components/Avatar";
 import { useAiToneStore } from "@/lib/client/store";
@@ -242,6 +242,8 @@ export function AiSummaryClient({
 
   const [customActionsMap, setCustomActionsMap] = useState<Record<string, { primary?: { label: string; replyIntent?: string }; secondary?: { label: string; replyIntent?: string } }>>({});
   const [isSyncing, setIsSyncing] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Asynchronously request AI-generated 2-3 word custom action intents
   const fetchCustomAiActions = async (emailList: any[]) => {
@@ -797,37 +799,68 @@ export function AiSummaryClient({
           <div className="flex items-center gap-4">
             <h1 className="text-xl font-semibold text-gray-900 leading-none">Priority Inbox</h1>
 
-            <button 
+            {/* Agent Working Indicator */}
+            {backgroundTasks.length > 0 && (
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-50 border border-blue-100 animate-in fade-in slide-in-from-top-1">
+                <Loader2 className="w-3.5 h-3.5 text-blue-600 animate-spin" />
+                <span className="text-xs font-medium text-blue-700">
+                  Agent: {backgroundTasks[backgroundTasks.length - 1].subject} ({backgroundTasks[backgroundTasks.length - 1].status})
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Right side controls: sync + search */}
+          <div className="flex items-center gap-3 text-sm">
+            <button
               onClick={handleSync}
               disabled={isSyncing}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-50 text-gray-700 text-xs font-medium hover:bg-gray-100 transition-colors disabled:opacity-50 whitespace-nowrap"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-50 text-gray-700 font-medium hover:bg-gray-100 transition-colors disabled:opacity-50 whitespace-nowrap"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? "animate-spin" : ""}`} />
               {isSyncing ? "Syncing..." : "Sync emails"}
             </button>
-          </div>
 
-          {/* Top Corner Agent Working Indicator */}
-          {backgroundTasks.length > 0 && (
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-50 border border-blue-100 animate-in fade-in slide-in-from-top-1">
-              <Loader2 className="w-3.5 h-3.5 text-blue-600 animate-spin" />
-              <span className="text-xs font-medium text-blue-700">
-                Agent is working: {backgroundTasks[backgroundTasks.length - 1].subject} ({backgroundTasks[backgroundTasks.length - 1].status})
-              </span>
+            <div className="relative w-64 flex items-center">
+              <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                ref={searchInputRef}
+                type="text"
+                placeholder="Search priority..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-9 pr-4 py-1.5 bg-gray-50 border border-gray-200 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all leading-normal"
+              />
             </div>
-          )}
+          </div>
         </header>
+
 
         {/* Responsive Grid */}
         <div className="flex-1 overflow-y-auto p-6 bg-gray-50/30 flex flex-col">
-          {emails.length === 0 ? (
-            <div className="p-12 text-center text-gray-500 text-sm">
-              No priority emails found. All caught up!
-            </div>
-          ) : (
-            <>
-              <div className={`w-full grid gap-5 ${activeSession ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3'}`}>
-                {emails.map((email) => {
+          {(() => {
+            const q = searchQuery.toLowerCase().trim();
+            const filteredEmails = q
+              ? emails.filter(e =>
+                  (e.sender_name || '').toLowerCase().includes(q) ||
+                  (e.sender_email || '').toLowerCase().includes(q) ||
+                  (e.subject || '').toLowerCase().includes(q) ||
+                  (e.snippet || '').toLowerCase().includes(q) ||
+                  (e.summary || '').toLowerCase().includes(q)
+                )
+              : emails;
+
+            if (filteredEmails.length === 0) return (
+              <div className="p-12 text-center text-gray-500 text-sm">
+                {q ? `No results for "${searchQuery}"` : 'No priority emails found. All caught up!'}
+              </div>
+            );
+
+            return (
+              <>
+                <div className={`w-full grid gap-5 ${activeSession ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3'}`}>
+                  {filteredEmails.map((email) => {
+
                   const fallbackActions = computeSmartActionsFallback(email);
                   const custom = customActionsMap[email.id];
                   
@@ -967,8 +1000,10 @@ export function AiSummaryClient({
                 </div>
               )}
             </>
-          )}
+            );
+          })()}
         </div>
+
       </div>
 
       {/* Right Sidebar: EXACT same design, header height (h-[68px]), and rounded corners as EmailDetailPeek */}
