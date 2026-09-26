@@ -1,40 +1,10 @@
-"use client";
+const fs = require('fs');
+let content = fs.readFileSync('src/components/EmailRow.tsx', 'utf8');
 
-import clsx from "clsx";
-
-interface EmailRowProps {
-  email: {
-    id: string;
-    sender_name: string;
-    sender_email: string;
-    subject: string;
-    summary: string;
-    category: string;
-    categoryColor: string;
-    hasAiMetadata?: boolean;
-    timestamp: string;
-    is_unread: boolean;
-  };
-  isSelected?: boolean;
-  isCompressed?: boolean;
-  isChecked?: boolean;
-  onToggleCheck?: (checked: boolean, e: React.MouseEvent) => void;
-}
-
-const colorMap: Record<string, string> = {
-  blue: "bg-blue-100 text-blue-700 border-blue-200",
-  pink: "bg-pink-100 text-pink-700 border-pink-200",
-  purple: "bg-purple-100 text-purple-700 border-purple-200",
-  red: "bg-red-100 text-red-700 border-red-200",
-  green: "bg-green-100 text-green-700 border-green-200",
-  orange: "bg-orange-100 text-orange-700 border-orange-200",
-  yellow: "bg-yellow-100 text-yellow-700 border-yellow-200",
-  teal: "bg-teal-100 text-teal-700 border-teal-200",
-};
-
-import { formatEmailDate } from "@/utils/formatDate";
-
-export function EmailRow({ email, isSelected, isCompressed, isChecked, onToggleCheck }: EmailRowProps) {
+// Modify EmailRow to support compressed mode
+content = content.replace(
+  /export function EmailRow\(\{ email, isSelected, isChecked, onToggleCheck \}: EmailRowProps\) \{[\s\S]*?\n\}/,
+  `export function EmailRow({ email, isSelected, isCompressed, isChecked, onToggleCheck }: EmailRowProps) {
   if (isCompressed) {
     return (
       <div className={clsx(
@@ -145,4 +115,7 @@ export function EmailRow({ email, isSelected, isCompressed, isChecked, onToggleC
     </div>
   );
 }
+`
+);
 
+fs.writeFileSync('src/components/EmailRow.tsx', content);

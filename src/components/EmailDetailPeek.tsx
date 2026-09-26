@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { X, Reply, Check, Send, Loader2, Maximize2, Minimize2, Archive, Trash2, Mail, Clock, MoreVertical, CornerUpLeft, CornerUpRight, ChevronDown, Sparkles, Type, Paperclip, Link as LinkIcon, Image as ImageIcon, Bold, Italic, Underline, Highlighter } from "lucide-react";
+import { X, Reply, ReplyAll, Forward, Check, Send, Loader2, Maximize2, Minimize2, Archive, Trash2, Mail, Clock, MoreVertical, CornerUpLeft, CornerUpRight, ChevronDown, Sparkles, Type, Paperclip, Link as LinkIcon, Image as ImageIcon, Bold, Italic, Underline, Highlighter } from "lucide-react";
 import { formatEmailDate } from "@/utils/formatDate";
 import { useAccountDataStore } from "@/lib/client/store";
 
@@ -46,6 +46,7 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
   const [bccText, setBccText] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [sendSuccess, setSendSuccess] = useState(false);
+  const [replyMode, setReplyMode] = useState<'reply'|'replyAll'|'forward'|null>(null);
   const [showDetails, setShowDetails] = useState(false);
   
   const replyRef = useRef<HTMLDivElement>(null);
@@ -152,6 +153,9 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
 
   const handleAction = async (action: 'trash' | 'archive' | 'unread') => {
     try {
+      onClose(); // Optimistically close
+      window.dispatchEvent(new CustomEvent('refresh-inbox')); // Force refresh
+
       if (action === 'trash') {
         await fetch("/api/mail/modify", {
           method: "POST",
@@ -171,7 +175,6 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
           body: JSON.stringify({ messageIds: [email.id], action: "modify", addLabelIds: ['UNREAD'] })
         });
       }
-      onClose(); // Optimistically close after action
     } catch (e) {
       alert("Failed to perform action");
     }
@@ -347,7 +350,23 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
 
         {/* Permanent Reply Section */}
         <div className="w-full mt-2 pb-12">
-          <div className="bg-white rounded-xl border border-gray-300 shadow-sm overflow-hidden flex flex-col transition-all">
+          
+          {!replyMode ? (
+            <div className="flex items-center gap-3 mt-4 mb-4">
+              <button onClick={() => { setReplyMode('reply'); setTimeout(() => replyRef.current?.focus(), 50); }} className="px-5 py-2 bg-gray-50 hover:bg-gray-100 text-gray-700 font-medium rounded-full text-sm transition-colors flex items-center gap-2 border border-gray-200 shadow-sm">
+                <Reply className="w-4 h-4" /> Reply
+              </button>
+              <button onClick={() => { setReplyMode('replyAll'); setTimeout(() => replyRef.current?.focus(), 50); }} className="px-5 py-2 bg-gray-50 hover:bg-gray-100 text-gray-700 font-medium rounded-full text-sm transition-colors flex items-center gap-2 border border-gray-200 shadow-sm">
+                <ReplyAll className="w-4 h-4" /> Reply all
+              </button>
+              <button onClick={() => { setReplyMode('forward'); setTimeout(() => replyRef.current?.focus(), 50); }} className="px-5 py-2 bg-gray-50 hover:bg-gray-100 text-gray-700 font-medium rounded-full text-sm transition-colors flex items-center gap-2 border border-gray-200 shadow-sm">
+                <Forward className="w-4 h-4" /> Forward
+              </button>
+            </div>
+          ) : (
+
+            <div className="bg-white rounded-xl border border-gray-300 shadow-sm overflow-hidden flex flex-col transition-all relative">
+              <button onClick={() => setReplyMode(null)} className="absolute top-3 right-3 p-1 text-gray-400 hover:bg-gray-100 rounded-md z-10"><X className="w-4 h-4"/></button>
             {/* Header / Recipients Bar */}
             <div className="bg-white px-4 py-3 border-b border-gray-200 flex flex-col gap-2 transition-all">
               
@@ -488,6 +507,7 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
               </div>
             </div>
           </div>
+          )}
         </div>
       </div>
     </div>

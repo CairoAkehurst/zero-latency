@@ -281,7 +281,7 @@ export function InboxClient({ initialEmails, initialNextPageToken }: { initialEm
         {/* Left List Area */}
         <div 
           className={`flex flex-col h-full flex-shrink-0 transition-all duration-300 ease-in-out ${(isFullView || isComposeFullView) ? 'border-0 overflow-hidden opacity-0' : ''}`}
-          style={{ width: (isFullView || isComposeFullView || selectedEmailId) ? '0px' : (isComposing || isFiltersOpen) ? 'calc(100% - 500px)' : '100%' }}
+          style={{ width: (isFullView || isComposeFullView) ? '0px' : (isComposing || isFiltersOpen) ? 'calc(100% - 500px)' : selectedEmailId ? '380px' : '100%' }}
         >
           <header className="h-[68px] px-6 flex items-center justify-between border-b border-gray-100 flex-shrink-0">
             {checkedEmailIds.size > 0 ? (
@@ -397,7 +397,7 @@ export function InboxClient({ initialEmails, initialNextPageToken }: { initialEm
                     setIsFullView(true);
                   }}
                 >
-                  <EmailRow 
+                  <EmailRow isCompressed={!!selectedEmailId} 
                     email={email} 
                     isSelected={selectedEmailId === email.id}
                     isChecked={checkedEmailIds.has(email.id)}

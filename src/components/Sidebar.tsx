@@ -235,27 +235,7 @@ export function Sidebar() {
             </div>
           ))}
 
-          {isAddingLabel && (
-            <div className="sidebar-link px-3">
-              <div className="w-2 h-2 rounded-full flex-shrink-0 bg-gray-300" />
-              <input 
-                autoFocus
-                type="text" 
-                value={newLabelName}
-                onChange={(e) => setNewLabelName(e.target.value)}
-                onBlur={handleAddLabel}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleAddLabel();
-                  if (e.key === 'Escape') {
-                    setIsAddingLabel(false);
-                    setNewLabelName("");
-                  }
-                }}
-                className="w-full bg-transparent border-none outline-none text-sm text-gray-700"
-                placeholder="New label..."
-              />
-            </div>
-          )}
+          
         </div>
       </div>
     </aside>
