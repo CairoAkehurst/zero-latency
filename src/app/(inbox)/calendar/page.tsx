@@ -172,7 +172,7 @@ export default function CalendarPage() {
       <section className="flex min-w-0 flex-1 flex-col bg-white">
       <header className="flex min-h-[58px] flex-wrap items-center gap-2 border-b border-gray-100 bg-white px-4 py-2.5 sm:px-5">
         <h1 className="text-xl font-semibold leading-none text-gray-900">Calendar</h1>
-        <button onClick={() => setCursor(new Date())} className="ml-2 rounded-md border border-gray-200 bg-white px-3 py-1.5 text-[12px] font-medium text-gray-700 shadow-sm hover:bg-gray-50">Today</button>
+        <button onClick={() => setCursor(new Date())} className="ml-2 whitespace-nowrap rounded-full bg-gray-50 px-3 py-1.5 text-[12px] font-medium text-gray-700 transition-colors hover:bg-gray-100">Today</button>
         <div className="flex items-center">
           <button aria-label="Previous" onClick={() => changeRange(-1)} className="rounded-md p-1.5 text-gray-500 hover:bg-gray-200/70 hover:text-gray-800"><ChevronLeft className="h-4 w-4" /></button>
           <button aria-label="Next" onClick={() => changeRange(1)} className="rounded-md p-1.5 text-gray-500 hover:bg-gray-200/70 hover:text-gray-800"><ChevronRight className="h-4 w-4" /></button>
