@@ -145,13 +145,7 @@ export function EmailRow({ email, isSelected, isCompressed, isChecked, onToggleC
             </span>
           </div>
         );
-      })() : email.hasAiMetadata ? (
-        <div className="flex-shrink-0">
-          <span className="px-2.5 py-0.5 rounded-full text-xs font-medium border bg-gray-50 text-gray-500 border-gray-200">
-            Uncategorized
-          </span>
-        </div>
-      ) : null}
+      })() : null}
 
       {/* Timestamp */}
       <div className={clsx(
@@ -163,4 +157,3 @@ export function EmailRow({ email, isSelected, isCompressed, isChecked, onToggleC
     </div>
   );
 }
-

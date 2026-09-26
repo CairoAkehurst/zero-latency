@@ -14,6 +14,7 @@ export function InboxClient({ initialEmails, initialNextPageToken }: { initialEm
   const [emails, setEmails] = useState(initialEmails);
   const [nextPageToken, setNextPageToken] = useState(initialNextPageToken);
   const [checkedEmailIds, setCheckedEmailIds] = useState<Set<string>>(new Set());
+  const selectionAnchorId = useRef<string | null>(null);
   const [selectedEmailId, setSelectedEmailId] = useState<string | null>(null);
   const [isFullView, setIsFullView] = useState(false);
   const [isComposing, setIsComposing] = useState(false);
@@ -43,6 +44,38 @@ export function InboxClient({ initialEmails, initialNextPageToken }: { initialEm
     new Map([['in:inbox', { emails: initialEmails, nextPageToken: initialNextPageToken }]])
   );
   const isInitialMount = useRef(true);
+  const inboxCacheLoaded = useRef(false);
+
+  // Keep a local snapshot so revisiting the inbox can paint before the next
+  // scheduled Gmail poll runs.
+  useEffect(() => {
+    try {
+      const cached = localStorage.getItem('zero-latency-inbox-cache');
+      if (!cached) return;
+      const parsed = JSON.parse(cached);
+      if (Array.isArray(parsed.emails)) {
+        setEmails(parsed.emails);
+        setNextPageToken(parsed.nextPageToken || null);
+        categoryCache.current.set('in:inbox', {
+          emails: parsed.emails,
+          nextPageToken: parsed.nextPageToken || null,
+        });
+      }
+    } catch (error) {
+      console.error('Failed to read inbox cache:', error);
+    } finally {
+      inboxCacheLoaded.current = true;
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!inboxCacheLoaded.current) return;
+    try {
+      localStorage.setItem('zero-latency-inbox-cache', JSON.stringify({ emails, nextPageToken }));
+    } catch (error) {
+      console.error('Failed to save inbox cache:', error);
+    }
+  }, [emails, nextPageToken]);
 
   // Fetch when search or category changes
   useEffect(() => {
@@ -186,14 +219,35 @@ export function InboxClient({ initialEmails, initialNextPageToken }: { initialEm
   const filteredEmails = emails; // Search and categories are now handled server-side
 
 
-  const handleToggleCheck = (id: string, checked: boolean) => {
-    const newSet = new Set(checkedEmailIds);
-    if (checked) newSet.add(id);
-    else newSet.delete(id);
-    setCheckedEmailIds(newSet);
+  const handleToggleCheck = (id: string, checked: boolean, event: React.MouseEvent) => {
+    const currentIndex = filteredEmails.findIndex(email => email.id === id);
+    const anchorIndex = selectionAnchorId.current
+      ? filteredEmails.findIndex(email => email.id === selectionAnchorId.current)
+      : -1;
+
+    if (event.shiftKey && anchorIndex !== -1 && currentIndex !== -1) {
+      const [start, end] = [anchorIndex, currentIndex].sort((a, b) => a - b);
+      setCheckedEmailIds(prev => {
+        const next = new Set(prev);
+        for (const email of filteredEmails.slice(start, end + 1)) next.add(email.id);
+        return next;
+      });
+      return;
+    }
+
+    // A regular click toggles this checkbox; Ctrl/Cmd-click therefore adds or
+    // removes one email while keeping the other selections intact.
+    selectionAnchorId.current = id;
+    setCheckedEmailIds(prev => {
+      const next = new Set(prev);
+      if (checked) next.add(id);
+      else next.delete(id);
+      return next;
+    });
   };
 
   const handleSelectAll = (checked: boolean) => {
+    selectionAnchorId.current = null;
     if (checked) {
       setCheckedEmailIds(new Set(filteredEmails.map(e => e.id)));
     } else {
@@ -443,7 +497,7 @@ export function InboxClient({ initialEmails, initialNextPageToken }: { initialEm
                     email={email} 
                     isSelected={selectedEmailId === email.id}
                     isChecked={checkedEmailIds.has(email.id)}
-                    onToggleCheck={() => handleToggleCheck(email.id, !checkedEmailIds.has(email.id))}
+                    onToggleCheck={(checked, event) => handleToggleCheck(email.id, checked, event)}
                   />
                 </div>
               ))
