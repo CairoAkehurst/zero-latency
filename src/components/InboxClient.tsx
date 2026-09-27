@@ -105,7 +105,8 @@ export function InboxClient({ initialEmails, initialNextPageToken }: { initialEm
     const fetchFiltered = async () => {
       setIsSyncing(true);
       try {
-        const res = await fetch(`/api/mail/threads?q=${encodeURIComponent(q)}`);
+        const initialBatchSize = q === 'in:inbox' ? 50 : 20;
+        const res = await fetch(`/api/mail/threads?maxResults=${initialBatchSize}&q=${encodeURIComponent(q)}`);
         const data = await res.json();
         if (isMounted && res.ok && data.emails) {
           setEmails(data.emails);
@@ -282,7 +283,7 @@ export function InboxClient({ initialEmails, initialNextPageToken }: { initialEm
     setIsSyncing(true);
     setSyncStatus(null);
     try {
-      const res = await fetch("/api/mail/threads");
+      const res = await fetch("/api/mail/threads?maxResults=50&q=in%3Ainbox");
       const data = await res.json();
       if (res.ok) {
         setEmails(data.emails || []);
@@ -514,7 +515,7 @@ export function InboxClient({ initialEmails, initialNextPageToken }: { initialEm
                   disabled={isLoadingMore}
                   className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-full text-sm font-medium transition-colors disabled:opacity-50"
                 >
-                  {isLoadingMore ? "Loading..." : "Load older emails"}
+                  Load more emails
                 </button>
               </div>
             )}
