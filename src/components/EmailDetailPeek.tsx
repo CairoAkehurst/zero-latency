@@ -276,6 +276,13 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
     setIsSending(true);
     try {
       let outgoingBody = draftText;
+      const fullThreadBody = threadMessages.length
+        ? threadMessages.map((message) => `From: ${message.sender_name || message.sender_email || 'Unknown'}\n${message.body_text || message.snippet || ''}`).join('\n\n---\n\n')
+        : email.body_text || email.snippet || '';
+      const meetingContext = `${email.subject || ''} ${fullThreadBody} ${draftText}`;
+      const isMeetingAcceptance =
+        /\b(accept|agree|agreed|confirm|confirmed|yes|works for me|sounds good)\b/i.test(draftText) &&
+        /\b(meeting|call|calendar|invite|appointment|availability|schedule|time)\b/i.test(meetingContext);
       // Check if a calendar invite should be created and embed it
       try {
         const calRes = await fetch("/api/calendar/invite", {
@@ -283,21 +290,27 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             emailSubject: email.subject || '',
-            emailBody: threadMessages.length
-              ? threadMessages.map((message) => `From: ${message.sender_name || message.sender_email || 'Unknown'}\n${message.body_text || message.snippet || ''}`).join('\n\n---\n\n')
-              : email.body_text || email.snippet || '',
+            emailBody: fullThreadBody,
             recipientEmail: toText,
             recipientName: email.sender_name || '',
+            attendeeEmails: [toText, ccText].filter(Boolean),
             replyText: draftText,
             dedupeKey: email.google_thread_id || email.google_message_id,
+            threadId: email.google_thread_id,
+            forceCreate: isMeetingAcceptance,
+            timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
           })
         });
         const calData = await calRes.json();
+        if (!calRes.ok) throw new Error(calData.error || 'Google Calendar invite creation failed');
         if (calData.created && calData.inviteCardHtml) {
           outgoingBody = `${draftText}${calData.inviteCardHtml}`;
+        } else if (isMeetingAcceptance) {
+          throw new Error(calData.error || 'The meeting was accepted, but Google Calendar did not create an invite. The reply was not sent.');
         }
       } catch (calErr) {
         console.error("Calendar invite error:", calErr);
+        if (isMeetingAcceptance) throw calErr;
       }
 
       // Determine the latest message's message_id_header for proper threading
@@ -334,7 +347,7 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
       }
     } catch (err) {
       console.error(err);
-      alert("Error sending email");
+      alert(err instanceof Error ? err.message : "Error sending email");
     } finally {
       setIsSending(false);
     }

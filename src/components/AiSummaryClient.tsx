@@ -540,10 +540,11 @@ export function AiSummaryClient({
       }
     } catch (err) {
       console.error("Auto reply failed:", err);
+      const failure = err instanceof Error ? err.message : 'unknown error';
       dismissedPriorityIds.current.delete(email.id);
       setEmails(prev => prev.some(item => item.id === email.id) ? prev : [email, ...prev]);
       setBackgroundTasks(prev => prev.map(task => task.id === taskId
-        ? { ...task, status: meetingInviteRequired ? 'Calendar invite failed; reply not sent' : 'Failed to send reply' }
+        ? { ...task, status: meetingInviteRequired ? `Invite failed; reply not sent: ${failure}` : `Failed to send reply: ${failure}` }
         : task));
       setTimeout(() => setBackgroundTasks(prev => prev.filter(task => task.id !== taskId)), 8000);
     }
