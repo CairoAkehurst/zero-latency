@@ -86,7 +86,7 @@ export async function POST(request: Request) {
     const localNow = now.toLocaleString('en-US', { timeZone, dateStyle: 'full', timeStyle: 'long' });
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-    const systemPrompt = `You are an intelligent calendar assistant for Zero Latency.
+    const systemPrompt = `You are an intelligent calendar assistant for Zero Latency. You must respond only with one valid JSON object (JSON format), with no markdown or surrounding text.
 Analyze the email to detect if a meeting, call, appointment, or calendar event is being scheduled, accepted, confirmed, or agreed upon.
 Current date/time (UTC ISO): ${isoNow}.
 Current local date/time in ${timeZone}: ${localNow}.
@@ -106,7 +106,7 @@ Extract:
 5. "endTime": ISO 8601 (default 30-60 min after start if not specified)
 6. "location": physical location if one was agreed; otherwise "Google Meet"
 
-If no meeting: { "shouldCreateInvite": false }`;
+If no meeting, return this JSON object: { "shouldCreateInvite": false }`;
 
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
@@ -114,7 +114,8 @@ If no meeting: { "shouldCreateInvite": false }`;
         { role: 'system', content: systemPrompt },
         {
           role: 'user',
-          content: `Subject: ${emailSubject || ''}
+          content: `Return the result as a JSON object only.
+Subject: ${emailSubject || ''}
 Known participants: ${attendees.map(person => person.email).join(', ')}
 Full email thread:
 ${fullThreadText}
