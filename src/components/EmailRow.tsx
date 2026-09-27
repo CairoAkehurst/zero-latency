@@ -47,46 +47,9 @@ function getBadgeStyle(color?: string) {
 import { formatEmailDate } from "@/utils/formatDate";
 
 export function EmailRow({ email, isSelected, isCompressed, isChecked, onToggleCheck }: EmailRowProps) {
-  if (isCompressed) {
-    return (
-      <div className={clsx(
-        "flex items-start gap-2.5 px-4 py-3 border-b cursor-pointer transition-colors group relative",
-        isChecked ? "bg-blue-50/80 border-blue-100" : isSelected ? "bg-blue-50 border-blue-100/50 shadow-[inset_4px_0_0_0_#2563eb]" : "border-gray-100 hover:bg-gray-50/50"
-      )}>
-        <div className="w-2 flex-shrink-0 flex justify-center mt-1">
-          {email.is_unread && <div className="w-2 h-2 rounded-full bg-blue-500" />}
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center justify-between mb-0.5">
-            <span className={clsx("text-[13px] truncate pr-2", email.is_unread ? "font-bold text-gray-900" : "font-semibold text-gray-700")}>
-              {email.sender_name || email.sender_email}
-            </span>
-          </div>
-          <div className={clsx("text-[13px] truncate mb-1", email.is_unread ? "font-semibold text-gray-900" : "font-medium text-gray-800")}>
-            {email.subject || '(No subject)'}
-          </div>
-          <div className="text-[12px] text-gray-500 truncate leading-relaxed">
-            {email.summary}
-          </div>
-        </div>
-        {email.category && (() => {
-          const badge = getBadgeStyle(email.categoryColor);
-          return (
-            <span 
-              className={clsx("absolute top-3 right-4 px-1.5 py-0.5 rounded text-[10px] font-medium border opacity-80", badge.className)}
-              style={badge.style}
-            >
-              {email.category.slice(0, 1)}
-            </span>
-          );
-        })()}
-      </div>
-    );
-  }
-
   return (
     <div className={clsx(
-      "flex items-center gap-3 px-5 py-2.5 border-b cursor-pointer transition-colors group",
+      "flex h-[60px] min-h-[60px] items-center gap-3 overflow-hidden border-b px-5 py-2.5 cursor-pointer transition-colors group",
       isChecked ? "bg-blue-50/80 border-blue-100" : isSelected ? "bg-blue-50/40 border-blue-50" : "border-gray-100 hover:bg-gray-50/50"
     )}>
       {/* Checkbox */}
@@ -117,7 +80,8 @@ export function EmailRow({ email, isSelected, isCompressed, isChecked, onToggleC
 
       {/* Sender */}
       <div className={clsx(
-        "w-36 flex-shrink-0 text-sm truncate",
+        isCompressed ? "w-24" : "w-36",
+        "flex-shrink-0 text-sm truncate",
         email.is_unread ? "font-semibold text-gray-900" : "font-medium text-gray-600"
       )}>
         {email.sender_name || email.sender_email}
@@ -129,11 +93,11 @@ export function EmailRow({ email, isSelected, isCompressed, isChecked, onToggleC
         email.is_unread ? "font-medium text-gray-800" : "text-gray-500"
       )}>
         <span className="text-gray-900 font-medium mr-2">{email.subject}</span>
-        <span className="text-gray-500 opacity-80">{email.summary}</span>
+        {!isCompressed && <span className="text-gray-500 opacity-80">{email.summary}</span>}
       </div>
 
       {/* Category Badge */}
-      {email.category ? (() => {
+      {!isCompressed && email.category ? (() => {
         const badge = getBadgeStyle(email.categoryColor);
         return (
           <div className="flex-shrink-0">

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { Wand2, SlidersHorizontal, Settings, RefreshCw, Search, PenSquare, Trash2, Tag } from "lucide-react";
 import { EmailRow } from "@/components/EmailRow";
 import { EmailDetailPeek } from "@/components/EmailDetailPeek";
@@ -28,6 +28,8 @@ export function InboxClient({ initialEmails, initialNextPageToken }: { initialEm
   const [searchQuery, setSearchQuery] = useState("");
   const [isSyncing, setIsSyncing] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const emailListRef = useRef<HTMLDivElement>(null);
+  const loadMoreSentinelRef = useRef<HTMLDivElement>(null);
   
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -312,7 +314,7 @@ export function InboxClient({ initialEmails, initialNextPageToken }: { initialEm
   }, []);
 
 
-  const loadMore = async () => {
+  const loadMore = useCallback(async () => {
     if (!nextPageToken || isLoadingMore) return;
     setIsLoadingMore(true);
     try {
@@ -338,7 +340,23 @@ export function InboxClient({ initialEmails, initialNextPageToken }: { initialEm
     } finally {
       setIsLoadingMore(false);
     }
-  };
+  }, [nextPageToken, isLoadingMore, activeCategory, debouncedQuery]);
+
+  // Automatically request the next Gmail page as the user approaches the end
+  // of the list. The observer also handles short pages that do not fill the
+  // viewport, so pagination never depends on a manual button click.
+  useEffect(() => {
+    const root = emailListRef.current;
+    const sentinel = loadMoreSentinelRef.current;
+    if (!root || !sentinel || !nextPageToken) return;
+
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting && !isLoadingMore) void loadMore();
+    }, { root, rootMargin: '300px 0px' });
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [nextPageToken, isLoadingMore, loadMore]);
 
   const handleAutoLabel = async () => {
     setIsAutoLabeling(true);
@@ -369,6 +387,8 @@ export function InboxClient({ initialEmails, initialNextPageToken }: { initialEm
     }
   };
 
+  const isEmailSidebarOpen = Boolean(selectedEmailId);
+
   return (
     <>
       <div className="flex h-full relative overflow-hidden min-h-0">
@@ -377,7 +397,7 @@ export function InboxClient({ initialEmails, initialNextPageToken }: { initialEm
           className={`flex flex-col h-full flex-shrink-0 transition-all duration-300 ease-in-out ${(isFullView || isComposeFullView) ? 'border-0 overflow-hidden opacity-0' : ''}`}
           style={{ width: (isFullView || isComposeFullView) ? '0px' : (isComposing || isFiltersOpen) ? 'calc(100% - 500px)' : selectedEmailId ? '380px' : '100%' }}
         >
-          <header className="h-[68px] px-6 flex items-center justify-between border-b border-gray-100 flex-shrink-0">
+          <header className={`h-[68px] ${isEmailSidebarOpen ? 'px-4' : 'px-6'} flex items-center justify-between border-b border-gray-100 flex-shrink-0 min-w-0`}>
             {checkedEmailIds.size > 0 ? (
               <div className="flex items-center gap-4 flex-1">
                 <div 
@@ -407,13 +427,13 @@ export function InboxClient({ initialEmails, initialNextPageToken }: { initialEm
                 </button>
               </div>
             ) : (
-              <div className="flex items-center gap-4">
-                <h1 className="text-xl font-semibold text-gray-900 leading-none">{activeCategory || "Inbox"}</h1>
+              <div className="flex min-w-0 items-center gap-4">
+                <h1 className={`truncate font-semibold text-gray-900 leading-none ${isEmailSidebarOpen ? 'max-w-[82px] text-base' : 'text-xl'}`}>{activeCategory || "Inbox"}</h1>
               </div>
             )}
             
-            <div className="flex items-center gap-3 text-sm ml-4">
-              {checkedEmailIds.size === 0 && (
+            <div className={`flex min-w-0 items-center text-sm ${isEmailSidebarOpen ? 'ml-2 gap-2' : 'ml-4 gap-3'}`}>
+              {checkedEmailIds.size === 0 && !isEmailSidebarOpen && (
                 <>
                   <button 
                     onClick={handleSync}
@@ -435,7 +455,7 @@ export function InboxClient({ initialEmails, initialNextPageToken }: { initialEm
                 </>
               )}
               
-              <div className="relative w-64 flex items-center">
+              <div className={`relative flex min-w-0 flex-shrink-0 items-center ${isEmailSidebarOpen ? 'w-[180px]' : 'w-64'}`}>
                 <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input 
                   ref={searchInputRef}
@@ -447,8 +467,8 @@ export function InboxClient({ initialEmails, initialNextPageToken }: { initialEm
                 />
               </div>
               
+              {!isEmailSidebarOpen && <>
               <div className="h-4 w-px bg-gray-200 mx-1" />
-              
               <button 
                 onClick={() => {
                   setIsFiltersOpen(true);
@@ -459,6 +479,7 @@ export function InboxClient({ initialEmails, initialNextPageToken }: { initialEm
               >
                 <SlidersHorizontal className="w-4 h-4" />
               </button>
+              </>}
             </div>
           </header>
 
@@ -472,7 +493,7 @@ export function InboxClient({ initialEmails, initialNextPageToken }: { initialEm
           
         {/* Email List */}
 
-          <div className="flex-1 overflow-y-auto pb-8" onScroll={handleScroll}>
+          <div ref={emailListRef} className="flex-1 overflow-y-auto pb-8" onScroll={handleScroll}>
             {filteredEmails.length === 0 ? (
               <div className="p-12 text-center text-gray-500 text-sm flex flex-col items-center justify-center gap-3">
                 {isSyncing ? (
@@ -519,6 +540,7 @@ export function InboxClient({ initialEmails, initialNextPageToken }: { initialEm
                 </button>
               </div>
             )}
+            {nextPageToken && <div ref={loadMoreSentinelRef} className="h-px" aria-hidden="true" />}
           </div>
         </div>
 
