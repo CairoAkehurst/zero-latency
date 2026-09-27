@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect, useRef } from "react";
-import { Wand2, SlidersHorizontal, Settings, RefreshCw, Search, PenSquare, Trash2, Tag, Loader2 } from "lucide-react";
+import { Wand2, SlidersHorizontal, Settings, RefreshCw, Search, PenSquare, Trash2, Tag } from "lucide-react";
 import { EmailRow } from "@/components/EmailRow";
 import { EmailDetailPeek } from "@/components/EmailDetailPeek";
 import { ComposeEmail } from "@/components/ComposeEmail";
@@ -192,14 +192,17 @@ export function InboxClient({ initialEmails, initialNextPageToken }: { initialEm
       setSettingsSection(e.detail || 'inbox');
       setIsSettingsOpen(true);
     };
+    const handleRefreshInbox = () => setRefreshKey(key => key + 1);
 
     window.addEventListener('open-compose', handleOpenCompose);
     window.addEventListener('filter-category', handleFilterCategory);
     window.addEventListener('open-settings', handleOpenSettings);
+    window.addEventListener('refresh-inbox', handleRefreshInbox);
     return () => {
       window.removeEventListener('open-compose', handleOpenCompose);
       window.removeEventListener('filter-category', handleFilterCategory);
       window.removeEventListener('open-settings', handleOpenSettings);
+      window.removeEventListener('refresh-inbox', handleRefreshInbox);
     };
   }, []);
 
@@ -405,7 +408,6 @@ export function InboxClient({ initialEmails, initialNextPageToken }: { initialEm
             ) : (
               <div className="flex items-center gap-4">
                 <h1 className="text-xl font-semibold text-gray-900 leading-none">{activeCategory || "Inbox"}</h1>
-                {isSyncing && <Loader2 className="w-4 h-4 animate-spin text-blue-600" aria-label="Loading emails" />}
               </div>
             )}
             
@@ -426,7 +428,7 @@ export function InboxClient({ initialEmails, initialNextPageToken }: { initialEm
                     disabled={isAutoLabeling}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-50 text-blue-600 font-medium hover:bg-blue-100 transition-colors disabled:opacity-50 whitespace-nowrap"
                   >
-                    <Wand2 className={`w-3.5 h-3.5 ${isAutoLabeling ? "animate-spin" : ""}`} />
+                    <Wand2 className="w-3.5 h-3.5" />
                     {isAutoLabeling ? "Labeling..." : "Auto label"}
                   </button>
                 </>
@@ -473,21 +475,13 @@ export function InboxClient({ initialEmails, initialNextPageToken }: { initialEm
             {filteredEmails.length === 0 ? (
               <div className="p-12 text-center text-gray-500 text-sm flex flex-col items-center justify-center gap-3">
                 {isSyncing ? (
-                  <>
-                    <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
-                    <span>Loading emails...</span>
-                  </>
+                  <span>Loading emails...</span>
                 ) : (
                   <span>No emails found. Try syncing or adjusting your search.</span>
                 )}
               </div>
             ) : (
               <>
-              {isSyncing && (
-                <div className="flex justify-center py-3" aria-label="Loading emails">
-                  <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
-                </div>
-              )}
               {filteredEmails.map((email) => (
                 <div 
                   key={email.id} 
@@ -513,12 +507,6 @@ export function InboxClient({ initialEmails, initialNextPageToken }: { initialEm
               ))}
               </>
             )}
-            {isLoadingMore && (
-              <div className="flex justify-center py-4" aria-label="Loading more emails">
-                <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
-              </div>
-            )}
-            
             {nextPageToken && !searchQuery && (
               <div className="p-4 flex justify-center border-t border-gray-100">
                 <button
@@ -526,7 +514,6 @@ export function InboxClient({ initialEmails, initialNextPageToken }: { initialEm
                   disabled={isLoadingMore}
                   className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-full text-sm font-medium transition-colors disabled:opacity-50"
                 >
-                  {isLoadingMore ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
                   {isLoadingMore ? "Loading..." : "Load older emails"}
                 </button>
               </div>

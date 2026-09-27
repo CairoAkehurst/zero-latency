@@ -10,9 +10,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Missing messageIds' }, { status: 400 });
     }
 
-    if (action === 'trash') {
-      // Inbox rows represent Gmail conversations. Trash the whole thread so
-      // older messages in that conversation cannot keep it in the inbox.
+    if (action === 'trash' || action === 'archive') {
+      // Inbox rows represent Gmail conversations. Apply destructive inbox
+      // actions to the whole thread so older messages cannot keep it visible.
       const threadIds = await Promise.all(messageIds.map(async (id: string) => {
         const message = await gmail.users.messages.get({
           userId: 'me',
@@ -21,12 +21,17 @@ export async function POST(request: Request) {
         });
         return message.data.threadId;
       }));
-      await Promise.all(
-        [...new Set(threadIds.filter((id): id is string => Boolean(id)))].map(id =>
-          gmail.users.threads.trash({ userId: 'me', id })
-        )
-      );
-      return NextResponse.json({ success: true, action: 'trash' });
+      const uniqueThreadIds = [...new Set(threadIds.filter((id): id is string => Boolean(id)))];
+      if (action === 'trash') {
+        await Promise.all(uniqueThreadIds.map(id => gmail.users.threads.trash({ userId: 'me', id })));
+      } else {
+        await Promise.all(uniqueThreadIds.map(id => gmail.users.threads.modify({
+          userId: 'me',
+          id,
+          requestBody: { removeLabelIds: ['INBOX'] },
+        })));
+      }
+      return NextResponse.json({ success: true, action });
     }
 
     if (action === 'untrash') {

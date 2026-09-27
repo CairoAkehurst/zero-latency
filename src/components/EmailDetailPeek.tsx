@@ -342,30 +342,22 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
 
   const handleAction = async (action: 'trash' | 'archive' | 'unread') => {
     try {
-      onClose(); // Optimistically close
-      window.dispatchEvent(new CustomEvent('refresh-inbox')); // Force refresh
-
-      if (action === 'trash') {
-        await fetch("/api/mail/modify", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ messageIds: [email.id], action: "trash" })
-        });
-      } else if (action === 'archive') {
-        await fetch("/api/mail/modify", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ messageIds: [email.id], action: "modify", removeLabelIds: ['INBOX'] })
-        });
-      } else if (action === 'unread') {
-        await fetch("/api/mail/modify", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ messageIds: [email.id], action: "modify", addLabelIds: ['UNREAD'] })
-        });
+      const body = action === 'unread'
+        ? { messageIds: [email.id], action: 'modify', addLabelIds: ['UNREAD'] }
+        : { messageIds: [email.id], action };
+      const res = await fetch("/api/mail/modify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || `Failed to ${action} email`);
       }
+      onClose();
+      window.dispatchEvent(new CustomEvent('refresh-inbox'));
     } catch (e) {
-      alert("Failed to perform action");
+      alert(e instanceof Error ? e.message : "Failed to perform action");
     }
   };
 
