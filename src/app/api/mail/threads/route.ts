@@ -8,6 +8,7 @@ export async function GET(request: Request) {
     const q = searchParams.get('q') || 'in:inbox';
     const maxResults = Number(searchParams.get('maxResults')) || 20;
     const pageToken = searchParams.get('pageToken') || undefined;
+    const includeReplied = searchParams.get('includeReplied') === 'true';
 
     const { gmail, user } = await getGmailClient();
     const supabase = await createClient();
@@ -80,22 +81,24 @@ export async function GET(request: Request) {
       if (!threadId || seenThreadIds.has(threadId)) continue;
       seenThreadIds.add(threadId);
 
-      try {
-        const threadRes = await gmail.users.threads.get({
-          userId: 'me',
-          id: threadId,
-          format: 'metadata',
-          metadataHeaders: ['From']
-        });
-        const messages = threadRes.data.messages || [];
-        if (messages.length > 0) {
-          const lastMsg = messages[messages.length - 1];
-          const lastLabelIds = lastMsg.labelIds || [];
-          // If the most recent message in the thread is SENT, user already replied → skip
-          if (lastLabelIds.includes('SENT')) continue;
+      if (!includeReplied) {
+        try {
+          const threadRes = await gmail.users.threads.get({
+            userId: 'me',
+            id: threadId,
+            format: 'metadata',
+            metadataHeaders: ['From']
+          });
+          const messages = threadRes.data.messages || [];
+          if (messages.length > 0) {
+            const lastMsg = messages[messages.length - 1];
+            const lastLabelIds = lastMsg.labelIds || [];
+            // If the most recent message in the thread is SENT, user already replied → skip
+            if (lastLabelIds.includes('SENT')) continue;
+          }
+        } catch (_) {
+          // If thread fetch fails, include it anyway (fail open)
         }
-      } catch (_) {
-        // If thread fetch fails, include it anyway (fail open)
       }
 
       threadFilteredMessages.push(email);
@@ -171,4 +174,3 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
-

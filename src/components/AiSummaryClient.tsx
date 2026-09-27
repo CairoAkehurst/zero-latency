@@ -230,7 +230,9 @@ export function AiSummaryClient({
   const [nextPageToken, setNextPageToken] = useState<string | null>(initialNextPageToken);
   const [loading, setLoading] = useState(initialEmails.length === 0);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [fallbackUnreadMode, setFallbackUnreadMode] = useState(false);
   const [actionInProgressId, setActionInProgressId] = useState<string | null>(null);
+  const dismissedPriorityIds = useRef(new Set<string>());
 
   // Background active agent indicators
   const [backgroundTasks, setBackgroundTasks] = useState<Array<{ id: string; subject: string; status: string }>>([]);
@@ -265,21 +267,68 @@ export function AiSummaryClient({
     }
   };
 
+  const fetchUnreadFallback = async () => {
+    try {
+      const params = new URLSearchParams({
+        q: 'in:inbox is:unread',
+        maxResults: '50',
+        includeReplied: 'true',
+      });
+      const res = await fetch(`/api/mail/threads?${params.toString()}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to load unread priority emails');
+      const candidates = (data.emails || [])
+        .filter((email: any) => !dismissedPriorityIds.current.has(email.id))
+        .sort((a: any, b: any) => {
+          const score = (email: any) =>
+            (email.labelIds?.includes('IMPORTANT') ? 4 : 0) +
+            (email.labelIds?.includes('STARRED') ? 2 : 0) +
+            (email.is_unread ? 1 : 0);
+          return score(b) - score(a) || new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+        });
+      setFallbackUnreadMode(true);
+      setEmails(candidates);
+      setNextPageToken(data.nextPageToken || null);
+      fetchCustomAiActions(candidates);
+    } catch (error) {
+      console.error('Failed to load unread priority fallback:', error);
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
+      setIsSyncing(false);
+    }
+  };
+
   const fetchEmails = async (token?: string) => {
     try {
-      const url = token 
-        ? `/api/mail/threads?maxResults=10&pageToken=${token}`
-        : "/api/mail/threads?maxResults=10";
+      const params = new URLSearchParams({
+        maxResults: '50',
+        q: fallbackUnreadMode ? 'in:inbox is:unread' : 'in:inbox',
+      });
+      if (token) params.set('pageToken', token);
+      if (fallbackUnreadMode) params.set('includeReplied', 'true');
+      const url = `/api/mail/threads?${params.toString()}`;
       const res = await fetch(url);
       const data = await res.json();
-      if (data.emails) {
-        if (token) {
-          setEmails(prev => [...prev, ...data.emails]);
-        } else {
-          setEmails(data.emails);
+      if (res.ok && data.emails) {
+        const candidates = data.emails.filter((email: any) => !dismissedPriorityIds.current.has(email.id));
+        const nextToken = data.nextPageToken || null;
+        setNextPageToken(nextToken);
+        if (candidates.length === 0 && nextToken) {
+          await fetchEmails(nextToken);
+          return;
         }
-        setNextPageToken(data.nextPageToken || null);
-        fetchCustomAiActions(data.emails);
+        if (candidates.length === 0 && !fallbackUnreadMode) {
+          await fetchUnreadFallback();
+          return;
+        }
+        if (token) {
+          setEmails(prev => [...prev, ...candidates.filter((email: any) => !prev.some(item => item.id === email.id))]);
+        } else {
+          setEmails(candidates);
+        }
+        setNextPageToken(nextToken);
+        fetchCustomAiActions(candidates);
       }
     } catch (e) {
       console.error(e);
@@ -309,18 +358,26 @@ export function AiSummaryClient({
     fetchEmails(nextPageToken);
   };
 
+  const removePriorityEmail = (emailId: string) => {
+    dismissedPriorityIds.current.add(emailId);
+    const remaining = emails.filter(item => item.id !== emailId);
+    setEmails(remaining);
+    if (remaining.length === 0) {
+      setLoadingMore(true);
+      if (nextPageToken) void fetchEmails(nextPageToken);
+      else void fetchUnreadFallback();
+    }
+  };
+
   // Remove from priority inbox without modifying Gmail labels/archive
   const handleDismissFromPriority = (emailId: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    setEmails(prev => prev.filter(item => item.id !== emailId));
+    removePriorityEmail(emailId);
   };
 
   const handleDelete = async (email: any, e: React.MouseEvent) => {
     e.stopPropagation();
     setActionInProgressId(email.id);
-    const previousEmails = emails;
-    setEmails(prev => prev.filter(item => item.id !== email.id));
-
     try {
       const res = await fetch("/api/mail/modify", {
         method: "POST",
@@ -331,10 +388,10 @@ export function AiSummaryClient({
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error || "Failed to delete email in Gmail");
       }
+      removePriorityEmail(email.id);
       window.dispatchEvent(new CustomEvent('refresh-inbox'));
     } catch (err) {
       console.error(err);
-      setEmails(previousEmails);
     } finally {
       setActionInProgressId(null);
     }
@@ -365,7 +422,7 @@ export function AiSummaryClient({
     // Add task to corner indicator
     setBackgroundTasks(prev => [...prev, { id: taskId, subject: taskSubject, status: 'Drafting & Sending' }]);
     // Optimistically remove card from priority inbox view
-    setEmails(prev => prev.filter(item => item.id !== email.id));
+    removePriorityEmail(email.id);
 
     try {
       let replyBody = action.reply;
@@ -655,9 +712,6 @@ export function AiSummaryClient({
       });
 
       if (res.ok) {
-        // Automatically remove the email from the priority inbox without deleting it
-        setEmails(prev => prev.filter(item => item.id !== session.email.id));
-
         setSessions(prev => prev.map(s => {
           if (s.id !== session.id) return s;
           return {
@@ -865,7 +919,11 @@ export function AiSummaryClient({
 
             if (filteredEmails.length === 0) return (
               <div className="p-12 text-center text-gray-500 text-sm">
-                {q ? `No results for "${searchQuery}"` : 'No priority emails found. All caught up!'}
+                {q
+                  ? `No results for "${searchQuery}"`
+                  : loading || loadingMore
+                    ? 'Finding the next priority email...'
+                    : 'No priority emails found. All caught up!'}
               </div>
             );
 
