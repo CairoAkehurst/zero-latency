@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getCalendarClient } from '@/lib/server/gmail';
+import { extractEmailDetails, getGmailClient } from '@/lib/server/gmail';
 import OpenAI from 'openai';
 import { createHash } from 'node:crypto';
 import type { calendar_v3 } from 'googleapis';
@@ -7,6 +7,8 @@ import type { calendar_v3 } from 'googleapis';
 const escapeHtml = (value: string) => value.replace(/[&<>"']/g, (char) => ({
   '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
 }[char]!));
+const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+const EMAIL_PATTERN = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi;
 
 function googleEventId(value: string) {
   const bytes = createHash('sha256').update(value).digest();
@@ -29,26 +31,70 @@ export async function POST(request: Request) {
       recipientName, 
       replyText,
       dedupeKey,
+      threadId,
+      attendeeEmails = [],
+      forceCreate = false,
+      timeZone: requestedTimeZone,
     } = await request.json();
 
     if (!recipientEmail) {
       return NextResponse.json({ error: 'recipientEmail is required' }, { status: 400 });
     }
-    const attendeeEmail = String(recipientEmail).match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0];
+    const attendeeEmail = String(recipientEmail).match(EMAIL_PATTERN)?.[0];
     if (!attendeeEmail) {
       return NextResponse.json({ error: 'A valid recipient email is required' }, { status: 400 });
     }
 
-    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    const { gmail, calendar } = await getGmailClient();
+    let accountEmail = '';
+    try {
+      accountEmail = (await gmail.users.getProfile({ userId: 'me' })).data.emailAddress?.toLowerCase() || '';
+    } catch {}
+
+    const participants = new Map<string, string>();
+    const addAddresses = (value: string, displayName = '') => {
+      for (const address of value.match(EMAIL_PATTERN) || []) {
+        if (address.toLowerCase() !== accountEmail && !participants.has(address.toLowerCase())) {
+          participants.set(address.toLowerCase(), displayName);
+        }
+      }
+    };
+    addAddresses(attendeeEmail, recipientName || '');
+    for (const address of Array.isArray(attendeeEmails) ? attendeeEmails : []) addAddresses(String(address));
+
+    let fullThreadText = String(emailBody || '');
+    if (threadId) {
+      const thread = await gmail.users.threads.get({ userId: 'me', id: String(threadId), format: 'full' });
+      const messages = thread.data.messages || [];
+      const threadParts = messages.map(message => {
+        const parsed = extractEmailDetails(message.payload);
+        addAddresses(parsed.sender_email || '', parsed.sender_name || '');
+        addAddresses(parsed.to_email || '');
+        addAddresses(parsed.cc || '');
+        return `From: ${parsed.sender_name || parsed.sender_email}\nTo: ${parsed.to_email || ''}\nCc: ${parsed.cc || ''}\nDate: ${parsed.timestamp}\nSubject: ${parsed.subject || emailSubject || ''}\n${parsed.body_text || parsed.body_html || message.snippet || ''}`;
+      });
+      if (threadParts.length) fullThreadText = threadParts.join('\n\n--- Earlier/Later Message ---\n\n');
+    }
+    const attendees = [...participants].map(([email, displayName]) => ({ email, displayName: displayName || undefined }));
+    if (attendees.length === 0) attendees.push({ email: attendeeEmail.toLowerCase(), displayName: recipientName || undefined });
+
+    const timeZone = typeof requestedTimeZone === 'string' && requestedTimeZone
+      ? requestedTimeZone
+      : 'UTC';
     const now = new Date();
     const isoNow = now.toISOString();
+    const localNow = now.toLocaleString('en-US', { timeZone, dateStyle: 'full', timeStyle: 'long' });
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
     const systemPrompt = `You are an intelligent calendar assistant for Zero Latency.
 Analyze the email to detect if a meeting, call, appointment, or calendar event is being scheduled, accepted, confirmed, or agreed upon.
-Current date/time (ISO): ${isoNow}.
+Current date/time (UTC ISO): ${isoNow}.
+Current local date/time in ${timeZone}: ${localNow}.
 
 Trigger shouldCreateInvite=true when a participant clearly agrees to a meeting time, or when the reply being sent explicitly asks to arrange/propose a meeting at a specific time. Examples: "Friday at 2pm works", "confirmed", "see you then", "let's meet Tuesday at 3", or a reply that accepts a proposed time.
-An unaccepted proposal in the received email, a question about availability, or a tentative suggestion is NOT agreement and must not create an event. User-authored reply text may create an invite for an explicit scheduling request; email/thread content alone needs clear agreement.
+An unaccepted proposal in the received email, a question about availability, or a tentative suggestion is NOT agreement and must not create an event unless the caller explicitly sets forceCreate=true. User-authored reply text may create an invite for an explicit scheduling request; email/thread content alone needs clear agreement.
+
+Caller forceCreate=${Boolean(forceCreate)}. When true, the user has explicitly accepted this meeting and you MUST create the event by extracting the agreed date and time from the full thread. Resolve relative dates using the local time above and return startTime/endTime as ISO 8601 values with the correct ${timeZone} offset. Never return shouldCreateInvite=false when forceCreate=true. If the thread has no resolvable meeting date and time, return shouldCreateInvite=true but omit startTime so the request fails visibly instead of sending a false confirmation.
 
 Do NOT trigger if: declining, cancelling, or no specific time is mentioned.
 
@@ -58,7 +104,7 @@ Extract:
 3. "description": Brief agenda from the email
 4. "startTime": ISO 8601 (resolve relative times like "tomorrow 4pm", "Friday 10am" using current ISO: ${isoNow})
 5. "endTime": ISO 8601 (default 30-60 min after start if not specified)
-6. "location": location or "Google Meet" if virtual
+6. "location": physical location if one was agreed; otherwise "Google Meet"
 
 If no meeting: { "shouldCreateInvite": false }`;
 
@@ -69,9 +115,9 @@ If no meeting: { "shouldCreateInvite": false }`;
         {
           role: 'user',
           content: `Subject: ${emailSubject || ''}
-Recipient: ${recipientName || ''} <${recipientEmail}>
-Email Content:
-${emailBody || ''}
+Known participants: ${attendees.map(person => person.email).join(', ')}
+Full email thread:
+${fullThreadText}
 
 Reply Being Sent:
 ${replyText || ''}`
@@ -85,10 +131,12 @@ ${replyText || ''}`
     const parsed = JSON.parse(completion.choices[0]?.message?.content || '{}');
 
     if (!parsed.shouldCreateInvite || !parsed.startTime) {
-      return NextResponse.json({ created: false, message: 'No calendar invite required.' });
+      return NextResponse.json({
+        created: false,
+        error: forceCreate ? 'The accepted meeting date and time could not be determined from the email thread.' : undefined,
+        message: forceCreate ? undefined : 'No calendar invite required.',
+      }, { status: forceCreate ? 422 : 200 });
     }
-
-    const { calendar } = await getCalendarClient();
 
     // Default duration to 30 mins if endTime is missing or invalid
     const startDt = new Date(parsed.startTime);
@@ -107,14 +155,16 @@ ${replyText || ''}`
       location: parsed.location || undefined,
       start: {
         dateTime: startDt.toISOString(),
+        timeZone,
       },
       end: {
         dateTime: endDt.toISOString(),
+        timeZone,
       },
-      attendees: [{ email: attendeeEmail, displayName: recipientName || undefined }],
+      attendees,
       conferenceData: {
         createRequest: {
-          requestId: `meet-${Date.now()}`,
+          requestId: `meet-${googleEventId(`${dedupeKey || threadId || emailSubject}:${startDt.toISOString()}`)}`,
           conferenceSolutionKey: { type: 'hangoutsMeet' },
         },
       },
@@ -141,7 +191,16 @@ ${replyText || ''}`
       eventData = existing.data;
     }
 
-    const meetLink = eventData.conferenceData?.entryPoints?.find((entry) => entry.entryPointType === 'video')?.uri || eventData.htmlLink || '';
+    let meetLink = eventData.conferenceData?.entryPoints?.find((entry) => entry.entryPointType === 'video')?.uri || '';
+    for (let attempt = 0; !meetLink && attempt < 8; attempt++) {
+      await wait(750);
+      const refreshed = await calendar.events.get({ calendarId: 'primary', eventId: eventData.id! });
+      eventData = refreshed.data;
+      meetLink = eventData.conferenceData?.entryPoints?.find((entry) => entry.entryPointType === 'video')?.uri || '';
+    }
+    if (!meetLink) {
+      throw new Error('Google Calendar created the event but did not return a Google Meet link. Retry the send to finish creating the invite.');
+    }
 
     // Format human-friendly meeting date/time (e.g., "Friday, Oct 24, 2026, 3:00 PM – 3:30 PM")
     const dateOptions: Intl.DateTimeFormatOptions = { 
@@ -156,9 +215,9 @@ ${replyText || ''}`
       hour12: true
     };
 
-    const dateFormatted = startDt.toLocaleDateString('en-US', dateOptions);
-    const startTimeFormatted = startDt.toLocaleTimeString('en-US', timeOptions);
-    const endTimeFormatted = endDt.toLocaleTimeString('en-US', timeOptions);
+    const dateFormatted = startDt.toLocaleDateString('en-US', { ...dateOptions, timeZone });
+    const startTimeFormatted = startDt.toLocaleTimeString('en-US', { ...timeOptions, timeZone });
+    const endTimeFormatted = endDt.toLocaleTimeString('en-US', { ...timeOptions, timeZone });
     const fullTimeStr = `${dateFormatted} · ${startTimeFormatted} - ${endTimeFormatted}`;
 
     const inviteCardHtml = `

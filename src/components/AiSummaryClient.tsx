@@ -39,6 +39,10 @@ interface SmartAction {
   style: 'primary' | 'secondary';
 }
 
+function extractEmailAddresses(value: string) {
+  return value.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi) || [];
+}
+
 function computeSmartActionsFallback(email: any): SmartAction[] {
   const text = `${email.subject || ''} ${email.snippet || ''} ${email.summary || ''}`.toLowerCase();
   const sender = `${email.sender_name || ''} ${email.sender_email || ''}`.toLowerCase();
@@ -418,6 +422,7 @@ export function AiSummaryClient({
   const handleAutoReplyAction = async (email: any, action: SmartAction) => {
     const taskId = Math.random().toString();
     const taskSubject = action.label;
+    let meetingInviteRequired = false;
 
     // Add task to corner indicator
     setBackgroundTasks(prev => [...prev, { id: taskId, subject: taskSubject, status: 'Drafting & Sending' }]);
@@ -461,9 +466,16 @@ export function AiSummaryClient({
       let outgoingBody = replyBody;
       let calendarInviteCreated = false;
       const meetingContext = `${email.subject || ''} ${email.body_text || ''} ${email.snippet || email.summary || ''}`;
+      const actionIntent = `${action.label} ${action.replyIntent || ''} ${replyBody}`;
       const isMeetingAcceptance =
-        /\b(accept|agree|agreed|confirm|confirmed|yes)\b/i.test(`${action.label} ${action.replyIntent || ''}`) &&
-        /\b(meeting|call|calendar|invite|appointment|availability|schedule|time)\b/i.test(meetingContext);
+        /\b(accept|agree|agreed|confirm|confirmed|yes)\b/i.test(actionIntent) &&
+        /\b(meeting|call|calendar|invite|appointment|availability|schedule|time)\b/i.test(`${meetingContext} ${actionIntent}`);
+      meetingInviteRequired = isMeetingAcceptance;
+      const attendeeEmails = [...new Set([
+        email.sender_email || '',
+        ...extractEmailAddresses(email.to_email || ''),
+        ...extractEmailAddresses(email.cc || ''),
+      ].filter(Boolean))];
       try {
         const calRes = await fetch("/api/calendar/invite", {
           method: "POST",
@@ -473,8 +485,12 @@ export function AiSummaryClient({
             emailBody: email.body_text || email.snippet || email.summary || '',
             recipientEmail: email.sender_email,
             recipientName: email.sender_name || '',
+            attendeeEmails,
             replyText: replyBody,
             dedupeKey: email.google_thread_id || email.google_message_id || email.id,
+            threadId: email.google_thread_id,
+            forceCreate: isMeetingAcceptance,
+            timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
           })
         });
         const calData = await calRes.json();
@@ -524,7 +540,12 @@ export function AiSummaryClient({
       }
     } catch (err) {
       console.error("Auto reply failed:", err);
-      setBackgroundTasks(prev => prev.filter(t => t.id !== taskId));
+      dismissedPriorityIds.current.delete(email.id);
+      setEmails(prev => prev.some(item => item.id === email.id) ? prev : [email, ...prev]);
+      setBackgroundTasks(prev => prev.map(task => task.id === taskId
+        ? { ...task, status: meetingInviteRequired ? 'Calendar invite failed; reply not sent' : 'Failed to send reply' }
+        : task));
+      setTimeout(() => setBackgroundTasks(prev => prev.filter(task => task.id !== taskId)), 8000);
     }
   };
 
@@ -682,6 +703,11 @@ export function AiSummaryClient({
       let outgoingBody = session.draftReply;
       let inviteCreated = false;
       let eventSummary = '';
+      const sessionContext = `${session.email.subject || ''} ${session.email.body_text || ''} ${session.email.snippet || session.email.summary || ''}`;
+      const sessionText = `${sessionContext} ${session.draftReply}`;
+      const isMeetingAcceptance =
+        /\b(accept|agree|agreed|confirm|confirmed|yes|works for me|sounds good)\b/i.test(session.draftReply) &&
+        /\b(meeting|call|calendar|invite|appointment|availability|schedule|time)\b/i.test(sessionText);
       try {
         const calRes = await fetch("/api/calendar/invite", {
           method: "POST",
@@ -691,19 +717,31 @@ export function AiSummaryClient({
             emailBody: session.email.body_text || session.email.snippet || session.email.summary || '',
             recipientEmail: session.email.sender_email,
             recipientName: session.email.sender_name || '',
+            attendeeEmails: [...new Set([
+              session.email.sender_email || '',
+              ...extractEmailAddresses(session.email.to_email || ''),
+              ...extractEmailAddresses(session.email.cc || ''),
+            ].filter(Boolean))],
             replyText: session.draftReply,
             dedupeKey: session.email.google_thread_id || session.email.google_message_id || session.email.id,
+            threadId: session.email.google_thread_id,
+            forceCreate: isMeetingAcceptance,
+            timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
           })
         });
         const calData = await calRes.json();
+        if (!calRes.ok) throw new Error(calData.error || 'Google Calendar invite creation failed');
         if (calData.created && calData.inviteCardHtml) {
           inviteCreated = true;
           eventSummary = calData.summary || 'Meeting';
           const formattedReplyHtml = `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 14px; line-height: 1.6; color: #111827;">${session.draftReply.replace(/\n\n/g, '<br/><br/>').replace(/\n/g, '<br/>')}</div>${calData.inviteCardHtml}`;
           outgoingBody = formattedReplyHtml;
+        } else if (isMeetingAcceptance) {
+          throw new Error(calData.error || 'The meeting was accepted, but Google Calendar did not create an invite. The reply was not sent.');
         }
       } catch (calErr) {
         console.error("Calendar invite error:", calErr);
+        if (isMeetingAcceptance) throw calErr;
       }
 
       const res = await fetch("/api/send", {
