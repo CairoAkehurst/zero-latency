@@ -49,7 +49,7 @@ import { formatEmailDate } from "@/utils/formatDate";
 export function EmailRow({ email, isSelected, isCompressed, isChecked, onToggleCheck }: EmailRowProps) {
   return (
     <div className={clsx(
-      "flex h-[60px] min-h-[60px] items-center gap-3 overflow-hidden border-b px-5 py-2.5 cursor-pointer transition-colors group",
+      "flex h-[54px] min-h-[54px] items-center gap-3 overflow-hidden border-b px-5 py-2 cursor-pointer transition-colors group",
       isChecked ? "bg-blue-50/80 border-blue-100" : isSelected ? "bg-blue-50/40 border-blue-50" : "border-gray-100 hover:bg-gray-50/50"
     )}>
       {/* Checkbox */}

@@ -412,7 +412,7 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
   };
 
   return (
-    <div className={`flex flex-col h-full bg-white z-10 relative overflow-hidden transition-all duration-300 ease-in-out flex-1 rounded-tl-2xl ${isFullView ? 'border-l-0' : 'border-l border-gray-200'}`}>
+    <div className={`flex min-w-0 flex-col h-full bg-white z-10 relative overflow-hidden transition-all duration-300 ease-in-out flex-1 rounded-tl-2xl ${isFullView ? 'border-l-0' : 'border-l border-gray-200'}`}>
       
       {/* Header Toolbar */}
       <div className="h-[68px] px-5 flex items-center justify-between border-b border-gray-100 flex-shrink-0">
