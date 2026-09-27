@@ -460,13 +460,17 @@ export function AiSummaryClient({
       // Check if a calendar invite is required and auto-create it so we can embed it
       let outgoingBody = replyBody;
       let calendarInviteCreated = false;
+      const meetingContext = `${email.subject || ''} ${email.body_text || ''} ${email.snippet || email.summary || ''}`;
+      const isMeetingAcceptance =
+        /\b(accept|agree|agreed|confirm|confirmed|yes)\b/i.test(`${action.label} ${action.replyIntent || ''}`) &&
+        /\b(meeting|call|calendar|invite|appointment|availability|schedule|time)\b/i.test(meetingContext);
       try {
         const calRes = await fetch("/api/calendar/invite", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             emailSubject: email.subject || '',
-            emailBody: email.snippet || email.summary || '',
+            emailBody: email.body_text || email.snippet || email.summary || '',
             recipientEmail: email.sender_email,
             recipientName: email.sender_name || '',
             replyText: replyBody,
@@ -474,14 +478,18 @@ export function AiSummaryClient({
           })
         });
         const calData = await calRes.json();
+        if (!calRes.ok) throw new Error(calData.error || 'Google Calendar invite creation failed');
         if (calData.created && calData.inviteCardHtml) {
           calendarInviteCreated = true;
           // Embed the formatted Google Calendar invite card into the HTML email
           const formattedReplyHtml = `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 14px; line-height: 1.6; color: #111827;">${replyBody.replace(/\n\n/g, '<br/><br/>').replace(/\n/g, '<br/>')}</div>${calData.inviteCardHtml}`;
           outgoingBody = formattedReplyHtml;
+        } else if (isMeetingAcceptance) {
+          throw new Error('The meeting was accepted, but Google Calendar did not create an invite. The reply was not sent.');
         }
       } catch (calErr) {
         console.error("Calendar invite check error:", calErr);
+        if (isMeetingAcceptance) throw calErr;
       }
 
       const res = await fetch("/api/send", {
@@ -680,7 +688,7 @@ export function AiSummaryClient({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             emailSubject: session.email.subject || '',
-            emailBody: session.email.snippet || session.email.summary || '',
+            emailBody: session.email.body_text || session.email.snippet || session.email.summary || '',
             recipientEmail: session.email.sender_email,
             recipientName: session.email.sender_name || '',
             replyText: session.draftReply,
