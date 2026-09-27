@@ -12,15 +12,22 @@ export async function GET(request: Request) {
     }
 
     const { calendar } = await getCalendarClient();
-    const result = await calendar.events.list({
-      calendarId: 'primary',
-      timeMin,
-      timeMax,
-      singleEvents: true,
-      orderBy: 'startTime',
-      maxResults: 250,
-    });
-    return NextResponse.json({ events: result.data.items || [] });
+    const events = [];
+    let pageToken: string | undefined;
+    do {
+      const result = await calendar.events.list({
+        calendarId: 'primary',
+        timeMin,
+        timeMax,
+        singleEvents: true,
+        orderBy: 'startTime',
+        maxResults: 2500,
+        pageToken,
+      });
+      events.push(...(result.data.items || []));
+      pageToken = result.data.nextPageToken || undefined;
+    } while (pageToken);
+    return NextResponse.json({ events });
   } catch (error: unknown) {
     console.error('Calendar list error:', error);
     return NextResponse.json({ error: error instanceof Error ? error.message : 'Failed to load calendar events' }, { status: 500 });
@@ -60,5 +67,24 @@ export async function POST(request: Request) {
   } catch (error: unknown) {
     console.error('Calendar create error:', error);
     return NextResponse.json({ error: error instanceof Error ? error.message : 'Failed to create calendar event' }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    let eventId = searchParams.get('eventId');
+    if (!eventId) {
+      const body = await request.json().catch(() => ({}));
+      eventId = typeof body.eventId === 'string' ? body.eventId : null;
+    }
+    if (!eventId) return NextResponse.json({ error: 'eventId is required' }, { status: 400 });
+
+    const { calendar } = await getCalendarClient();
+    await calendar.events.delete({ calendarId: 'primary', eventId, sendUpdates: 'all' });
+    return NextResponse.json({ success: true, eventId });
+  } catch (error: unknown) {
+    console.error('Calendar delete error:', error);
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Failed to delete calendar event' }, { status: 500 });
   }
 }

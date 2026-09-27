@@ -140,30 +140,33 @@ export function InboxClient({ initialEmails, initialNextPageToken }: { initialEm
     
     const interval = setInterval(async () => {
       try {
-        // Fetch only the latest 10 to check for new emails efficiently
+        // Poll the newest messages so received replies update their existing
+        // conversation row instead of appearing as separate emails.
         const res = await fetch(`/api/mail/threads?maxResults=10&q=${encodeURIComponent(q)}`);
         const data = await res.json();
         if (res.ok && data.emails?.length > 0) {
-          // Merge new emails, keeping existing ones below them
           setEmails(prev => {
-            const newEmails = [...prev];
-            let changed = false;
-            for (const incoming of data.emails) {
-              if (!newEmails.find(e => e.id === incoming.id)) {
-                newEmails.unshift(incoming); // Add to top
-                changed = true;
-              }
-            }
-            // Optional: update existing emails (like read status)
-            for (const incoming of data.emails) {
-              const idx = newEmails.findIndex(e => e.id === incoming.id);
-              if (idx !== -1 && newEmails[idx].is_unread !== incoming.is_unread) {
-                newEmails[idx] = { ...newEmails[idx], is_unread: incoming.is_unread };
-                changed = true;
-              }
-            }
-            return changed ? newEmails : prev;
+            const incoming = data.emails.map((email: any) => {
+              const existing = email.google_thread_id
+                ? prev.find((item) => item.google_thread_id === email.google_thread_id)
+                : prev.find((item) => item.id === email.id);
+              // Keep the rendered row identity stable while updating its content
+              // and message headers to the newest message in the conversation.
+              if (existing?.google_message_id === email.google_message_id) return existing;
+              return existing ? { ...email, id: existing.id } : email;
+            });
+            const incomingThreadIds = new Set(incoming.map((email: any) => email.google_thread_id).filter(Boolean));
+            const incomingIds = new Set(incoming.map((email: any) => email.id));
+            const untouched = prev.filter((email) => email.google_thread_id
+              ? !incomingThreadIds.has(email.google_thread_id)
+              : !incomingIds.has(email.id));
+            const merged = [...incoming, ...untouched];
+            categoryCache.current.set(q, { emails: merged, nextPageToken: categoryCache.current.get(q)?.nextPageToken || null });
+            return merged;
           });
+          window.dispatchEvent(new CustomEvent('refresh-open-thread', {
+            detail: { threadIds: data.emails.map((email: any) => email.google_thread_id).filter(Boolean) },
+          }));
         }
       } catch (e) {
         // ignore background poll errors
@@ -272,6 +275,7 @@ export function InboxClient({ initialEmails, initialNextPageToken }: { initialEm
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error || "Failed to delete emails in Gmail");
       }
+      window.dispatchEvent(new CustomEvent('refresh-inbox'));
     } catch (error: any) {
       setEmails(prev => [...deletedEmails, ...prev]);
       alert(error.message);
@@ -330,8 +334,11 @@ export function InboxClient({ initialEmails, initialNextPageToken }: { initialEm
       const data = await res.json();
       if (res.ok) {
         setEmails(prev => {
+          const existingThreadIds = new Set(prev.map(email => email.google_thread_id).filter(Boolean));
           const existingIds = new Set(prev.map(email => email.id));
-          return [...prev, ...(data.emails || []).filter((email: any) => !existingIds.has(email.id))];
+          return [...prev, ...(data.emails || []).filter((email: any) => email.google_thread_id
+            ? !existingThreadIds.has(email.google_thread_id)
+            : !existingIds.has(email.id))];
         });
         setNextPageToken(data.nextPageToken || null);
       }

@@ -234,7 +234,6 @@ export function AiSummaryClient({
   const [nextPageToken, setNextPageToken] = useState<string | null>(initialNextPageToken);
   const [loading, setLoading] = useState(initialEmails.length === 0);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [fallbackUnreadMode, setFallbackUnreadMode] = useState(false);
   const [actionInProgressId, setActionInProgressId] = useState<string | null>(null);
   const dismissedPriorityIds = useRef(new Set<string>());
 
@@ -271,46 +270,13 @@ export function AiSummaryClient({
     }
   };
 
-  const fetchUnreadFallback = async () => {
-    try {
-      const params = new URLSearchParams({
-        q: 'in:inbox is:unread',
-        maxResults: '50',
-        includeReplied: 'true',
-      });
-      const res = await fetch(`/api/mail/threads?${params.toString()}`);
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to load unread priority emails');
-      const candidates = (data.emails || [])
-        .filter((email: any) => !dismissedPriorityIds.current.has(email.id))
-        .sort((a: any, b: any) => {
-          const score = (email: any) =>
-            (email.labelIds?.includes('IMPORTANT') ? 4 : 0) +
-            (email.labelIds?.includes('STARRED') ? 2 : 0) +
-            (email.is_unread ? 1 : 0);
-          return score(b) - score(a) || new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
-        });
-      setFallbackUnreadMode(true);
-      setEmails(candidates);
-      setNextPageToken(data.nextPageToken || null);
-      fetchCustomAiActions(candidates);
-    } catch (error) {
-      console.error('Failed to load unread priority fallback:', error);
-    } finally {
-      setLoading(false);
-      setLoadingMore(false);
-      setIsSyncing(false);
-    }
-  };
-
   const fetchEmails = async (token?: string) => {
     try {
       const params = new URLSearchParams({
         maxResults: '50',
-        q: fallbackUnreadMode ? 'in:inbox is:unread' : 'in:inbox',
+        priority: 'true',
       });
       if (token) params.set('pageToken', token);
-      if (fallbackUnreadMode) params.set('includeReplied', 'true');
       const url = `/api/mail/threads?${params.toString()}`;
       const res = await fetch(url);
       const data = await res.json();
@@ -320,10 +286,6 @@ export function AiSummaryClient({
         setNextPageToken(nextToken);
         if (candidates.length === 0 && nextToken) {
           await fetchEmails(nextToken);
-          return;
-        }
-        if (candidates.length === 0 && !fallbackUnreadMode) {
-          await fetchUnreadFallback();
           return;
         }
         if (token) {
@@ -349,11 +311,43 @@ export function AiSummaryClient({
   };
 
   useEffect(() => {
-    if (initialEmails.length === 0) {
-      fetchEmails();
-    } else {
-      fetchCustomAiActions(initialEmails);
-    }
+    if (initialEmails.length > 0) fetchCustomAiActions(initialEmails);
+    fetchEmails();
+  }, []);
+
+  // Keep priority current while the page is open. Gmail is the source of truth;
+  // dismissed messages have been marked read there and new unread replies have
+  // their own message ID, so they can re-enter the list naturally.
+  useEffect(() => {
+    const syncPriority = async () => {
+      try {
+        const res = await fetch('/api/mail/threads?priority=true&maxResults=50', { cache: 'no-store' });
+        const data = await res.json();
+        if (!res.ok || !Array.isArray(data.emails)) return;
+        const candidates = data.emails.filter((email: any) => !dismissedPriorityIds.current.has(email.id));
+        const refreshedThreadIds = new Set(candidates.map((email: any) => email.google_thread_id).filter(Boolean));
+        const refreshedIds = new Set(candidates.map((email: any) => email.id));
+        setEmails((previous) => [
+          ...candidates,
+          ...previous.filter((email) =>
+            !dismissedPriorityIds.current.has(email.id) &&
+            (email.google_thread_id
+              ? !refreshedThreadIds.has(email.google_thread_id)
+              : !refreshedIds.has(email.id))
+          ),
+        ]);
+        setNextPageToken(data.nextPageToken || null);
+        fetchCustomAiActions(candidates);
+      } catch (error) {
+        console.error('Failed to refresh priority inbox:', error);
+      }
+    };
+    const interval = window.setInterval(syncPriority, 30_000);
+    window.addEventListener('refresh-inbox', syncPriority);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener('refresh-inbox', syncPriority);
+    };
   }, []);
 
   const handleLoadMore = () => {
@@ -366,17 +360,36 @@ export function AiSummaryClient({
     dismissedPriorityIds.current.add(emailId);
     const remaining = emails.filter(item => item.id !== emailId);
     setEmails(remaining);
-    if (remaining.length === 0) {
+    if (remaining.length === 0 && nextPageToken) {
       setLoadingMore(true);
-      if (nextPageToken) void fetchEmails(nextPageToken);
-      else void fetchUnreadFallback();
+      void fetchEmails(nextPageToken);
     }
   };
 
-  // Remove from priority inbox without modifying Gmail labels/archive
-  const handleDismissFromPriority = (emailId: string, e: React.MouseEvent) => {
+  // Dismissal means this message is no longer unread in Gmail. A later incoming
+  // reply is a new unread message and is evaluated as the latest thread message.
+  const handleDismissFromPriority = async (email: any, e: React.MouseEvent) => {
     e.stopPropagation();
-    removePriorityEmail(emailId);
+    if (actionInProgressId === email.id) return;
+    setActionInProgressId(email.id);
+    try {
+      const res = await fetch('/api/mail/modify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messageIds: [email.id], action: 'markRead' }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Could not dismiss this email in Gmail');
+      }
+      removePriorityEmail(email.id);
+      window.dispatchEvent(new CustomEvent('refresh-inbox'));
+    } catch (error) {
+      console.error('Failed to dismiss priority email:', error);
+      alert(error instanceof Error ? error.message : 'Could not dismiss this email');
+    } finally {
+      setActionInProgressId(null);
+    }
   };
 
   const handleDelete = async (email: any, e: React.MouseEvent) => {
@@ -396,6 +409,7 @@ export function AiSummaryClient({
       window.dispatchEvent(new CustomEvent('refresh-inbox'));
     } catch (err) {
       console.error(err);
+      alert(err instanceof Error ? err.message : 'Failed to delete email in Gmail');
     } finally {
       setActionInProgressId(null);
     }
@@ -533,10 +547,8 @@ export function AiSummaryClient({
           setBackgroundTasks(prev => prev.filter(t => t.id !== taskId));
         }, 3500);
       } else {
-        setBackgroundTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: 'Failed' } : t));
-        setTimeout(() => {
-          setBackgroundTasks(prev => prev.filter(t => t.id !== taskId));
-        }, 4000);
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to send reply through Gmail');
       }
     } catch (err) {
       console.error("Auto reply failed:", err);
@@ -787,6 +799,7 @@ export function AiSummaryClient({
         }));
 
         window.dispatchEvent(new CustomEvent('refresh-inbox'));
+        removePriorityEmail(session.id);
         setTimeout(() => {
           setSessions(prev => prev.filter(s => s.id !== session.id));
           setActiveSessionId(prev => (prev === session.id ? null : prev));
@@ -1024,7 +1037,7 @@ export function AiSummaryClient({
                           
                           {/* Dismiss / Remove from Priority Button */}
                           <button 
-                            onClick={(e) => handleDismissFromPriority(email.id, e)}
+                            onClick={(e) => handleDismissFromPriority(email, e)}
                             className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
                             title="Remove from priority inbox"
                           >
@@ -1074,7 +1087,7 @@ export function AiSummaryClient({
                             </button>
                           ) : (
                             <button
-                              onClick={() => handleDismissFromPriority(email.id, {} as any)}
+                              onClick={() => handleDismissFromPriority(email, {} as any)}
                               className="flex-[2] min-w-0 px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-medium rounded-lg transition-colors flex items-center justify-center gap-1.5 truncate"
                             >
                               <MinusCircle className="w-3 h-3 text-gray-500 flex-shrink-0" />

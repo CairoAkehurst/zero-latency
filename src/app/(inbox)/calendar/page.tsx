@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import { addDays, addMonths, endOfMonth, endOfWeek, format, isSameDay, isSameMonth, startOfMonth, startOfWeek, subMonths } from 'date-fns';
-import { ChevronLeft, ChevronRight, Clock3, MapPin, Plus, Users, Video, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Clock3, MapPin, Plus, Trash2, Users, Video, X } from 'lucide-react';
 
 type CalendarEvent = {
   id: string;
@@ -47,6 +47,7 @@ export default function CalendarPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [saving, setSaving] = useState(false);
+  const [deletingEventId, setDeletingEventId] = useState<string | null>(null);
   const [dragSelection, setDragSelection] = useState<{ start: Date; end: Date } | null>(null);
   const [isSelecting, setIsSelecting] = useState(false);
   const [form, setForm] = useState({
@@ -160,6 +161,22 @@ export default function CalendarPage() {
     }
   };
 
+  const deleteEvent = async (event: CalendarEvent) => {
+    setDeletingEventId(event.id);
+    setError('');
+    try {
+      const response = await fetch(`/api/calendar/events?eventId=${encodeURIComponent(event.id)}`, { method: 'DELETE' });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Could not delete event');
+      setEvents((current) => current.filter((item) => item.id !== event.id));
+      setSelectedEvent(null);
+    } catch (deleteError: unknown) {
+      setError(messageOf(deleteError));
+    } finally {
+      setDeletingEventId(null);
+    }
+  };
+
   const rangeTitle = view === 'Month' ? format(cursor, 'MMMM yyyy') : view === 'Week'
     ? `${format(range.start, 'MMM d')} – ${format(range.end, 'MMM d, yyyy')}` : format(cursor, 'EEEE, MMMM d, yyyy');
 
@@ -170,7 +187,7 @@ export default function CalendarPage() {
   return (
     <div className="flex h-full min-h-0 bg-white text-[13px] text-gray-800">
       <section className="flex min-w-0 flex-1 flex-col bg-white">
-      <header className="flex min-h-[58px] flex-wrap items-center gap-2 border-b border-gray-100 bg-white px-4 py-2.5 sm:px-5">
+      <header className="flex h-[68px] shrink-0 flex-nowrap items-center gap-2 border-b border-gray-100 bg-white px-6">
         <h1 className="text-xl font-semibold leading-none text-gray-900">Calendar</h1>
         <button onClick={() => setCursor(new Date())} className="ml-2 whitespace-nowrap rounded-full bg-gray-50 px-3 py-1.5 text-[12px] font-medium text-gray-700 transition-colors hover:bg-gray-100">Today</button>
         <div className="flex items-center">
@@ -235,10 +252,10 @@ export default function CalendarPage() {
       </div>
       </section>
 
-      {selectedEvent && <aside className="z-20 flex h-full w-[420px] max-w-[45vw] shrink-0 flex-col rounded-tl-2xl border-l border-gray-200 bg-white transition-all duration-300 ease-in-out">
-        <header className="flex h-[68px] shrink-0 items-center justify-between border-b border-gray-100 bg-[#f7f7f5] px-5">
+      {selectedEvent && <aside className="z-10 relative flex h-full w-[500px] shrink-0 flex-col overflow-hidden rounded-tl-2xl border-l border-gray-100 bg-white transition-all duration-300 ease-in-out">
+        <header className="h-[68px] shrink-0 border-b border-gray-100 bg-[#f7f7f5] px-5 flex items-center justify-between">
           <div className="flex items-center gap-2"><span className={`h-2.5 w-2.5 rounded-full ${eventDots[toneIndexForEvent(selectedEvent)]}`} /><span className="text-sm font-semibold text-gray-800">Event details</span></div>
-          <button onClick={() => setSelectedEvent(null)} aria-label="Close event details" className="rounded-md p-1.5 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700"><X className="h-4 w-4" /></button>
+          <button onClick={() => setSelectedEvent(null)} aria-label="Close event details" className="rounded-md p-1 text-gray-400 transition-colors hover:bg-gray-200 hover:text-gray-600"><X className="h-4 w-4" /></button>
         </header>
         <div className="flex-1 overflow-y-auto px-6 py-6">
           <h2 className="text-xl font-semibold leading-7 tracking-tight text-gray-900">{selectedEvent.summary || 'Event'}</h2>
@@ -250,15 +267,16 @@ export default function CalendarPage() {
           </div>
         </div>
         <div className="flex shrink-0 flex-wrap gap-2 border-t border-gray-100 px-5 py-4">
+          <button type="button" disabled={deletingEventId === selectedEvent.id} onClick={() => void deleteEvent(selectedEvent)} className="inline-flex items-center gap-2 rounded-full border border-red-100 px-4 py-2 text-[12px] font-medium text-red-600 transition hover:bg-red-50 disabled:opacity-50"><Trash2 className="h-3.5 w-3.5" />{deletingEventId === selectedEvent.id ? 'Deleting…' : 'Delete event'}</button>
           {meetLink(selectedEvent) && <a href={meetLink(selectedEvent)!} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-full bg-blue-600 px-4 py-2 text-[12px] font-medium text-white transition hover:bg-blue-700"><Video className="h-3.5 w-3.5" />Join Google Meet</a>}
           {selectedEvent.htmlLink && <a href={selectedEvent.htmlLink} target="_blank" rel="noreferrer" className="rounded-full border border-gray-200 px-4 py-2 text-[12px] font-medium text-gray-700 transition hover:bg-gray-50">Open in Google Calendar</a>}
         </div>
       </aside>}
 
-      {showCreate && <aside className="z-20 flex h-full w-[420px] max-w-[45vw] shrink-0 flex-col rounded-tl-2xl border-l border-gray-200 bg-white transition-all duration-300 ease-in-out">
-        <header className="flex h-[68px] shrink-0 items-center justify-between border-b border-gray-100 bg-[#f7f7f5] px-5">
+      {showCreate && <aside className="z-10 relative flex h-full w-[500px] shrink-0 flex-col overflow-hidden rounded-tl-2xl border-l border-gray-100 bg-white transition-all duration-300 ease-in-out">
+        <header className="h-[68px] shrink-0 border-b border-gray-100 bg-[#f7f7f5] px-5 flex items-center justify-between">
           <h2 className="text-sm font-semibold text-gray-900">New event</h2>
-          <button type="button" onClick={() => setShowCreate(false)} aria-label="Close event form" className="rounded-md p-1.5 text-gray-400 transition hover:bg-gray-200/70 hover:text-gray-700"><X className="h-4 w-4" /></button>
+          <button type="button" onClick={() => setShowCreate(false)} aria-label="Close event form" className="rounded-md p-1 text-gray-400 transition-colors hover:bg-gray-200 hover:text-gray-600"><X className="h-4 w-4" /></button>
         </header>
         <form onSubmit={saveEvent} className="flex min-h-0 flex-1 flex-col">
           <div className="flex-1 space-y-4 overflow-y-auto px-5 py-5">

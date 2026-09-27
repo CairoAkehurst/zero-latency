@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { X, Reply, ReplyAll, Forward, Check, Send, Loader2, Maximize2, Minimize2, Archive, Trash2, Mail, Clock, MoreVertical, CornerUpLeft, CornerUpRight, ChevronDown, Sparkles, Type, Paperclip, Link as LinkIcon, Image as ImageIcon, Bold, Italic, Underline, Highlighter, Tag } from "lucide-react";
 import { formatEmailDate } from "@/utils/formatDate";
 import { useAccountDataStore } from "@/lib/client/store";
@@ -87,7 +87,7 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
       const res = await fetch("/api/mail/modify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messageIds: [email.id], action: "modify", addLabelIds: [labelId] })
+        body: JSON.stringify({ threadIds: email.google_thread_id ? [email.google_thread_id] : [], messageIds: email.id ? [email.id] : [], action: "modify", addLabelIds: [labelId] })
       });
       if (res.ok) {
         setShowLabelMenu(false);
@@ -105,10 +105,21 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
   const [showDetails, setShowDetails] = useState(false);
   
   const replyRef = useRef<HTMLDivElement>(null);
+  const initializedEmailId = useRef<string | null>(null);
 
   // Initialize the "To" field whenever a new email is opened
   useEffect(() => {
-    if (email) {
+    if (!email) {
+      initializedEmailId.current = null;
+      return;
+    }
+    // Inbox polling replaces the displayed message data when a new reply lands.
+    // Keep the open draft intact; the thread refresh listener below updates the
+    // conversation in place without reinitializing the composer.
+    if (initializedEmailId.current === email.id) return;
+    initializedEmailId.current = email.id;
+
+    {
       setToText(email.sender_email || "");
       if (replyRef.current) {
         replyRef.current.innerHTML = "";
@@ -251,11 +262,12 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
     if (replyRef.current) setDraftText(replyRef.current.innerHTML);
   };
 
-  const refetchThread = async () => {
-    if (!email?.google_thread_id) return;
+  const refetchThread = useCallback(async () => {
+    const threadId = email?.google_thread_id;
+    if (!threadId) return;
     setIsLoadingThread(true);
     try {
-      const res = await fetch(`/api/mail/thread?threadId=${encodeURIComponent(email.google_thread_id)}`);
+      const res = await fetch(`/api/mail/thread?threadId=${encodeURIComponent(threadId)}`);
       const data = await res.json();
       if (data.messages && Array.isArray(data.messages)) {
         setThreadMessages(data.messages);
@@ -270,7 +282,18 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
     } finally {
       setIsLoadingThread(false);
     }
-  };
+  }, [email?.google_thread_id]);
+
+  useEffect(() => {
+    const threadId = email?.google_thread_id;
+    if (!threadId) return;
+    const handleThreadRefresh = (event: Event) => {
+      const threadIds = (event as CustomEvent<{ threadIds?: string[] }>).detail?.threadIds || [];
+      if (threadIds.includes(threadId)) void refetchThread();
+    };
+    window.addEventListener('refresh-open-thread', handleThreadRefresh);
+    return () => window.removeEventListener('refresh-open-thread', handleThreadRefresh);
+  }, [email?.google_thread_id, refetchThread]);
 
   const handleSend = async () => {
     setIsSending(true);

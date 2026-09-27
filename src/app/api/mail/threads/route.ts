@@ -2,173 +2,164 @@ import { NextResponse } from 'next/server';
 import { getGmailClient, extractEmailDetails } from '@/lib/server/gmail';
 import { createClient } from '@/utils/supabase/server';
 
+type GmailMessage = {
+  id?: string | null;
+  threadId?: string | null;
+  internalDate?: string | null;
+  labelIds?: string[] | null;
+  payload?: any;
+  snippet?: string | null;
+};
+
+function messageTime(message: GmailMessage) {
+  const fromInternalDate = Number(message.internalDate || 0);
+  return fromInternalDate || Date.parse(extractEmailDetails(message.payload).timestamp) || 0;
+}
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const q = searchParams.get('q') || 'in:inbox';
-    const maxResults = Number(searchParams.get('maxResults')) || 20;
+    const priority = searchParams.get('priority') === 'true';
+    const q = priority ? 'in:inbox is:unread' : searchParams.get('q') || 'in:inbox';
+    const maxResults = Math.min(100, Math.max(1, Number(searchParams.get('maxResults')) || 20));
     const pageToken = searchParams.get('pageToken') || undefined;
-    const includeReplied = searchParams.get('includeReplied') === 'true';
 
     const { gmail, user } = await getGmailClient();
     const supabase = await createClient();
 
-    // Get the user's own email address so we can filter out self-sent messages
     let myEmail = '';
     try {
       const profile = await gmail.users.getProfile({ userId: 'me' });
       myEmail = profile.data.emailAddress?.toLowerCase() || '';
     } catch (_) {}
 
-    // 1. Fetch from Gmail
-    const response = await gmail.users.messages.list({
-      userId: 'me',
-      maxResults,
-      q,
-      pageToken
-    });
-
-    const messagesList = response.data.messages || [];
-    if (messagesList.length === 0) {
-      return NextResponse.json({ emails: [], nextPageToken: null });
+    const response = await gmail.users.messages.list({ userId: 'me', maxResults, q, pageToken });
+    const listedMessages = response.data.messages || [];
+    if (listedMessages.length === 0) {
+      return NextResponse.json({ emails: [], nextPageToken: response.data.nextPageToken || null });
     }
 
-    // 2. Fetch full details for these messages (in parallel)
-    const detailedMessages = await Promise.all(
-      messagesList.map(async (msg) => {
-        if (!msg.id) return null;
+    let validMessages: any[] = [];
+
+    if (priority) {
+      // Gmail's unread search is message based. Resolve each matching conversation
+      // and show only its newest message when that message itself is unread and
+      // inbound. This keeps old unread messages from resurfacing after a reply.
+      const threadIds = [...new Set(listedMessages.map((message) => message.threadId).filter(Boolean))] as string[];
+      const threads = await Promise.all(threadIds.map(async (threadId) => {
         try {
-          const detail = await gmail.users.messages.get({
-            userId: 'me',
-            id: msg.id,
-            format: 'full'
-          });
+          const result = await gmail.users.threads.get({ userId: 'me', id: threadId, format: 'full' });
+          return result.data;
+        } catch (error) {
+          console.error('Failed to fetch priority thread', threadId, error);
+          return null;
+        }
+      }));
+
+      validMessages = threads.flatMap((thread) => {
+        if (!thread?.id) return [];
+        const messages = [...(thread?.messages || [])] as GmailMessage[];
+        if (messages.length === 0) return [];
+        messages.sort((a, b) => messageTime(b) - messageTime(a));
+        const latest = messages[0];
+        const labelIds = latest.labelIds || [];
+        if (!latest.id || labelIds.includes('SENT') || !labelIds.includes('UNREAD') || !labelIds.includes('INBOX')) return [];
+
+        const parsed = extractEmailDetails(latest.payload);
+        if (myEmail && parsed.sender_email.toLowerCase() === myEmail) return [];
+        return [{
+          id: latest.id,
+          google_message_id: latest.id,
+          google_thread_id: thread.id,
+          snippet: latest.snippet,
+          is_unread: true,
+          labelIds,
+          ...parsed,
+        }];
+      });
+      validMessages.sort((a, b) => Date.parse(b.timestamp) - Date.parse(a.timestamp));
+    } else {
+      const sentFolder = /(?:^|\s)in:sent(?:\s|$)/i.test(q);
+      const detailedMessages = await Promise.all(listedMessages.map(async (message) => {
+        if (!message.id) return null;
+        try {
+          const detail = await gmail.users.messages.get({ userId: 'me', id: message.id, format: 'full' });
           const parsed = extractEmailDetails(detail.data.payload);
           const labelIds = detail.data.labelIds || [];
-
-          // Skip messages sent by the user — SENT label present means it's an outgoing email
-          if (labelIds.includes('SENT')) return null;
-
-          // Also skip if the From address is the user's own email
-          const senderEmailLower = (parsed.sender_email || '').toLowerCase();
-          if (myEmail && senderEmailLower === myEmail) return null;
-
+          if (!sentFolder && labelIds.includes('SENT')) return null;
+          if (!sentFolder && myEmail && parsed.sender_email.toLowerCase() === myEmail) return null;
           return {
-            id: msg.id,
-            google_message_id: msg.id,
+            id: message.id,
+            google_message_id: message.id,
             google_thread_id: detail.data.threadId,
             snippet: detail.data.snippet,
             is_unread: labelIds.includes('UNREAD'),
             labelIds,
-            ...parsed
+            _sortTime: Number(detail.data.internalDate || 0) || Date.parse(parsed.timestamp),
+            ...parsed,
           };
-        } catch (e) {
-          console.error("Failed to fetch message detail for id", msg.id, e);
+        } catch (error) {
+          console.error('Failed to fetch message detail for id', message.id, error);
           return null;
         }
-      })
-    );
-    let validMessages = detailedMessages.filter(Boolean) as any[];
+      }));
 
-    // 3. Thread-level filter: if the user has already replied (i.e. the most recent
-    //    message in the thread has the SENT label), skip this thread from priority inbox.
-    //    We deduplicate by threadId and keep only the first (latest-fetched) occurrence.
-    const seenThreadIds = new Set<string>();
-    const threadFilteredMessages: any[] = [];
-
-    for (const email of validMessages) {
-      const threadId = email.google_thread_id;
-      if (!threadId || seenThreadIds.has(threadId)) continue;
-      seenThreadIds.add(threadId);
-
-      if (!includeReplied) {
-        try {
-          const threadRes = await gmail.users.threads.get({
-            userId: 'me',
-            id: threadId,
-            format: 'metadata',
-            metadataHeaders: ['From']
-          });
-          const messages = threadRes.data.messages || [];
-          if (messages.length > 0) {
-            const lastMsg = messages[messages.length - 1];
-            const lastLabelIds = lastMsg.labelIds || [];
-            // If the most recent message in the thread is SENT, user already replied → skip
-            if (lastLabelIds.includes('SENT')) continue;
-          }
-        } catch (_) {
-          // If thread fetch fails, include it anyway (fail open)
-        }
+      // Inbox rows represent conversations. Keep the newest matching message for
+      // each conversation so a newly received reply updates the existing row.
+      const newestByThread = new Map<string, any>();
+      for (const email of detailedMessages.filter(Boolean) as any[]) {
+        const key = email.google_thread_id || email.id;
+        const existing = newestByThread.get(key);
+        if (!existing || email._sortTime > existing._sortTime) newestByThread.set(key, email);
       }
-
-      threadFilteredMessages.push(email);
+      validMessages = [...newestByThread.values()]
+        .sort((a, b) => b._sortTime - a._sortTime)
+        .map(({ _sortTime, ...email }) => email);
     }
-    validMessages = threadFilteredMessages;
 
-    // 4. Fetch user custom labels from Gmail to only show existing labels
     let userLabelsMap = new Map<string, { id: string; name: string; color: string }>();
     try {
       const labelsRes = await gmail.users.labels.list({ userId: 'me' });
-      const rawLabels = labelsRes.data.labels || [];
-      const userLabels = rawLabels.filter((l: any) => 
-        l.type === 'user' && 
-        !['CATEGORY_PROMOTIONS', 'CATEGORY_UPDATES', 'CATEGORY_SOCIAL', 'CATEGORY_FORUMS'].includes(l.name)
+      const userLabels = (labelsRes.data.labels || []).filter((label: any) =>
+        label.type === 'user' &&
+        !['CATEGORY_PROMOTIONS', 'CATEGORY_UPDATES', 'CATEGORY_SOCIAL', 'CATEGORY_FORUMS'].includes(label.name)
       );
-      for (const l of userLabels) {
-        if (l.id && l.name) {
-          const color = l.color?.backgroundColor || '#4a86e8';
-          userLabelsMap.set(l.id, { id: l.id, name: l.name, color });
+      for (const label of userLabels) {
+        if (label.id && label.name) {
+          userLabelsMap.set(label.id, {
+            id: label.id,
+            name: label.name,
+            color: label.color?.backgroundColor || '#4a86e8',
+          });
         }
       }
-    } catch (lErr) {
-      console.error('Failed to fetch user labels in threads route:', lErr);
+    } catch (error) {
+      console.error('Failed to fetch user labels in threads route:', error);
     }
 
-    // 5. Fetch AI summary metadata (TLDR / suggested reply)
-    const messageIds = validMessages.map(m => m.google_message_id);
-    const { data: aiMetadata } = await supabase
-      .from('email_ai_metadata')
-      .select('google_message_id, tldr, suggested_reply')
-      .in('google_message_id', messageIds)
-      .eq('user_id', user.id);
+    const messageIds = validMessages.map((email) => email.google_message_id);
+    const { data: aiMetadata } = messageIds.length
+      ? await supabase.from('email_ai_metadata')
+          .select('google_message_id, tldr, suggested_reply')
+          .in('google_message_id', messageIds)
+          .eq('user_id', user.id)
+      : { data: [] };
+    const aiMap = new Map((aiMetadata || []).map((metadata: any) => [metadata.google_message_id, metadata]));
 
-    const aiMap = new Map();
-    if (aiMetadata) {
-      for (const meta of aiMetadata) {
-        aiMap.set(meta.google_message_id, meta);
-      }
-    }
-
-    // 6. Merge only real existing labels from Gmail
-    const mappedEmails = validMessages.map(email => {
-      const meta = aiMap.get(email.google_message_id);
-      
-      let matchedLabel: { name: string; color: string } | null = null;
-      if (email.labelIds && Array.isArray(email.labelIds)) {
-        for (const lId of email.labelIds) {
-          if (userLabelsMap.has(lId)) {
-            const found = userLabelsMap.get(lId)!;
-            matchedLabel = { name: found.name, color: found.color };
-            break;
-          }
-        }
-      }
-
+    const mappedEmails = validMessages.map((email) => {
+      const metadata: any = aiMap.get(email.google_message_id);
+      const matchedLabel = (email.labelIds || []).map((labelId: string) => userLabelsMap.get(labelId)).find(Boolean);
       return {
         ...email,
-        summary: meta?.tldr || email.snippet,
-        category: matchedLabel ? matchedLabel.name : null,
-        categoryColor: matchedLabel ? matchedLabel.color : 'gray',
-        suggestedReply: meta?.suggested_reply,
-        hasAiMetadata: !!meta
+        summary: metadata?.tldr || email.snippet,
+        category: matchedLabel?.name || null,
+        categoryColor: matchedLabel?.color || 'gray',
+        suggestedReply: metadata?.suggested_reply,
+        hasAiMetadata: !!metadata,
       };
     });
 
-    return NextResponse.json({ 
-      emails: mappedEmails, 
-      nextPageToken: response.data.nextPageToken || null 
-    });
-
+    return NextResponse.json({ emails: mappedEmails, nextPageToken: response.data.nextPageToken || null });
   } catch (error: any) {
     console.error('Mail Threads API Error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });

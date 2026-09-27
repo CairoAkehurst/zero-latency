@@ -19,7 +19,9 @@ export async function GET(request: Request) {
       format: 'full'
     });
 
-    const messages = threadRes.data.messages || [];
+    const messages = [...(threadRes.data.messages || [])].sort((a, b) =>
+      Number(a.internalDate || 0) - Number(b.internalDate || 0)
+    );
 
     const parsedMessages = messages.map((msg) => {
       const parsed = extractEmailDetails(msg.payload);
