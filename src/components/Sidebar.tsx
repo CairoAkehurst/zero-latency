@@ -181,6 +181,16 @@ export function Sidebar() {
             <span>Inbox</span>
           </Link>
           <Link
+            href="/launch"
+            className={clsx(
+              "sidebar-link cursor-pointer hover:bg-purple-50/70 text-purple-700 font-medium",
+              pathname === '/launch' ? "bg-purple-50/70 font-semibold" : ""
+            )}
+          >
+            <Send className="w-4 h-4 text-purple-600" />
+            <span>Launch</span>
+          </Link>
+          <Link
             href="/calendar"
             className={clsx("sidebar-link cursor-pointer hover:bg-gray-200/50", pathname === '/calendar' ? "bg-gray-200/50 font-medium" : "")}
           >
