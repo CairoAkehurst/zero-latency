@@ -233,15 +233,12 @@ export function LaunchClient() {
     <div className="flex h-full relative overflow-hidden min-h-0 bg-white dark:bg-[#161616]">
       {/* Main Area */}
       <div 
-        className="flex flex-col h-full flex-shrink-0 transition-all duration-300 ease-in-out min-w-0 overflow-hidden border-r border-gray-100 dark:border-white/5"
+        className="flex flex-col h-full flex-shrink-0 transition-all duration-300 ease-in-out min-w-0 overflow-hidden "
         style={{ width: activeTask ? '50%' : '100%' }}
       >
         <header className="h-[68px] px-6 flex items-center justify-between border-b border-gray-100 dark:border-white/5 flex-shrink-0">
           <div className="flex items-center gap-4">
-            <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100 leading-none flex items-center gap-2">
-              <Mail className="w-5 h-5 text-purple-600" />
-              Launch Queue
-            </h1>
+            <h1 className="truncate font-semibold text-gray-900 dark:text-gray-100 leading-none text-xl">Launch Queue</h1>
           </div>
           <div className="flex items-center gap-3">
             {phase !== 'upload' && (
@@ -256,7 +253,7 @@ export function LaunchClient() {
               <button 
                   onClick={startDrafting}
                   disabled={!instruction.trim() || tasks.length === 0}
-                  className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
               >
                   <Play className="w-4 h-4" />
                   Generate {tasks.length} Drafts
@@ -284,10 +281,10 @@ export function LaunchClient() {
                   <button 
                     onClick={() => fileInputRef.current?.click()}
                     disabled={isUploading}
-                    className="w-full py-8 border-2 border-dashed border-gray-300 dark:border-white/20 rounded-xl flex flex-col items-center justify-center gap-2 text-gray-500 dark:text-gray-400 hover:text-purple-600 hover:border-purple-300 dark:hover:border-purple-600 dark:hover:bg-purple-900/20 hover:bg-purple-50/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed bg-gray-50 dark:bg-[#202020]/50"
+                    className="w-full py-8 border-2 border-dashed border-gray-300 dark:border-white/20 rounded-xl flex flex-col items-center justify-center gap-2 text-gray-500 dark:text-gray-400 hover:text-blue-600 hover:border-blue-300 dark:hover:border-blue-600 dark:hover:bg-blue-900/20 hover:bg-blue-50/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed bg-gray-50 dark:bg-[#202020]/50"
                   >
                     {isUploading ? (
-                      <Loader2 className="w-8 h-8 animate-spin text-purple-600" />
+                      <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
                     ) : (
                       <Upload className="w-8 h-8 mb-2" />
                     )}
@@ -306,7 +303,7 @@ export function LaunchClient() {
                         value={instruction}
                         onChange={e => setInstruction(e.target.value)}
                         placeholder="e.g. Write a cold outreach email pitching our new software. Mention their company name and their role. Keep it short."
-                        className="w-full h-24 p-3 text-sm bg-gray-50 dark:bg-[#202020] border border-gray-200 dark:border-white/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all resize-none text-gray-900 dark:text-gray-100"
+                        className="w-full h-24 p-3 text-sm bg-gray-50 dark:bg-[#202020] border border-gray-200 dark:border-white/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all resize-none text-gray-900 dark:text-gray-100"
                     />
                 </div>
 
@@ -347,7 +344,7 @@ export function LaunchClient() {
                 <div 
                   key={task.id} 
                   onClick={() => setActiveTaskId(task.id)}
-                  className={`flex items-center justify-between p-4 border-b border-gray-100 dark:border-white/5 transition-all cursor-pointer group ${activeTaskId === task.id ? 'bg-purple-50 dark:bg-purple-900/10' : 'bg-white dark:bg-[#161616] hover:bg-gray-50 dark:hover:bg-[#1c1c1c]'}`}
+                  className={`flex items-center justify-between p-4 border-b border-gray-100 dark:border-white/5 transition-all cursor-pointer group ${activeTaskId === task.id ? 'bg-blue-50 dark:bg-blue-900/10' : 'bg-white dark:bg-[#161616] hover:bg-gray-50 dark:hover:bg-[#1c1c1c]'}`}
                 >
                   <div className="flex items-center gap-4 min-w-0 flex-1">
                     <Avatar 
@@ -376,7 +373,7 @@ export function LaunchClient() {
                       task.status === 'pending' ? 'bg-gray-100 text-gray-600 dark:bg-white/10 dark:text-gray-300' :
                       task.status === 'drafting' ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' :
                       task.status === 'drafted' ? 'bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400' :
-                      task.status === 'sending' ? 'bg-purple-50 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400' :
+                      task.status === 'sending' ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' :
                       task.status === 'sent' ? 'bg-green-50 text-green-600 dark:bg-green-900/30 dark:text-green-400' :
                       'bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400'
                       }`}>
@@ -399,10 +396,10 @@ export function LaunchClient() {
 
       {/* Right Sidebar for Review */}
       {activeTask && (
-        <div className="flex flex-col h-full bg-white dark:bg-[#161616] z-10 relative overflow-hidden transition-all duration-300 ease-in-out flex-shrink-0 w-[50%]">
+        <div className="flex flex-col h-full bg-white dark:bg-[#161616] z-10 relative overflow-hidden transition-all duration-300 ease-in-out flex-shrink-0 w-[50%] rounded-tl-2xl border-l border-gray-200 dark:border-white/10">
           <div className="h-[68px] px-5 flex items-center justify-between border-b border-gray-100 dark:border-white/5 flex-shrink-0 bg-gray-50/50 dark:bg-[#1c1c1c]/50">
             <h2 className="font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-              <FileText className="w-4 h-4 text-purple-600" />
+              <FileText className="w-4 h-4 text-blue-600" />
               Review Draft
             </h2>
             <button 
@@ -434,7 +431,7 @@ export function LaunchClient() {
                 {activeTask.status === 'drafted' && (
                   <button
                     onClick={() => setIsEditingDraft(!isEditingDraft)}
-                    className="text-purple-600 hover:text-purple-700 font-medium flex items-center gap-1 text-[11px]"
+                    className="text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1 text-[11px]"
                   >
                     <Edit3 className="w-3 h-3" />
                     {isEditingDraft ? 'Done' : 'Edit'}
@@ -444,7 +441,7 @@ export function LaunchClient() {
 
               {(activeTask.status === 'drafting' || activeTask.status === 'pending') ? (
                 <div className="flex-1 flex flex-col items-center justify-center text-gray-500 dark:text-gray-400 space-y-3 p-5">
-                  <Loader2 className="w-6 h-6 animate-spin text-purple-600" />
+                  <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
                   <span className="text-sm">Generating personalized draft...</span>
                 </div>
               ) : activeTask.status === 'error' ? (
@@ -461,7 +458,7 @@ export function LaunchClient() {
                             const val = e.target.value;
                             setTasks(prev => prev.map(t => t.id === activeTask.id ? { ...t, draft: val } : t));
                           }}
-                          className="flex-1 w-full min-h-[300px] text-sm text-gray-800 dark:text-gray-200 p-4 bg-gray-50 dark:bg-[#1c1c1c] border border-gray-200 dark:border-white/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 resize-none font-sans leading-relaxed shadow-inner"
+                          className="flex-1 w-full min-h-[300px] text-sm text-gray-800 dark:text-gray-200 p-4 bg-gray-50 dark:bg-[#1c1c1c] border border-gray-200 dark:border-white/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 resize-none font-sans leading-relaxed shadow-inner"
                         />
                     </div>
                   ) : (
@@ -485,7 +482,7 @@ export function LaunchClient() {
                   handleSend(activeTask);
                 }}
                 disabled={activeTask.status === 'sending' || activeTask.status === 'sent' || !activeTask.guessedEmail}
-                className="w-full py-3.5 bg-purple-600 hover:bg-purple-700 text-white text-base font-semibold rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-purple-600/20 transition-all disabled:opacity-50"
+                className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white text-base font-semibold rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-blue-600/20 transition-all disabled:opacity-50"
               >
                 {activeTask.status === 'sending' ? (
                   <>
