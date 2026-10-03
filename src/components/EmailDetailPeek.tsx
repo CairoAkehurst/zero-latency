@@ -80,27 +80,24 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
       .catch(console.error);
   }, []);
 
-  const handleApplyLabel = async (labelId: string) => {
+  const handleApplyLabel = (labelId: string) => {
     if (!email) return;
-    setIsLabeling(true);
-    try {
-      const res = await fetch("/api/mail/modify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ threadIds: email.google_thread_id ? [email.google_thread_id] : [], messageIds: email.id ? [email.id] : [], action: "modify", addLabelIds: [labelId] })
-      });
+    setShowLabelMenu(false);
+    // Fire and forget
+    fetch("/api/mail/modify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ threadIds: email.google_thread_id ? [email.google_thread_id] : [], messageIds: email.id ? [email.id] : [], action: "modify", addLabelIds: [labelId] })
+    }).then(async res => {
       if (res.ok) {
-        setShowLabelMenu(false);
         window.dispatchEvent(new CustomEvent('refresh-inbox'));
       } else {
         const err = await res.json().catch(() => ({}));
-        alert("Failed to apply label in Gmail: " + (err.error || "Unknown error"));
+        console.error("Failed to apply label in Gmail: " + (err.error || "Unknown error"));
       }
-    } catch (e: any) {
-      alert("Error applying label: " + e.message);
-    } finally {
-      setIsLabeling(false);
-    }
+    }).catch(e => {
+      console.error("Error applying label:", e);
+    });
   };
   const [showDetails, setShowDetails] = useState(false);
   
@@ -376,25 +373,27 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
     }
   };
 
-  const handleAction = async (action: 'trash' | 'archive' | 'unread') => {
-    try {
-      const body = action === 'unread'
-        ? { messageIds: [email.id], action: 'modify', addLabelIds: ['UNREAD'] }
-        : { messageIds: [email.id], action };
-      const res = await fetch("/api/mail/modify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body)
-      });
+  const handleAction = (action: 'trash' | 'archive' | 'unread') => {
+    const body = action === 'unread'
+      ? { messageIds: [email?.id], action: 'modify', addLabelIds: ['UNREAD'] }
+      : { messageIds: [email?.id], action };
+      
+    window.dispatchEvent(new CustomEvent('optimistic-action', { detail: { messageIds: [email?.id], action } }));
+    onClose();
+
+    fetch("/api/mail/modify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body)
+    }).then(async res => {
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || `Failed to ${action} email`);
+        console.error(data.error || `Failed to ${action} email`);
       }
-      onClose();
       window.dispatchEvent(new CustomEvent('refresh-inbox'));
-    } catch (e) {
-      alert(e instanceof Error ? e.message : "Failed to perform action");
-    }
+    }).catch(e => {
+      console.error(e);
+    });
   };
 
   const fullDate = new Date(email.timestamp);

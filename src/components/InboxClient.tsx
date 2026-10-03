@@ -204,11 +204,23 @@ export function InboxClient({ initialEmails, initialNextPageToken }: { initialEm
     window.addEventListener('filter-category', handleFilterCategory);
     window.addEventListener('open-settings', handleOpenSettings);
     window.addEventListener('refresh-inbox', handleRefreshInbox);
+    const handleOptimisticAction = (e: any) => {
+      const { messageIds, action } = e.detail;
+      if (action === 'trash' || action === 'archive') {
+         setEmails(prev => prev.filter(email => !messageIds.includes(email.id)));
+      } else if (action === 'unread') {
+         setEmails(prev => prev.map(email => messageIds.includes(email.id) ? { ...email, is_unread: true } : email));
+      }
+    };
+    window.addEventListener('optimistic-action', handleOptimisticAction);
+
     return () => {
       window.removeEventListener('open-compose', handleOpenCompose);
       window.removeEventListener('filter-category', handleFilterCategory);
       window.removeEventListener('open-settings', handleOpenSettings);
       window.removeEventListener('refresh-inbox', handleRefreshInbox);
+      window.removeEventListener('optimistic-action', handleOptimisticAction);
+
     };
   }, []);
 
