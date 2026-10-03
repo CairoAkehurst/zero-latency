@@ -415,13 +415,13 @@ export function LaunchClient() {
 
           <div className="flex-1 overflow-y-auto flex flex-col">
             {/* Person Details at Top */}
-            <div className="p-5 border-b border-gray-100 dark:border-white/5 bg-gray-50/30 dark:bg-[#1c1c1c]/30 flex-shrink-0">
-              <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Contact Details</h3>
-              <div className="space-y-2">
+            <div className="p-4 border-b border-gray-100 dark:border-white/5 bg-gray-50/30 dark:bg-[#1c1c1c]/30 flex-shrink-0">
+              <h3 className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Contact Details</h3>
+              <div className="grid grid-cols-2 xl:grid-cols-3 gap-3">
                 {Object.entries(activeTask.data).map(([key, value]) => (
-                  <div key={key} className="flex flex-col">
-                    <span className="text-[10px] text-gray-500 dark:text-gray-400 uppercase">{key}</span>
-                    <span className="text-sm text-gray-900 dark:text-gray-100 font-medium break-words">{String(value)}</span>
+                  <div key={key} className="flex flex-col overflow-hidden">
+                    <span className="text-[9px] text-gray-500 dark:text-gray-400 uppercase truncate">{key}</span>
+                    <span className="text-xs text-gray-900 dark:text-gray-100 font-medium truncate" title={String(value)}>{String(value)}</span>
                   </div>
                 ))}
               </div>
@@ -429,7 +429,7 @@ export function LaunchClient() {
 
             {/* Draft Below */}
             <div className="flex-1 flex flex-col bg-white dark:bg-[#161616]">
-              <div className="p-5 flex items-center justify-between border-b border-gray-50 dark:border-white/5 flex-shrink-0">
+              <div className="px-5 py-3 flex items-center justify-between border-b border-gray-50 dark:border-white/5 flex-shrink-0 sticky top-0 bg-white dark:bg-[#161616] z-10">
                 <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Email Draft</h3>
                 {activeTask.status === 'drafted' && (
                   <button
@@ -452,62 +452,63 @@ export function LaunchClient() {
                   {activeTask.error}
                 </div>
               ) : (
-                <div className="flex-1 flex flex-col relative min-h-[300px]">
+                <div className="flex-1 flex flex-col">
                   {isEditingDraft ? (
-                    <div className="flex-1 flex p-5 pb-24">
+                    <div className="flex-1 flex p-5">
                         <textarea
                           value={activeTask.draft}
                           onChange={(e) => {
                             const val = e.target.value;
                             setTasks(prev => prev.map(t => t.id === activeTask.id ? { ...t, draft: val } : t));
                           }}
-                          className="flex-1 w-full text-sm text-gray-800 dark:text-gray-200 p-4 bg-gray-50 dark:bg-[#1c1c1c] border border-gray-200 dark:border-white/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 resize-none font-sans leading-relaxed shadow-inner"
+                          className="flex-1 w-full min-h-[300px] text-sm text-gray-800 dark:text-gray-200 p-4 bg-gray-50 dark:bg-[#1c1c1c] border border-gray-200 dark:border-white/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 resize-none font-sans leading-relaxed shadow-inner"
                         />
                     </div>
                   ) : (
-                    <div className="flex-1 p-5 pb-24">
+                    <div className="flex-1 p-5">
                         <div className="text-sm text-gray-800 dark:text-gray-200 leading-relaxed whitespace-pre-wrap font-sans">
                           {activeTask.draft}
                         </div>
                     </div>
                   )}
-                  
-                  {/* Sticky Send Button at Bottom */}
-                  <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-100 dark:border-white/5 bg-white/90 dark:bg-[#161616]/90 backdrop-blur-sm z-20">
-                    <button
-                      onClick={() => {
-                        setIsEditingDraft(false);
-                        handleSend(activeTask);
-                      }}
-                      disabled={activeTask.status === 'sending' || activeTask.status === 'sent' || !activeTask.guessedEmail}
-                      className="w-full py-3.5 bg-purple-600 hover:bg-purple-700 text-white text-base font-semibold rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-purple-600/20 transition-all disabled:opacity-50"
-                    >
-                      {activeTask.status === 'sending' ? (
-                        <>
-                          <Loader2 className="w-5 h-5 animate-spin" />
-                          Sending...
-                        </>
-                      ) : activeTask.status === 'sent' ? (
-                        <>
-                          <Check className="w-5 h-5" />
-                          Sent!
-                        </>
-                      ) : (
-                        <>
-                          <Send className="w-5 h-5" />
-                          Approve & Send
-                        </>
-                      )}
-                    </button>
-                    {!activeTask.guessedEmail && (
-                        <p className="text-xs text-red-500 dark:text-red-400 text-center mt-2">Cannot send: No email address found in CSV data.</p>
-                    )}
-                  </div>
-
                 </div>
               )}
             </div>
           </div>
+          
+          {/* Sticky Send Button at Bottom */}
+          {activeTask.status !== 'drafting' && activeTask.status !== 'pending' && activeTask.status !== 'error' && (
+            <div className="p-4 border-t border-gray-100 dark:border-white/5 bg-gray-50 dark:bg-[#161616] flex-shrink-0 z-20 shadow-[0_-4px_12px_rgba(0,0,0,0.02)] dark:shadow-[0_-4px_12px_rgba(0,0,0,0.2)]">
+              <button
+                onClick={() => {
+                  setIsEditingDraft(false);
+                  handleSend(activeTask);
+                }}
+                disabled={activeTask.status === 'sending' || activeTask.status === 'sent' || !activeTask.guessedEmail}
+                className="w-full py-3.5 bg-purple-600 hover:bg-purple-700 text-white text-base font-semibold rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-purple-600/20 transition-all disabled:opacity-50"
+              >
+                {activeTask.status === 'sending' ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    Sending...
+                  </>
+                ) : activeTask.status === 'sent' ? (
+                  <>
+                    <Check className="w-5 h-5" />
+                    Sent!
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-5 h-5" />
+                    Approve & Send
+                  </>
+                )}
+              </button>
+              {!activeTask.guessedEmail && (
+                  <p className="text-xs text-red-500 dark:text-red-400 text-center mt-2">Cannot send: No email address found in CSV data.</p>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>
