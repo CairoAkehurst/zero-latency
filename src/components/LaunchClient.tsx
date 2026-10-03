@@ -393,22 +393,7 @@ export function LaunchClient() {
                 </div>
               ) : (
                 <div className="flex-1 flex flex-col">
-                  {isEditingDraft ? (
-                    <textarea
-                      value={activeTask.draft}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setTasks(prev => prev.map(t => t.id === activeTask.id ? { ...t, draft: val } : t));
-                      }}
-                      className="flex-1 w-full text-sm text-gray-800 dark:text-gray-200 p-3 bg-gray-50 dark:bg-[#1c1c1c] border border-gray-200 dark:border-white/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 resize-none font-sans leading-relaxed"
-                    />
-                  ) : (
-                    <div className="flex-1 text-sm text-gray-800 dark:text-gray-200 leading-relaxed whitespace-pre-wrap font-sans p-4 bg-gray-50 dark:bg-[#1c1c1c] rounded-xl border border-gray-100 dark:border-white/5 overflow-y-auto">
-                      {activeTask.draft}
-                    </div>
-                  )}
-                  
-                  <div className="pt-4 mt-auto">
+                  <div className="pb-4 mb-2">
                     <button
                       onClick={() => {
                         setIsEditingDraft(false);
@@ -438,6 +423,22 @@ export function LaunchClient() {
                         <p className="text-xs text-red-500 dark:text-red-400 text-center mt-2">Cannot send: No email address found in CSV data.</p>
                     )}
                   </div>
+                  {isEditingDraft ? (
+                    <textarea
+                      value={activeTask.draft}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setTasks(prev => prev.map(t => t.id === activeTask.id ? { ...t, draft: val } : t));
+                      }}
+                      className="flex-1 w-full text-sm text-gray-800 dark:text-gray-200 p-3 bg-gray-50 dark:bg-[#1c1c1c] border border-gray-200 dark:border-white/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 resize-none font-sans leading-relaxed"
+                    />
+                  ) : (
+                    <div className="flex-1 text-sm text-gray-800 dark:text-gray-200 leading-relaxed whitespace-pre-wrap font-sans p-4 bg-gray-50 dark:bg-[#1c1c1c] rounded-xl border border-gray-100 dark:border-white/5 overflow-y-auto">
+                      {activeTask.draft}
+                    </div>
+                  )}
+                  
+
                 </div>
               )}
             </div>
