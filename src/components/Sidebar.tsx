@@ -203,15 +203,15 @@ export function Sidebar() {
           <div className="pt-2 pb-1 px-3 text-xs font-semibold text-gray-400 tracking-wider">
             MAIL
           </div>
-          <Link href="/" onClick={() => window.dispatchEvent(new CustomEvent('filter-category', { detail: 'All Mail' }))} className="sidebar-link hover:bg-gray-200/50 dark:bg-white/5 dark:hover:bg-white/10">
+          <Link prefetch={true} href="/" onClick={() => window.dispatchEvent(new CustomEvent('filter-category', { detail: 'All Mail' }))} className="sidebar-link hover:bg-gray-200/50 dark:bg-white/5 dark:hover:bg-white/10">
             <Inbox className="w-4 h-4" />
             <span>All Mail</span>
           </Link>
-          <Link href="/" onClick={() => window.dispatchEvent(new CustomEvent('filter-category', { detail: 'Sent' }))} className="sidebar-link hover:bg-gray-200/50 dark:bg-white/5 dark:hover:bg-white/10">
+          <Link prefetch={true} href="/" onClick={() => window.dispatchEvent(new CustomEvent('filter-category', { detail: 'Sent' }))} className="sidebar-link hover:bg-gray-200/50 dark:bg-white/5 dark:hover:bg-white/10">
             <Send className="w-4 h-4" />
             <span>Sent</span>
           </Link>
-          <Link href="/" onClick={() => window.dispatchEvent(new CustomEvent('filter-category', { detail: 'Drafts' }))} className="sidebar-link hover:bg-gray-200/50 dark:bg-white/5 dark:hover:bg-white/10">
+          <Link prefetch={true} href="/" onClick={() => window.dispatchEvent(new CustomEvent('filter-category', { detail: 'Drafts' }))} className="sidebar-link hover:bg-gray-200/50 dark:bg-white/5 dark:hover:bg-white/10">
             <File className="w-4 h-4" />
             <span>Drafts</span>
           </Link>

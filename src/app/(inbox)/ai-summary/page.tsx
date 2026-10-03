@@ -4,8 +4,8 @@ import { createClient } from '@/utils/supabase/server';
 
 export default async function AiSummaryPage() {
   const supabase = await createClient();
-  const { data: { user }, error } = await supabase.auth.getUser();
-  if (error || !user) redirect('/login');
+  const { data: { session }, error } = await supabase.auth.getSession();
+  if (error || !session) redirect('/login');
 
   // Load directly from the unread, latest-message priority query on the client.
   // The previous server preload could show read or already-replied messages

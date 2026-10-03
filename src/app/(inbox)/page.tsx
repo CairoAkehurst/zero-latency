@@ -4,9 +4,9 @@ import { InboxClient } from "@/components/InboxClient";
 
 export default async function InboxPage() {
   const supabase = await createClient();
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  const { data: { session }, error: authError } = await supabase.auth.getSession();
 
-  if (authError || !user) {
+  if (authError || !session) {
     redirect('/login');
   }
 
