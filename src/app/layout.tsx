@@ -3,7 +3,7 @@ import "./globals.css";
 import { ShortcutHandler } from "@/components/ShortcutHandler";
 
 export const metadata: Metadata = {
-  title: "AgentMail",
+  title: "Zero Latency",
   description: "AI-Native Inbox",
 };
 

@@ -53,7 +53,7 @@ export const useAccountDataStore = create<AccountDataState>()(
     (set) => ({
       signatureOnReplies: false,
       signatureEnabled: true,
-      signatureText: "-- \nSent from AgentMail",
+      signatureText: "-- \nSent from Zero Latency",
       snippets: [],
       filters: [],
       views: [{ id: 'inbox', name: 'Inbox', notify: true }],
