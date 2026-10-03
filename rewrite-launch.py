@@ -1,4 +1,6 @@
-"use client";
+import os
+
+new_code = """"use client";
 
 import { useState, useRef, useEffect } from "react";
 import Papa from "papaparse";
@@ -142,11 +144,11 @@ export function LaunchClient() {
 
   const getEffectiveToneInstruction = () => {
     switch (activeTone) {
-      case 'casual': return `Style: Casual & Friendly.\n${casualPrompt}`;
-      case 'concise': return `Style: Direct & Concise.\n${concisePrompt}`;
-      case 'custom': return `Style: Custom Persona.\n${customPrompt}`;
+      case 'casual': return \`Style: Casual & Friendly.\\n\${casualPrompt}\`;
+      case 'concise': return \`Style: Direct & Concise.\\n\${concisePrompt}\`;
+      case 'custom': return \`Style: Custom Persona.\\n\${customPrompt}\`;
       case 'professional':
-      default: return `Style: Professional & Business.\n${professionalPrompt}`;
+      default: return \`Style: Professional & Business.\\n\${professionalPrompt}\`;
     }
   };
 
@@ -178,7 +180,7 @@ export function LaunchClient() {
 
         const parsedTasks: LaunchTask[] = (results.data as Record<string, unknown>[]).map((row, i) => {
           return {
-            id: `task-${Date.now()}-${i}`,
+            id: \`task-\${Date.now()}-\${i}\`,
             data: row,
             status: 'pending',
             draft: '',
@@ -236,14 +238,14 @@ export function LaunchClient() {
 
   const generateDraft = async (task: LaunchTask) => {
     try {
-      const dataString = Object.entries(task.data).map(([k, v]) => `${k}: ${v}`).join('\n');
-      const emailContext = `Person Details:\n${dataString}`;
+      const dataString = Object.entries(task.data).map(([k, v]) => \`\${k}: \${v}\`).join('\\n');
+      const emailContext = \`Person Details:\\n\${dataString}\`;
       
       const res = await fetch("/api/ai/write", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          instruction: `Write a cold outbound email to this person. Context and instructions: ${instruction}. Do NOT include any sign-off or signature.`,
+          instruction: \`Write a cold outbound email to this person. Context and instructions: \${instruction}. Do NOT include any sign-off or signature.\`,
           tone: activeTone,
           toneInstructions: getEffectiveToneInstruction(),
           emailContext,
@@ -286,7 +288,7 @@ export function LaunchClient() {
       body: JSON.stringify({
         toEmail: task.guessedEmail,
         subject: instruction.substring(0, 50) + "...", 
-        body: `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 14px; line-height: 1.6; color: #111827;">${task.draft.replace(/\n/g, '<br/>')}</div>`,
+        body: \`<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 14px; line-height: 1.6; color: #111827;">\${task.draft.replace(/\\n/g, '<br/>')}</div>\`,
       }),
     }).then(async (res) => {
       if (res.ok) {
@@ -345,7 +347,7 @@ export function LaunchClient() {
           </div>
         </header>
 
-        <div className={`flex-1 overflow-y-auto ${phase === 'queue' ? 'bg-white dark:bg-[#161616]' : 'p-6 bg-gray-50/30 dark:bg-[#1c1c1c]/50'} flex flex-col`}>
+        <div className={\`flex-1 overflow-y-auto \${phase === 'queue' ? 'bg-white dark:bg-[#161616]' : 'p-6 bg-gray-50/30 dark:bg-[#1c1c1c]/50'} flex flex-col\`}>
           {phase === 'upload' && (
             <div className="max-w-4xl mx-auto w-full h-full flex flex-col pt-8 pb-12">
               <div className="mb-8">
@@ -480,7 +482,7 @@ export function LaunchClient() {
                 <div 
                   key={task.id} 
                   onClick={() => setActiveTaskId(task.id)}
-                  className={`flex items-center justify-between p-4 border-b border-gray-100 dark:border-white/5 transition-all cursor-pointer group ${activeTaskId === task.id ? 'bg-blue-50 dark:bg-blue-900/10' : 'bg-white dark:bg-[#161616] hover:bg-gray-50 dark:hover:bg-[#1c1c1c]'}`}
+                  className={\`flex items-center justify-between p-4 border-b border-gray-100 dark:border-white/5 transition-all cursor-pointer group \${activeTaskId === task.id ? 'bg-blue-50 dark:bg-blue-900/10' : 'bg-white dark:bg-[#161616] hover:bg-gray-50 dark:hover:bg-[#1c1c1c]'}\`}
                 >
                   <div className="flex items-center gap-4 min-w-0 flex-1">
                     <Avatar 
@@ -495,24 +497,24 @@ export function LaunchClient() {
                           {task.guessedName || task.guessedEmail || 'Unknown Contact'}
                         </span>
                         <span className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                          {task.guessedEmail ? `<${task.guessedEmail}>` : 'Missing email'}
+                          {task.guessedEmail ? \`<\${task.guessedEmail}>\` : 'Missing email'}
                         </span>
                       </div>
                       <div className="text-sm text-gray-600 dark:text-gray-400 truncate opacity-80 mt-0.5">
-                        {task.draft ? task.draft.replace(/\n/g, ' ') : (task.status === 'drafting' || task.status === 'pending') ? 'Drafting custom email...' : 'Waiting...'}
+                        {task.draft ? task.draft.replace(/\\n/g, ' ') : (task.status === 'drafting' || task.status === 'pending') ? 'Drafting custom email...' : 'Waiting...'}
                       </div>
                     </div>
                   </div>
                   
                   <div className="flex items-center gap-3 flex-shrink-0 ml-4">
-                      <div className={`px-2.5 py-1 rounded-full text-[11px] font-medium tracking-wide ${
+                      <div className={\`px-2.5 py-1 rounded-full text-[11px] font-medium tracking-wide \${
                       task.status === 'pending' ? 'bg-gray-100 text-gray-600 dark:bg-white/10 dark:text-gray-300' :
                       task.status === 'drafting' ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' :
                       task.status === 'drafted' ? 'bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400' :
                       task.status === 'sending' ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' :
                       task.status === 'sent' ? 'bg-green-50 text-green-600 dark:bg-green-900/30 dark:text-green-400' :
                       'bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400'
-                      }`}>
+                      }\`}>
                       {task.status}
                       </div>
                       <button 
@@ -647,3 +649,7 @@ export function LaunchClient() {
     </div>
   );
 }
+"""
+with open('src/components/LaunchClient.tsx', 'w') as f:
+    f.write(new_code)
+print("Done")
