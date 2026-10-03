@@ -1,4 +1,6 @@
-"use client";
+const fs = require('fs');
+
+const content = `"use client";
 
 import { useState, useRef } from "react";
 import Papa from "papaparse";
@@ -33,11 +35,11 @@ export function LaunchClient() {
 
   const getEffectiveToneInstruction = () => {
     switch (activeTone) {
-      case 'casual': return `Style: Casual & Friendly.\n${casualPrompt}`;
-      case 'concise': return `Style: Direct & Concise.\n${concisePrompt}`;
-      case 'custom': return `Style: Custom Persona.\n${customPrompt}`;
+      case 'casual': return \`Style: Casual & Friendly.\\n\${casualPrompt}\`;
+      case 'concise': return \`Style: Direct & Concise.\\n\${concisePrompt}\`;
+      case 'custom': return \`Style: Custom Persona.\\n\${customPrompt}\`;
       case 'professional':
-      default: return `Style: Professional & Business.\n${professionalPrompt}`;
+      default: return \`Style: Professional & Business.\\n\${professionalPrompt}\`;
     }
   };
 
@@ -68,7 +70,7 @@ export function LaunchClient() {
 
         const parsedTasks: LaunchTask[] = (results.data as Record<string, unknown>[]).map((row, i) => {
           return {
-            id: `task-${Date.now()}-${i}`,
+            id: \`task-\${Date.now()}-\${i}\`,
             data: row,
             status: 'pending',
             draft: '',
@@ -107,14 +109,14 @@ export function LaunchClient() {
 
   const generateDraft = async (task: LaunchTask) => {
     try {
-      const dataString = Object.entries(task.data).map(([k, v]) => `${k}: ${v}`).join('\n');
-      const emailContext = `Person Details:\n${dataString}`;
+      const dataString = Object.entries(task.data).map(([k, v]) => \`\${k}: \${v}\`).join('\\n');
+      const emailContext = \`Person Details:\\n\${dataString}\`;
       
       const res = await fetch("/api/ai/write", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          instruction: `Write a cold outbound email to this person. Context and instructions: ${instruction}. Do NOT include any sign-off or signature.`,
+          instruction: \`Write a cold outbound email to this person. Context and instructions: \${instruction}. Do NOT include any sign-off or signature.\`,
           tone: activeTone,
           toneInstructions: getEffectiveToneInstruction(),
           emailContext,
@@ -149,7 +151,7 @@ export function LaunchClient() {
         body: JSON.stringify({
           toEmail: task.guessedEmail,
           subject: instruction.substring(0, 50) + "...", // Could generate a subject, but keeping it simple or require subject in draft
-          body: `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 14px; line-height: 1.6; color: #111827;">${task.draft.replace(/\n/g, '<br/>')}</div>`,
+          body: \`<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 14px; line-height: 1.6; color: #111827;">\${task.draft.replace(/\\n/g, '<br/>')}</div>\`,
         }),
       });
 
@@ -166,7 +168,7 @@ export function LaunchClient() {
       }
     } catch (err) {
       setTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: 'error', error: String(err) } : t));
-      alert(`Failed to send to ${task.guessedEmail}: ${err}`);
+      alert(\`Failed to send to \${task.guessedEmail}: \${err}\`);
     }
   };
   
@@ -208,7 +210,7 @@ export function LaunchClient() {
           {phase === 'upload' && (
             <div className="max-w-xl mx-auto w-full mt-12 bg-white dark:bg-[#1c1c1c] p-8 rounded-2xl shadow-sm dark:shadow-none border border-gray-200 dark:border-white/10">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">Mass Email Writer</h2>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">Upload a CSV file containing your contacts. We&apos;ll analyze each row and generate a custom email draft based on your instructions.</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">Upload a CSV file containing your contacts. We'll analyze each row and generate a custom email draft based on your instructions.</p>
               
               <div className="space-y-4">
                 <div>
@@ -281,12 +283,12 @@ export function LaunchClient() {
           )}
           
           {phase === 'queue' && (
-            <div className={`w-full grid gap-5 ${activeTask ? 'grid-cols-1 xl:grid-cols-2' : 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3'}`}>
+            <div className={\`w-full grid gap-5 \${activeTask ? 'grid-cols-1 xl:grid-cols-2' : 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3'}\`}>
               {tasks.map(task => (
                 <div 
                   key={task.id} 
                   onClick={() => setActiveTaskId(task.id)}
-                  className={`bg-white dark:bg-[#1c1c1c] rounded-xl shadow-sm dark:shadow-none border p-5 flex flex-col transition-all cursor-pointer group ${activeTaskId === task.id ? 'border-purple-500 ring-1 ring-purple-500 shadow-md' : 'border-gray-200 dark:border-white/10 hover:shadow-md hover:border-gray-300 dark:hover:border-white/20'}`}
+                  className={\`bg-white dark:bg-[#1c1c1c] rounded-xl shadow-sm dark:shadow-none border p-5 flex flex-col transition-all cursor-pointer group \${activeTaskId === task.id ? 'border-purple-500 ring-1 ring-purple-500 shadow-md' : 'border-gray-200 dark:border-white/10 hover:shadow-md hover:border-gray-300 dark:hover:border-white/20'}\`}
                 >
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex items-center gap-3 overflow-hidden flex-1 min-w-0 pr-2">
@@ -314,14 +316,14 @@ export function LaunchClient() {
                         >
                             <Trash2 className="w-4 h-4" />
                         </button>
-                        <div className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${
+                        <div className={\`px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider \${
                         task.status === 'pending' ? 'bg-gray-100 text-gray-600 dark:bg-white/10 dark:text-gray-300' :
                         task.status === 'drafting' ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' :
                         task.status === 'drafted' ? 'bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400' :
                         task.status === 'sending' ? 'bg-purple-50 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400' :
                         task.status === 'sent' ? 'bg-green-50 text-green-600 dark:bg-green-900/30 dark:text-green-400' :
                         'bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400'
-                        }`}>
+                        }\`}>
                         {task.status}
                         </div>
                     </div>
@@ -447,3 +449,5 @@ export function LaunchClient() {
     </div>
   );
 }
+`;
+fs.writeFileSync('src/components/LaunchClient.tsx', content);
