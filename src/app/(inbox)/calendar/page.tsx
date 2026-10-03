@@ -185,22 +185,22 @@ export default function CalendarPage() {
   const activeViewIndex = (['Day', 'Week', 'Month'] as View[]).indexOf(view);
 
   return (
-    <div className="flex h-full min-h-0 bg-white text-[13px] text-gray-800">
-      <section className="flex min-w-0 flex-1 flex-col bg-white">
-      <header className="flex h-[68px] shrink-0 flex-nowrap items-center gap-2 border-b border-gray-100 bg-white px-6">
-        <h1 className="text-xl font-semibold leading-none text-gray-900">Calendar</h1>
-        <button onClick={() => setCursor(new Date())} className="ml-2 whitespace-nowrap rounded-full bg-gray-50 px-3 py-1.5 text-[12px] font-medium text-gray-700 transition-colors hover:bg-gray-100">Today</button>
+    <div className="flex h-full min-h-0 bg-white dark:bg-[#161616] text-[13px] text-gray-800 dark:text-gray-200">
+      <section className="flex min-w-0 flex-1 flex-col bg-white dark:bg-[#161616]">
+      <header className="flex h-[68px] shrink-0 flex-nowrap items-center gap-2 border-b border-gray-100 dark:border-white/5 bg-white dark:bg-[#161616] px-6">
+        <h1 className="text-xl font-semibold leading-none text-gray-900 dark:text-gray-100">Calendar</h1>
+        <button onClick={() => setCursor(new Date())} className="ml-2 whitespace-nowrap rounded-full bg-gray-50 dark:bg-[#1c1c1c] px-3 py-1.5 text-[12px] font-medium text-gray-700 dark:text-gray-300 transition-colors hover:bg-gray-100 dark:hover:bg-[#202020] dark:bg-[#202020]">Today</button>
         <div className="flex items-center">
-          <button aria-label="Previous" onClick={() => changeRange(-1)} className="rounded-md p-1.5 text-gray-500 hover:bg-gray-200/70 hover:text-gray-800"><ChevronLeft className="h-4 w-4" /></button>
-          <button aria-label="Next" onClick={() => changeRange(1)} className="rounded-md p-1.5 text-gray-500 hover:bg-gray-200/70 hover:text-gray-800"><ChevronRight className="h-4 w-4" /></button>
+          <button aria-label="Previous" onClick={() => changeRange(-1)} className="rounded-md p-1.5 text-gray-500 dark:text-gray-400 hover:bg-gray-200/70 hover:text-gray-800 dark:hover:text-gray-200 dark:text-gray-200"><ChevronLeft className="h-4 w-4" /></button>
+          <button aria-label="Next" onClick={() => changeRange(1)} className="rounded-md p-1.5 text-gray-500 dark:text-gray-400 hover:bg-gray-200/70 hover:text-gray-800 dark:hover:text-gray-200 dark:text-gray-200"><ChevronRight className="h-4 w-4" /></button>
         </div>
-        <h1 className="min-w-[170px] text-[17px] font-semibold tracking-tight text-gray-800">{rangeTitle}</h1>
+        <h1 className="min-w-[170px] text-[17px] font-semibold tracking-tight text-gray-800 dark:text-gray-200">{rangeTitle}</h1>
         <div className="ml-auto flex items-center gap-2.5">
-          <div className="rounded-full bg-gray-100 p-1">
+          <div className="rounded-full bg-gray-100 dark:bg-[#202020] p-1">
             <div className="relative flex h-7 w-[168px] items-center">
-              <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 left-0 w-1/3 rounded-full bg-white shadow-sm ring-1 ring-black/[0.04] transition-transform duration-200 ease-out" style={{ transform: `translateX(${activeViewIndex * 100}%)` }} />
+              <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 left-0 w-1/3 rounded-full bg-white dark:bg-[#161616] shadow-sm ring-1 ring-black/[0.04] transition-transform duration-200 ease-out" style={{ transform: `translateX(${activeViewIndex * 100}%)` }} />
               {(['Day', 'Week', 'Month'] as View[]).map((option) => (
-                <button key={option} aria-pressed={view === option} onClick={() => setView(option)} className={`relative z-10 flex h-full flex-1 items-center justify-center rounded-full text-[11px] font-medium transition-colors ${view === option ? 'text-gray-900' : 'text-gray-500 hover:text-gray-800'}`}>{option}</button>
+                <button key={option} aria-pressed={view === option} onClick={() => setView(option)} className={`relative z-10 flex h-full flex-1 items-center justify-center rounded-full text-[11px] font-medium transition-colors ${view === option ? 'text-gray-900 dark:text-gray-100' : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 dark:text-gray-200'}`}>{option}</button>
               ))}
             </div>
           </div>
@@ -209,15 +209,15 @@ export default function CalendarPage() {
       </header>
 
       {error && <div role="alert" className="mx-5 mt-3 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">{error}</div>}
-      <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-white px-3 pb-3 pt-2 sm:px-4">
-        {view === 'Month' && <div className="grid grid-cols-7 border-b border-gray-200 bg-white">{['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((name) => <div key={name} className="py-2 text-center text-[10px] font-semibold uppercase tracking-[0.08em] text-gray-500">{name}</div>)}</div>}
-        {view !== 'Month' && <div className={`grid border-b border-gray-200 bg-white ${view === 'Day' ? 'grid-cols-[46px_minmax(0,1fr)]' : 'grid-cols-[46px_repeat(7,minmax(0,1fr))]'}`}>
-          <div />{days.map((day) => <button key={day.toISOString()} onClick={() => setCursor(day)} className="py-2 text-center hover:bg-gray-100"><div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-gray-500">{format(day, 'EEE')}</div><div className={`mx-auto mt-1 flex h-7 w-7 items-center justify-center rounded-full text-xs font-medium ${isSameDay(day, new Date()) ? 'bg-blue-600 text-white' : 'text-gray-800'}`}>{format(day, 'd')}</div></button>)}
+      <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-white dark:bg-[#161616] px-3 pb-3 pt-2 sm:px-4">
+        {view === 'Month' && <div className="grid grid-cols-7 border-b border-gray-200 dark:border-white/10 bg-white dark:bg-[#161616]">{['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((name) => <div key={name} className="py-2 text-center text-[10px] font-semibold uppercase tracking-[0.08em] text-gray-500 dark:text-gray-400">{name}</div>)}</div>}
+        {view !== 'Month' && <div className={`grid border-b border-gray-200 dark:border-white/10 bg-white dark:bg-[#161616] ${view === 'Day' ? 'grid-cols-[46px_minmax(0,1fr)]' : 'grid-cols-[46px_repeat(7,minmax(0,1fr))]'}`}>
+          <div />{days.map((day) => <button key={day.toISOString()} onClick={() => setCursor(day)} className="py-2 text-center hover:bg-gray-100 dark:hover:bg-[#202020] dark:bg-[#202020]"><div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-gray-500 dark:text-gray-400">{format(day, 'EEE')}</div><div className={`mx-auto mt-1 flex h-7 w-7 items-center justify-center rounded-full text-xs font-medium ${isSameDay(day, new Date()) ? 'bg-blue-600 text-white' : 'text-gray-800 dark:text-gray-200'}`}>{format(day, 'd')}</div></button>)}
         </div>}
-        {view === 'Month' ? <div className="grid min-h-0 flex-1 grid-cols-7 grid-rows-6 overflow-auto rounded-b-lg border-l border-gray-200">
+        {view === 'Month' ? <div className="grid min-h-0 flex-1 grid-cols-7 grid-rows-6 overflow-auto rounded-b-lg border-l border-gray-200 dark:border-white/10">
           {days.map((day) => (
-            <div key={day.toISOString()} onClick={() => openCreate(day)} className="group relative min-h-[110px] cursor-pointer border-b border-r border-gray-200 bg-white p-1.5 transition-colors hover:bg-gray-50/40">
-              <div className="mb-1 flex items-center justify-between px-0.5"><span className={`flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-medium ${isSameDay(day, new Date()) ? 'bg-blue-600 text-white' : isSameMonth(day, cursor) ? 'text-gray-700' : 'text-gray-400'}`}>{format(day, 'd')}</span><button onClick={(event) => { event.stopPropagation(); openCreate(day); }} className="rounded-md p-1 text-gray-400 opacity-0 transition hover:bg-gray-100 hover:text-gray-700 group-hover:opacity-100" aria-label={`Create event ${format(day, 'MMM d')}`}><Plus className="h-3.5 w-3.5" /></button></div>
+            <div key={day.toISOString()} onClick={() => openCreate(day)} className="group relative min-h-[110px] cursor-pointer border-b border-r border-gray-200 dark:border-white/10 bg-white dark:bg-[#161616] p-1.5 transition-colors hover:bg-gray-50/40">
+              <div className="mb-1 flex items-center justify-between px-0.5"><span className={`flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-medium ${isSameDay(day, new Date()) ? 'bg-blue-600 text-white' : isSameMonth(day, cursor) ? 'text-gray-700 dark:text-gray-300' : 'text-gray-400'}`}>{format(day, 'd')}</span><button onClick={(event) => { event.stopPropagation(); openCreate(day); }} className="rounded-md p-1 text-gray-400 opacity-0 transition hover:bg-gray-100 dark:hover:bg-[#202020] dark:bg-[#202020] hover:text-gray-700 dark:hover:text-gray-300 dark:text-gray-300 group-hover:opacity-100" aria-label={`Create event ${format(day, 'MMM d')}`}><Plus className="h-3.5 w-3.5" /></button></div>
               <div className="space-y-1">
                 {dayEvents(day).slice(0, 4).map((event) => (
                   <button key={event.id} onClick={(clickEvent) => { clickEvent.stopPropagation(); setSelectedEvent(event); }} className={`relative block w-full truncate rounded-md border border-l-[3px] px-2 py-1 text-left text-[11px] leading-[15px] shadow-[0_1px_1px_rgba(0,0,0,0.03)] transition hover:brightness-[0.98] hover:shadow-sm before:absolute before:left-0 before:top-0 before:h-full before:w-[3px] ${toneForEvent(event)}`}>
@@ -225,14 +225,14 @@ export default function CalendarPage() {
                     <span className="mt-0.5 flex items-center gap-1 truncate text-[10px] font-normal opacity-75">{event.start?.dateTime ? format(dateOf(event), 'h:mm a') : 'All day'}{event.attendees?.length ? <><span aria-hidden="true">·</span><Users className="h-3 w-3 shrink-0" />{event.attendees.length}</> : null}</span>
                   </button>
                 ))}
-                {dayEvents(day).length > 4 && <button onClick={(clickEvent) => { clickEvent.stopPropagation(); setCursor(day); setView('Day'); }} className="px-2 text-[10px] font-medium text-gray-500 hover:text-gray-800">+{dayEvents(day).length - 4} more</button>}
+                {dayEvents(day).length > 4 && <button onClick={(clickEvent) => { clickEvent.stopPropagation(); setCursor(day); setView('Day'); }} className="px-2 text-[10px] font-medium text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 dark:text-gray-200">+{dayEvents(day).length - 4} more</button>}
               </div>
             </div>
           ))}
-        </div> : <div className={`grid min-h-0 flex-1 overflow-auto rounded-b-lg border-l border-gray-200 ${view === 'Day' ? 'grid-cols-[46px_minmax(0,1fr)]' : 'grid-cols-[46px_repeat(7,minmax(150px,1fr))]'}`} onMouseUp={finishTimeSelection}>
-          <div className="relative border-r border-gray-200 bg-white" style={{ height: `${16 * 64}px` }}>{Array.from({ length: 16 }, (_, index) => index + 6).map((hour) => <div key={hour} className="absolute right-2 text-[10px] tabular-nums text-gray-400" style={{ top: `${(hour - 6) * 64 + 8}px` }}>{format(new Date(2000, 0, 1, hour), 'ha').toLowerCase()}</div>)}</div>
-          {days.map((day) => <div key={day.toISOString()} className="relative border-r border-gray-200 bg-white" style={{ height: `${16 * 64}px` }}>
-            {Array.from({ length: 16 }, (_, index) => index + 6).map((hour) => <div key={hour} onMouseDown={(event) => { if (event.button === 0) { event.preventDefault(); beginTimeSelection(day, hour); } }} onMouseEnter={() => updateTimeSelection(day, hour)} className="absolute left-0 right-0 z-0 h-16 border-b border-gray-100 transition-colors hover:bg-blue-50/40" style={{ top: `${(hour - 6) * 64}px` }} />)}
+        </div> : <div className={`grid min-h-0 flex-1 overflow-auto rounded-b-lg border-l border-gray-200 dark:border-white/10 ${view === 'Day' ? 'grid-cols-[46px_minmax(0,1fr)]' : 'grid-cols-[46px_repeat(7,minmax(150px,1fr))]'}`} onMouseUp={finishTimeSelection}>
+          <div className="relative border-r border-gray-200 dark:border-white/10 bg-white dark:bg-[#161616]" style={{ height: `${16 * 64}px` }}>{Array.from({ length: 16 }, (_, index) => index + 6).map((hour) => <div key={hour} className="absolute right-2 text-[10px] tabular-nums text-gray-400" style={{ top: `${(hour - 6) * 64 + 8}px` }}>{format(new Date(2000, 0, 1, hour), 'ha').toLowerCase()}</div>)}</div>
+          {days.map((day) => <div key={day.toISOString()} className="relative border-r border-gray-200 dark:border-white/10 bg-white dark:bg-[#161616]" style={{ height: `${16 * 64}px` }}>
+            {Array.from({ length: 16 }, (_, index) => index + 6).map((hour) => <div key={hour} onMouseDown={(event) => { if (event.button === 0) { event.preventDefault(); beginTimeSelection(day, hour); } }} onMouseEnter={() => updateTimeSelection(day, hour)} className="absolute left-0 right-0 z-0 h-16 border-b border-gray-100 dark:border-white/5 transition-colors hover:bg-blue-50/40" style={{ top: `${(hour - 6) * 64}px` }} />)}
             {dragSelection && isSelecting && (isSameDay(dragSelection.start, day) || isSameDay(dragSelection.end, day)) && (() => {
               const slot = isSameDay(dragSelection.start, day) ? dragSelection.start : dragSelection.end;
               const top = (slot.getHours() - 6) * 64;
@@ -247,49 +247,49 @@ export default function CalendarPage() {
             })}
           </div>)}
         </div>}
-        {loading && <div className="pointer-events-none absolute bottom-8 right-10 rounded-full bg-white/90 px-3 py-1.5 text-xs text-gray-500 shadow">Loading events…</div>}
+        {loading && <div className="pointer-events-none absolute bottom-8 right-10 rounded-full bg-white/90 px-3 py-1.5 text-xs text-gray-500 dark:text-gray-400 shadow">Loading events…</div>}
         {!loading && !events.length && !error && <div className="pointer-events-none absolute bottom-8 right-10 rounded-full bg-white/90 px-3 py-1.5 text-xs text-gray-400 shadow">Your calendar is up to date</div>}
       </div>
       </section>
 
-      {selectedEvent && <aside className="z-10 relative flex h-full w-[500px] shrink-0 flex-col overflow-hidden rounded-tl-2xl border-l border-gray-100 bg-white transition-all duration-300 ease-in-out">
-        <header className="h-[68px] shrink-0 border-b border-gray-100 bg-[#f7f7f5] px-5 flex items-center justify-between">
-          <div className="flex items-center gap-2"><span className={`h-2.5 w-2.5 rounded-full ${eventDots[toneIndexForEvent(selectedEvent)]}`} /><span className="text-sm font-semibold text-gray-800">Event details</span></div>
-          <button onClick={() => setSelectedEvent(null)} aria-label="Close event details" className="rounded-md p-1 text-gray-400 transition-colors hover:bg-gray-200 hover:text-gray-600"><X className="h-4 w-4" /></button>
+      {selectedEvent && <aside className="z-10 relative flex h-full w-[500px] shrink-0 flex-col overflow-hidden rounded-tl-2xl border-l border-gray-100 dark:border-white/5 bg-white dark:bg-[#161616] transition-all duration-300 ease-in-out">
+        <header className="h-[68px] shrink-0 border-b border-gray-100 dark:border-white/5 bg-[#f7f7f5] dark:bg-[#161616] px-5 flex items-center justify-between">
+          <div className="flex items-center gap-2"><span className={`h-2.5 w-2.5 rounded-full ${eventDots[toneIndexForEvent(selectedEvent)]}`} /><span className="text-sm font-semibold text-gray-800 dark:text-gray-200">Event details</span></div>
+          <button onClick={() => setSelectedEvent(null)} aria-label="Close event details" className="rounded-md p-1 text-gray-400 transition-colors hover:bg-gray-200 dark:hover:bg-[#262626] dark:bg-[#262626] hover:text-gray-600"><X className="h-4 w-4" /></button>
         </header>
         <div className="flex-1 overflow-y-auto px-6 py-6">
-          <h2 className="text-xl font-semibold leading-7 tracking-tight text-gray-900">{selectedEvent.summary || 'Event'}</h2>
+          <h2 className="text-xl font-semibold leading-7 tracking-tight text-gray-900 dark:text-gray-100">{selectedEvent.summary || 'Event'}</h2>
           <div className="mt-5 space-y-5">
-            <div className="flex gap-3"><Clock3 className="mt-0.5 h-4 w-4 shrink-0 text-gray-400" /><div><p className="text-sm font-medium text-gray-800">{format(dateOf(selectedEvent), 'EEEE, MMMM d, yyyy')}</p><p className="mt-1 text-[12px] text-gray-500">{selectedEvent.start?.dateTime ? `${format(dateOf(selectedEvent), 'h:mm a')} – ${format(new Date(selectedEvent.end?.dateTime || selectedEvent.start.dateTime), 'h:mm a')}` : 'All day'}</p></div></div>
-            {selectedEvent.location && <div className="flex gap-3"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-gray-400" /><div><p className="text-sm font-medium text-gray-800">Location</p><p className="mt-1 break-words text-[12px] text-gray-500">{selectedEvent.location}</p></div></div>}
-            {selectedEvent.attendees?.length ? <div className="flex gap-3"><Users className="mt-0.5 h-4 w-4 shrink-0 text-gray-400" /><div className="min-w-0 flex-1"><p className="text-sm font-medium text-gray-800">Guests</p><div className="mt-2 space-y-2">{selectedEvent.attendees.map((attendee) => <div key={attendee.email} className="flex min-w-0 items-center gap-2"><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gray-100 text-[10px] font-semibold uppercase text-gray-600">{attendee.email?.[0] || '?'}</span><span className="truncate text-[12px] text-gray-600">{attendee.email}</span><span className="ml-auto shrink-0 text-[10px] capitalize text-gray-400">{attendee.responseStatus || 'invited'}</span></div>)}</div></div></div> : null}
-            {selectedEvent.description && <div className="flex gap-3"><div className="h-4 w-4 shrink-0" /><div><p className="text-sm font-medium text-gray-800">Description</p><p className="mt-1 whitespace-pre-wrap text-[12px] leading-5 text-gray-500">{selectedEvent.description}</p></div></div>}
+            <div className="flex gap-3"><Clock3 className="mt-0.5 h-4 w-4 shrink-0 text-gray-400" /><div><p className="text-sm font-medium text-gray-800 dark:text-gray-200">{format(dateOf(selectedEvent), 'EEEE, MMMM d, yyyy')}</p><p className="mt-1 text-[12px] text-gray-500 dark:text-gray-400">{selectedEvent.start?.dateTime ? `${format(dateOf(selectedEvent), 'h:mm a')} – ${format(new Date(selectedEvent.end?.dateTime || selectedEvent.start.dateTime), 'h:mm a')}` : 'All day'}</p></div></div>
+            {selectedEvent.location && <div className="flex gap-3"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-gray-400" /><div><p className="text-sm font-medium text-gray-800 dark:text-gray-200">Location</p><p className="mt-1 break-words text-[12px] text-gray-500 dark:text-gray-400">{selectedEvent.location}</p></div></div>}
+            {selectedEvent.attendees?.length ? <div className="flex gap-3"><Users className="mt-0.5 h-4 w-4 shrink-0 text-gray-400" /><div className="min-w-0 flex-1"><p className="text-sm font-medium text-gray-800 dark:text-gray-200">Guests</p><div className="mt-2 space-y-2">{selectedEvent.attendees.map((attendee) => <div key={attendee.email} className="flex min-w-0 items-center gap-2"><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gray-100 dark:bg-[#202020] text-[10px] font-semibold uppercase text-gray-600">{attendee.email?.[0] || '?'}</span><span className="truncate text-[12px] text-gray-600">{attendee.email}</span><span className="ml-auto shrink-0 text-[10px] capitalize text-gray-400">{attendee.responseStatus || 'invited'}</span></div>)}</div></div></div> : null}
+            {selectedEvent.description && <div className="flex gap-3"><div className="h-4 w-4 shrink-0" /><div><p className="text-sm font-medium text-gray-800 dark:text-gray-200">Description</p><p className="mt-1 whitespace-pre-wrap text-[12px] leading-5 text-gray-500 dark:text-gray-400">{selectedEvent.description}</p></div></div>}
           </div>
         </div>
-        <div className="flex shrink-0 flex-wrap gap-2 border-t border-gray-100 px-5 py-4">
+        <div className="flex shrink-0 flex-wrap gap-2 border-t border-gray-100 dark:border-white/5 px-5 py-4">
           <button type="button" disabled={deletingEventId === selectedEvent.id} onClick={() => void deleteEvent(selectedEvent)} className="inline-flex items-center gap-2 rounded-full border border-red-100 px-4 py-2 text-[12px] font-medium text-red-600 transition hover:bg-red-50 disabled:opacity-50"><Trash2 className="h-3.5 w-3.5" />{deletingEventId === selectedEvent.id ? 'Deleting…' : 'Delete event'}</button>
           {meetLink(selectedEvent) && <a href={meetLink(selectedEvent)!} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-full bg-blue-600 px-4 py-2 text-[12px] font-medium text-white transition hover:bg-blue-700"><Video className="h-3.5 w-3.5" />Join Google Meet</a>}
-          {selectedEvent.htmlLink && <a href={selectedEvent.htmlLink} target="_blank" rel="noreferrer" className="rounded-full border border-gray-200 px-4 py-2 text-[12px] font-medium text-gray-700 transition hover:bg-gray-50">Open in Google Calendar</a>}
+          {selectedEvent.htmlLink && <a href={selectedEvent.htmlLink} target="_blank" rel="noreferrer" className="rounded-full border border-gray-200 dark:border-white/10 px-4 py-2 text-[12px] font-medium text-gray-700 dark:text-gray-300 transition hover:bg-gray-50 dark:hover:bg-[#1c1c1c] dark:bg-[#1c1c1c]">Open in Google Calendar</a>}
         </div>
       </aside>}
 
-      {showCreate && <aside className="z-10 relative flex h-full w-[500px] shrink-0 flex-col overflow-hidden rounded-tl-2xl border-l border-gray-100 bg-white transition-all duration-300 ease-in-out">
-        <header className="h-[68px] shrink-0 border-b border-gray-100 bg-[#f7f7f5] px-5 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-gray-900">New event</h2>
-          <button type="button" onClick={() => setShowCreate(false)} aria-label="Close event form" className="rounded-md p-1 text-gray-400 transition-colors hover:bg-gray-200 hover:text-gray-600"><X className="h-4 w-4" /></button>
+      {showCreate && <aside className="z-10 relative flex h-full w-[500px] shrink-0 flex-col overflow-hidden rounded-tl-2xl border-l border-gray-100 dark:border-white/5 bg-white dark:bg-[#161616] transition-all duration-300 ease-in-out">
+        <header className="h-[68px] shrink-0 border-b border-gray-100 dark:border-white/5 bg-[#f7f7f5] dark:bg-[#161616] px-5 flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">New event</h2>
+          <button type="button" onClick={() => setShowCreate(false)} aria-label="Close event form" className="rounded-md p-1 text-gray-400 transition-colors hover:bg-gray-200 dark:hover:bg-[#262626] dark:bg-[#262626] hover:text-gray-600"><X className="h-4 w-4" /></button>
         </header>
         <form onSubmit={saveEvent} className="flex min-h-0 flex-1 flex-col">
           <div className="flex-1 space-y-4 overflow-y-auto px-5 py-5">
-            <input required autoFocus value={form.summary} onChange={(event) => setForm({ ...form, summary: event.target.value })} placeholder="Add title" className="w-full border-0 border-b border-gray-200 px-0 py-2 text-xl text-gray-900 outline-none focus:border-blue-500 focus:ring-0" />
-            <label className="flex items-center gap-3 text-[12px] text-gray-500"><Clock3 className="h-4 w-4 shrink-0" /><span className="w-14 shrink-0">Starts</span><input required type="datetime-local" value={form.start} onChange={(event) => setForm({ ...form, start: event.target.value })} className="min-w-0 flex-1 rounded-md border border-gray-200 px-2 py-2 text-[12px] text-gray-800 focus:border-blue-400 focus:outline-none" /></label>
-            <label className="flex items-center gap-3 text-[12px] text-gray-500"><Clock3 className="h-4 w-4 shrink-0" /><span className="w-14 shrink-0">Ends</span><input required type="datetime-local" value={form.end} onChange={(event) => setForm({ ...form, end: event.target.value })} className="min-w-0 flex-1 rounded-md border border-gray-200 px-2 py-2 text-[12px] text-gray-800 focus:border-blue-400 focus:outline-none" /></label>
-            <label className="flex items-center gap-3 text-[12px] text-gray-500"><Users className="h-4 w-4 shrink-0" /><span className="w-14 shrink-0">Guests</span><input type="email" value={form.attendeeEmail} onChange={(event) => setForm({ ...form, attendeeEmail: event.target.value })} placeholder="Add guest email" className="min-w-0 flex-1 rounded-md border border-gray-200 px-3 py-2 text-[12px] text-gray-800 focus:border-blue-400 focus:outline-none" /></label>
-            <label className="flex items-center gap-3 text-[12px] text-gray-500"><MapPin className="h-4 w-4 shrink-0" /><span className="w-14 shrink-0">Location</span><input value={form.location} onChange={(event) => setForm({ ...form, location: event.target.value })} placeholder="Add a location" className="min-w-0 flex-1 rounded-md border border-gray-200 px-3 py-2 text-[12px] text-gray-800 focus:border-blue-400 focus:outline-none" /></label>
-            <textarea value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} placeholder="Add description" rows={4} className="w-full resize-y rounded-md border border-gray-200 px-3 py-2 text-[12px] text-gray-800 focus:border-blue-400 focus:outline-none" />
-            <p className="flex items-center gap-2 text-[11px] text-gray-500"><Video className="h-4 w-4" />Google Meet link will be added automatically.</p>
+            <input required autoFocus value={form.summary} onChange={(event) => setForm({ ...form, summary: event.target.value })} placeholder="Add title" className="w-full border-0 border-b border-gray-200 dark:border-white/10 px-0 py-2 text-xl text-gray-900 dark:text-gray-100 outline-none focus:border-blue-500 focus:ring-0" />
+            <label className="flex items-center gap-3 text-[12px] text-gray-500 dark:text-gray-400"><Clock3 className="h-4 w-4 shrink-0" /><span className="w-14 shrink-0">Starts</span><input required type="datetime-local" value={form.start} onChange={(event) => setForm({ ...form, start: event.target.value })} className="min-w-0 flex-1 rounded-md border border-gray-200 dark:border-white/10 px-2 py-2 text-[12px] text-gray-800 dark:text-gray-200 focus:border-blue-400 focus:outline-none" /></label>
+            <label className="flex items-center gap-3 text-[12px] text-gray-500 dark:text-gray-400"><Clock3 className="h-4 w-4 shrink-0" /><span className="w-14 shrink-0">Ends</span><input required type="datetime-local" value={form.end} onChange={(event) => setForm({ ...form, end: event.target.value })} className="min-w-0 flex-1 rounded-md border border-gray-200 dark:border-white/10 px-2 py-2 text-[12px] text-gray-800 dark:text-gray-200 focus:border-blue-400 focus:outline-none" /></label>
+            <label className="flex items-center gap-3 text-[12px] text-gray-500 dark:text-gray-400"><Users className="h-4 w-4 shrink-0" /><span className="w-14 shrink-0">Guests</span><input type="email" value={form.attendeeEmail} onChange={(event) => setForm({ ...form, attendeeEmail: event.target.value })} placeholder="Add guest email" className="min-w-0 flex-1 rounded-md border border-gray-200 dark:border-white/10 px-3 py-2 text-[12px] text-gray-800 dark:text-gray-200 focus:border-blue-400 focus:outline-none" /></label>
+            <label className="flex items-center gap-3 text-[12px] text-gray-500 dark:text-gray-400"><MapPin className="h-4 w-4 shrink-0" /><span className="w-14 shrink-0">Location</span><input value={form.location} onChange={(event) => setForm({ ...form, location: event.target.value })} placeholder="Add a location" className="min-w-0 flex-1 rounded-md border border-gray-200 dark:border-white/10 px-3 py-2 text-[12px] text-gray-800 dark:text-gray-200 focus:border-blue-400 focus:outline-none" /></label>
+            <textarea value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} placeholder="Add description" rows={4} className="w-full resize-y rounded-md border border-gray-200 dark:border-white/10 px-3 py-2 text-[12px] text-gray-800 dark:text-gray-200 focus:border-blue-400 focus:outline-none" />
+            <p className="flex items-center gap-2 text-[11px] text-gray-500 dark:text-gray-400"><Video className="h-4 w-4" />Google Meet link will be added automatically.</p>
             {error && <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-[11px] text-red-700">{error}</p>}
           </div>
-          <div className="flex shrink-0 justify-end gap-2 border-t border-gray-100 px-5 py-4"><button type="button" onClick={() => setShowCreate(false)} className="rounded-full px-4 py-2 text-[12px] font-medium text-gray-600 transition hover:bg-gray-100">Cancel</button><button disabled={saving} className="rounded-full bg-blue-50 px-4 py-2 text-[12px] font-medium text-blue-600 transition hover:bg-blue-100 disabled:opacity-60">{saving ? 'Saving…' : 'Save event'}</button></div>
+          <div className="flex shrink-0 justify-end gap-2 border-t border-gray-100 dark:border-white/5 px-5 py-4"><button type="button" onClick={() => setShowCreate(false)} className="rounded-full px-4 py-2 text-[12px] font-medium text-gray-600 transition hover:bg-gray-100 dark:hover:bg-[#202020] dark:bg-[#202020]">Cancel</button><button disabled={saving} className="rounded-full bg-blue-50 px-4 py-2 text-[12px] font-medium text-blue-600 transition hover:bg-blue-100 disabled:opacity-60">{saving ? 'Saving…' : 'Save event'}</button></div>
         </form>
       </aside>}
 

@@ -223,7 +223,7 @@ export function SettingsModal({ section, setSection, onClose }: { section: strin
                     <label className="zl-field-label">
                       Professional & Business Scenarios
                     </label>
-                    <p className="zl-field-hint mb-1.5 text-xs text-gray-500">
+                    <p className="zl-field-hint mb-1.5 text-xs text-gray-500 dark:text-gray-400">
                       Applied for client communications, contracts, executive notes, and external partners.
                     </p>
                     <textarea 
@@ -238,7 +238,7 @@ export function SettingsModal({ section, setSection, onClose }: { section: strin
                     <label className="zl-field-label">
                       Casual & Friendly Scenarios
                     </label>
-                    <p className="zl-field-hint mb-1.5 text-xs text-gray-500">
+                    <p className="zl-field-hint mb-1.5 text-xs text-gray-500 dark:text-gray-400">
                       Applied for internal team chats, coffee invites, peers, and informal catch-ups.
                     </p>
                     <textarea 
@@ -253,7 +253,7 @@ export function SettingsModal({ section, setSection, onClose }: { section: strin
                     <label className="zl-field-label">
                       Direct & Concise Responses
                     </label>
-                    <p className="zl-field-hint mb-1.5 text-xs text-gray-500">
+                    <p className="zl-field-hint mb-1.5 text-xs text-gray-500 dark:text-gray-400">
                       Applied for quick confirmations, acceptances, and brief status updates.
                     </p>
                     <textarea 
@@ -268,7 +268,7 @@ export function SettingsModal({ section, setSection, onClose }: { section: strin
                     <label className="zl-field-label">
                       Custom Instructions & Persona Notes
                     </label>
-                    <p className="zl-field-hint mb-1.5 text-xs text-gray-500">
+                    <p className="zl-field-hint mb-1.5 text-xs text-gray-500 dark:text-gray-400">
                       Add any custom background info about you, your role, or specific rules for the AI.
                     </p>
                     <textarea 

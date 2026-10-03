@@ -33,7 +33,7 @@ const colorMap: Record<string, string> = {
 };
 
 function getBadgeStyle(color?: string) {
-  if (!color) return { className: "bg-gray-100 text-gray-700 border-gray-200", style: {} };
+  if (!color) return { className: "bg-gray-100 dark:bg-[#202020] text-gray-700 dark:text-gray-300 border-gray-200 dark:border-white/10", style: {} };
   if (colorMap[color]) return { className: colorMap[color], style: {} };
   if (color.startsWith('#') || color.startsWith('rgb')) {
     return {
@@ -41,7 +41,7 @@ function getBadgeStyle(color?: string) {
       style: { backgroundColor: `${color}18`, color: color, borderColor: `${color}35` }
     };
   }
-  return { className: "bg-gray-100 text-gray-700 border-gray-200", style: {} };
+  return { className: "bg-gray-100 dark:bg-[#202020] text-gray-700 dark:text-gray-300 border-gray-200 dark:border-white/10", style: {} };
 }
 
 import { formatEmailDate } from "@/utils/formatDate";
@@ -50,11 +50,11 @@ export function EmailRow({ email, isSelected, isCompressed, isChecked, onToggleC
   return (
     <div className={clsx(
       "flex h-[54px] min-h-[54px] items-center gap-3 overflow-hidden border-b px-5 py-2 cursor-pointer transition-colors group",
-      isChecked ? "bg-blue-50/80 border-blue-100" : isSelected ? "bg-blue-50/40 border-blue-50" : "border-gray-100 hover:bg-gray-50/50"
+      isChecked ? "bg-blue-50/80 border-blue-100" : isSelected ? "bg-blue-50/40 border-blue-50" : "border-gray-100 dark:border-white/5 hover:bg-gray-50/50"
     )}>
       {/* Checkbox */}
       <div 
-        className="flex-shrink-0 flex items-center justify-center cursor-pointer text-gray-300 hover:text-gray-500 transition-colors"
+        className="flex-shrink-0 flex items-center justify-center cursor-pointer text-gray-300 hover:text-gray-500 dark:text-gray-400 transition-colors"
         onClick={(e) => {
           e.stopPropagation();
           onToggleCheck?.(!isChecked, e);
@@ -82,7 +82,7 @@ export function EmailRow({ email, isSelected, isCompressed, isChecked, onToggleC
       <div className={clsx(
         isCompressed ? "w-24" : "w-36",
         "flex-shrink-0 text-sm truncate",
-        email.is_unread ? "font-semibold text-gray-900" : "font-medium text-gray-600"
+        email.is_unread ? "font-semibold text-gray-900 dark:text-gray-100" : "font-medium text-gray-600"
       )}>
         {email.sender_name || email.sender_email}
       </div>
@@ -90,10 +90,10 @@ export function EmailRow({ email, isSelected, isCompressed, isChecked, onToggleC
       {/* Summary / Subject */}
       <div className={clsx(
         "flex-1 text-sm truncate",
-        email.is_unread ? "font-medium text-gray-800" : "text-gray-500"
+        email.is_unread ? "font-medium text-gray-800 dark:text-gray-200" : "text-gray-500 dark:text-gray-400"
       )}>
-        <span className="text-gray-900 font-medium mr-2">{email.subject}</span>
-        {!isCompressed && <span className="text-gray-500 opacity-80">{email.summary}</span>}
+        <span className="text-gray-900 dark:text-gray-100 font-medium mr-2">{email.subject}</span>
+        {!isCompressed && <span className="text-gray-500 dark:text-gray-400 opacity-80">{email.summary}</span>}
       </div>
 
       {/* Category Badge */}
@@ -114,7 +114,7 @@ export function EmailRow({ email, isSelected, isCompressed, isChecked, onToggleC
       {/* Timestamp */}
       <div className={clsx(
         "w-20 text-right text-xs flex-shrink-0",
-        email.is_unread ? "font-medium text-gray-900" : "text-gray-400"
+        email.is_unread ? "font-medium text-gray-900 dark:text-gray-100" : "text-gray-400"
       )}>
         {formatEmailDate(email.timestamp)}
       </div>

@@ -412,44 +412,44 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
   };
 
   return (
-    <div className={`flex min-w-0 flex-col h-full bg-white z-10 relative overflow-hidden transition-all duration-300 ease-in-out flex-1 rounded-tl-2xl ${isFullView ? 'border-l-0' : 'border-l border-gray-200'}`}>
+    <div className={`flex min-w-0 flex-col h-full bg-white dark:bg-[#161616] z-10 relative overflow-hidden transition-all duration-300 ease-in-out flex-1 rounded-tl-2xl ${isFullView ? 'border-l-0' : 'border-l border-gray-200 dark:border-white/10'}`}>
       
       {/* Header Toolbar */}
-      <div className="h-[68px] px-5 flex items-center justify-between border-b border-gray-100 flex-shrink-0">
+      <div className="h-[68px] px-5 flex items-center justify-between border-b border-gray-100 dark:border-white/5 flex-shrink-0">
         <div className="flex items-center gap-4">
-          <button onClick={() => handleAction('archive')} className="p-2 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-full transition-colors" title="Archive">
+          <button onClick={() => handleAction('archive')} className="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-[#202020] dark:bg-[#202020] rounded-full transition-colors" title="Archive">
             <Archive className="w-4 h-4" />
           </button>
-          <button onClick={() => handleAction('trash')} className="p-2 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-full transition-colors" title="Delete">
+          <button onClick={() => handleAction('trash')} className="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-[#202020] dark:bg-[#202020] rounded-full transition-colors" title="Delete">
             <Trash2 className="w-4 h-4" />
           </button>
-          <button onClick={() => handleAction('unread')} className="p-2 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-full transition-colors" title="Mark unread">
+          <button onClick={() => handleAction('unread')} className="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-[#202020] dark:bg-[#202020] rounded-full transition-colors" title="Mark unread">
             <Mail className="w-4 h-4" />
           </button>
           {/* Label Button */}
           <div className="relative">
             <button 
               onClick={() => setShowLabelMenu(!showLabelMenu)} 
-              className="p-2 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-full transition-colors flex items-center gap-1.5" 
+              className="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-[#202020] dark:bg-[#202020] rounded-full transition-colors flex items-center gap-1.5" 
               title="Add Label in Gmail"
             >
               <Tag className="w-4 h-4" />
             </button>
             {showLabelMenu && (
-              <div className="absolute left-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-200 py-1.5 z-50 animate-in fade-in zoom-in-95">
-                <div className="px-3 py-1.5 text-xs font-semibold text-gray-400 border-b border-gray-100 uppercase tracking-wider">
+              <div className="absolute left-0 mt-2 w-56 bg-white dark:bg-[#161616] rounded-xl shadow-xl border border-gray-200 dark:border-white/10 py-1.5 z-50 animate-in fade-in zoom-in-95">
+                <div className="px-3 py-1.5 text-xs font-semibold text-gray-400 border-b border-gray-100 dark:border-white/5 uppercase tracking-wider">
                   Apply Gmail Label
                 </div>
                 <div className="max-h-52 overflow-y-auto py-1">
                   {availableLabels.length === 0 ? (
-                    <div className="px-3 py-2 text-xs text-gray-500">No custom labels in Gmail</div>
+                    <div className="px-3 py-2 text-xs text-gray-500 dark:text-gray-400">No custom labels in Gmail</div>
                   ) : (
                     availableLabels.map((lbl) => (
                       <button
                         key={lbl.id}
                         disabled={isLabeling}
                         onClick={() => handleApplyLabel(lbl.id)}
-                        className="w-full text-left px-3 py-1.5 hover:bg-gray-50 text-sm text-gray-700 flex items-center gap-2 truncate"
+                        className="w-full text-left px-3 py-1.5 hover:bg-gray-50 dark:hover:bg-[#1c1c1c] dark:bg-[#1c1c1c] text-sm text-gray-700 dark:text-gray-300 flex items-center gap-2 truncate"
                       >
                         <span 
                           className="w-2.5 h-2.5 rounded-full flex-shrink-0" 
@@ -469,7 +469,7 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
           {onExpand && (
             <button 
               onClick={onExpand}
-              className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+              className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-[#202020] dark:bg-[#202020] rounded-full transition-colors"
               title={isFullView ? "Minimize" : "Full screen"}
             >
               {isFullView ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
@@ -477,7 +477,7 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
           )}
           <button 
             onClick={onClose}
-            className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+            className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-[#202020] dark:bg-[#202020] rounded-full transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
@@ -485,13 +485,13 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 overflow-y-auto bg-white p-6 lg:p-10 flex flex-col gap-6 relative">
+      <div className="flex-1 overflow-y-auto bg-white dark:bg-[#161616] p-6 lg:p-10 flex flex-col gap-6 relative">
         
         {/* Email Subject */}
-        <h1 className="text-2xl font-normal text-gray-900 leading-snug w-full">
+        <h1 className="text-2xl font-normal text-gray-900 dark:text-gray-100 leading-snug w-full">
           {email.subject}
           {email.category && (
-            <span className={`ml-4 align-middle inline-block px-3 py-1 rounded-full text-xs font-semibold ${email.categoryColor ? colorMap[email.categoryColor] : 'bg-gray-100 text-gray-700 border border-gray-200'}`}>
+            <span className={`ml-4 align-middle inline-block px-3 py-1 rounded-full text-xs font-semibold ${email.categoryColor ? colorMap[email.categoryColor] : 'bg-gray-100 dark:bg-[#202020] text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-white/10'}`}>
               {email.category}
             </span>
           )}
@@ -500,7 +500,7 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
         {/* Thread header row */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <h2 className="text-sm font-medium text-gray-500">
+            <h2 className="text-sm font-medium text-gray-500 dark:text-gray-400">
               {isLoadingThread ? (
                 <span className="flex items-center gap-1.5"><Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading thread...</span>
               ) : threadMessages.length > 0 ? (
@@ -521,9 +521,9 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
 
         {/* AI Overview Box */}
         {email.summary && (
-          <div className="w-full bg-white border border-blue-200 rounded-xl px-5 py-4">
+          <div className="w-full bg-white dark:bg-[#161616] border border-blue-200 rounded-xl px-5 py-4">
             <div className="text-sm font-semibold text-blue-600 mb-1">AI Summary</div>
-            <p className="text-sm text-gray-800 leading-relaxed">{email.summary}</p>
+            <p className="text-sm text-gray-800 dark:text-gray-200 leading-relaxed">{email.summary}</p>
           </div>
         )}
 
@@ -562,7 +562,7 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
                   href={detectedCalendarEvent.meetLink}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-emerald-200 text-emerald-700 text-xs font-semibold rounded-lg hover:bg-emerald-50 transition-colors"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-[#161616] border border-emerald-200 text-emerald-700 text-xs font-semibold rounded-lg hover:bg-emerald-50 transition-colors"
                 >
                   Join Google Meet
                 </a>
@@ -594,11 +594,11 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
               return (
                 <div
                   key={msg.id}
-                  className={`rounded-xl border transition-all ${isLatest ? 'border-gray-200 bg-white shadow-sm' : 'border-gray-100 bg-gray-50/50'}`}
+                  className={`rounded-xl border transition-all ${isLatest ? 'border-gray-200 dark:border-white/10 bg-white dark:bg-[#161616] shadow-sm' : 'border-gray-100 dark:border-white/5 bg-gray-50/50'}`}
                 >
                   {/* Message Header – click to toggle expand/collapse */}
                   <div
-                    className={`flex items-center gap-3 px-4 py-3 cursor-pointer select-none rounded-xl ${isExpanded ? 'rounded-b-none border-b border-gray-100' : ''}`}
+                    className={`flex items-center gap-3 px-4 py-3 cursor-pointer select-none rounded-xl ${isExpanded ? 'rounded-b-none border-b border-gray-100 dark:border-white/5' : ''}`}
                     onClick={() => {
                       setExpandedMessageIds(prev => {
                         const next = new Set(prev);
@@ -611,11 +611,11 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
                       name={isSent ? 'You' : (msg.sender_name || '')}
                       email={isSent ? '' : (msg.sender_email || '')}
                       size="sm"
-                      className="w-8 h-8 flex-shrink-0 border border-gray-100"
+                      className="w-8 h-8 flex-shrink-0 border border-gray-100 dark:border-white/5"
                     />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-baseline gap-2">
-                        <span className={`text-sm font-semibold ${isSent ? 'text-blue-700' : 'text-gray-900'}`}>
+                        <span className={`text-sm font-semibold ${isSent ? 'text-blue-700' : 'text-gray-900 dark:text-gray-100'}`}>
                           {senderName}
                         </span>
                         {isSent && (
@@ -642,7 +642,7 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
                         <iframe
                           sandbox="allow-popups allow-popups-to-escape-sandbox allow-same-origin"
                           srcDoc={msg.body_html}
-                          className="w-full min-h-[60px] border-none bg-white"
+                          className="w-full min-h-[60px] border-none bg-white dark:bg-[#161616]"
                           title={`Message from ${senderName}`}
                           onLoad={(e) => {
                             const iframe = e.target as HTMLIFrameElement;
@@ -653,7 +653,7 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
                           }}
                         />
                       ) : (
-                        <div className="text-sm text-gray-800 whitespace-pre-wrap font-sans leading-relaxed">
+                        <div className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap font-sans leading-relaxed">
                           {msg.body_text || msg.snippet || 'No content'}
                         </div>
                       )}
@@ -667,11 +667,11 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
           /* Fallback single-email view when thread couldn't load */
           <>
             <div className="flex items-start gap-4 w-full">
-              <Avatar name={email.sender_name} email={email.sender_email} size="lg" className="w-10 h-10 shadow-xs border border-gray-100 flex-shrink-0" />
+              <Avatar name={email.sender_name} email={email.sender_email} size="lg" className="w-10 h-10 shadow-xs border border-gray-100 dark:border-white/5 flex-shrink-0" />
               <div className="flex-1 min-w-0">
                 <div className="flex items-baseline gap-2">
-                  <span className="text-base font-bold text-gray-900">{email.sender_name || email.sender_email}</span>
-                  {email.sender_name && <span className="text-xs text-gray-500">&lt;{email.sender_email}&gt;</span>}
+                  <span className="text-base font-bold text-gray-900 dark:text-gray-100">{email.sender_name || email.sender_email}</span>
+                  {email.sender_name && <span className="text-xs text-gray-500 dark:text-gray-400">&lt;{email.sender_email}&gt;</span>}
                 </div>
                 <div className="text-xs text-gray-400 mt-0.5">{formatEmailDate(email.timestamp)}</div>
               </div>
@@ -681,7 +681,7 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
                 <iframe
                   sandbox="allow-popups allow-popups-to-escape-sandbox allow-same-origin"
                   srcDoc={email.body_html}
-                  className="w-full min-h-[60px] border-none bg-white"
+                  className="w-full min-h-[60px] border-none bg-white dark:bg-[#161616]"
                   title="Email Body"
                   onLoad={(e) => {
                     const iframe = e.target as HTMLIFrameElement;
@@ -689,7 +689,7 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
                   }}
                 />
               ) : (
-                <div className="text-sm text-gray-800 whitespace-pre-wrap font-sans leading-relaxed">
+                <div className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap font-sans leading-relaxed">
                   {email.body_text || 'No content'}
                 </div>
               )}
@@ -702,37 +702,37 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
           
           {!replyMode ? (
             <div className="flex items-center gap-3 mt-4 mb-4">
-              <button onClick={() => { setReplyMode('reply'); setTimeout(() => replyRef.current?.focus(), 50); }} className="px-5 py-2 bg-gray-50 hover:bg-gray-100 text-gray-700 font-medium rounded-full text-sm transition-colors flex items-center gap-2 border border-gray-200 shadow-sm">
+              <button onClick={() => { setReplyMode('reply'); setTimeout(() => replyRef.current?.focus(), 50); }} className="px-5 py-2 bg-gray-50 dark:bg-[#1c1c1c] hover:bg-gray-100 dark:hover:bg-[#202020] dark:bg-[#202020] text-gray-700 dark:text-gray-300 font-medium rounded-full text-sm transition-colors flex items-center gap-2 border border-gray-200 dark:border-white/10 shadow-sm">
                 <Reply className="w-4 h-4" /> Reply
               </button>
-              <button onClick={() => { setReplyMode('replyAll'); setTimeout(() => replyRef.current?.focus(), 50); }} className="px-5 py-2 bg-gray-50 hover:bg-gray-100 text-gray-700 font-medium rounded-full text-sm transition-colors flex items-center gap-2 border border-gray-200 shadow-sm">
+              <button onClick={() => { setReplyMode('replyAll'); setTimeout(() => replyRef.current?.focus(), 50); }} className="px-5 py-2 bg-gray-50 dark:bg-[#1c1c1c] hover:bg-gray-100 dark:hover:bg-[#202020] dark:bg-[#202020] text-gray-700 dark:text-gray-300 font-medium rounded-full text-sm transition-colors flex items-center gap-2 border border-gray-200 dark:border-white/10 shadow-sm">
                 <ReplyAll className="w-4 h-4" /> Reply all
               </button>
-              <button onClick={() => { setReplyMode('forward'); setTimeout(() => replyRef.current?.focus(), 50); }} className="px-5 py-2 bg-gray-50 hover:bg-gray-100 text-gray-700 font-medium rounded-full text-sm transition-colors flex items-center gap-2 border border-gray-200 shadow-sm">
+              <button onClick={() => { setReplyMode('forward'); setTimeout(() => replyRef.current?.focus(), 50); }} className="px-5 py-2 bg-gray-50 dark:bg-[#1c1c1c] hover:bg-gray-100 dark:hover:bg-[#202020] dark:bg-[#202020] text-gray-700 dark:text-gray-300 font-medium rounded-full text-sm transition-colors flex items-center gap-2 border border-gray-200 dark:border-white/10 shadow-sm">
                 <Forward className="w-4 h-4" /> Forward
               </button>
             </div>
           ) : (
 
-            <div className="bg-white rounded-xl border border-gray-300 shadow-sm overflow-hidden flex flex-col transition-all relative">
-              <button onClick={() => setReplyMode(null)} className="absolute top-3 right-3 p-1 text-gray-400 hover:bg-gray-100 rounded-md z-10"><X className="w-4 h-4"/></button>
+            <div className="bg-white dark:bg-[#161616] rounded-xl border border-gray-300 dark:border-white/20 shadow-sm overflow-hidden flex flex-col transition-all relative">
+              <button onClick={() => setReplyMode(null)} className="absolute top-3 right-3 p-1 text-gray-400 hover:bg-gray-100 dark:hover:bg-[#202020] dark:bg-[#202020] rounded-md z-10"><X className="w-4 h-4"/></button>
             {/* Header / Recipients Bar */}
-            <div className="bg-white px-4 py-3 border-b border-gray-200 flex flex-col gap-2 transition-all">
+            <div className="bg-white dark:bg-[#161616] px-4 py-3 border-b border-gray-200 dark:border-white/10 flex flex-col gap-2 transition-all">
               
               <div className="flex items-center gap-3 w-full mt-1">
-                <CornerUpLeft className="w-4 h-4 text-gray-500 flex-shrink-0" />
-                <span className="text-sm text-gray-500 font-medium mr-1 w-6">To</span>
+                <CornerUpLeft className="w-4 h-4 text-gray-500 dark:text-gray-400 flex-shrink-0" />
+                <span className="text-sm text-gray-500 dark:text-gray-400 font-medium mr-1 w-6">To</span>
                 <input 
                   type="text" 
                   value={toText}
                   onChange={(e) => setToText(e.target.value)}
                   placeholder="Recipients"
-                  className="flex-1 px-2 py-1 border-none focus:outline-none text-sm text-gray-900 placeholder:text-gray-400"
+                  className="flex-1 px-2 py-1 border-none focus:outline-none text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400"
                 />
                 {!showCcBcc && (
                   <button 
                     onClick={() => setShowCcBcc(true)}
-                    className="text-xs font-medium text-gray-500 hover:text-gray-800 ml-auto transition-colors"
+                    className="text-xs font-medium text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 dark:text-gray-200 ml-auto transition-colors"
                   >
                     Cc / Bcc
                   </button>
@@ -743,31 +743,31 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
                 <>
                   <div className="flex items-center gap-3 w-full mt-1 border-t border-gray-50 pt-2">
                     <div className="w-4 h-4 flex-shrink-0" />
-                    <span className="text-sm text-gray-500 font-medium mr-1 w-6">Cc</span>
+                    <span className="text-sm text-gray-500 dark:text-gray-400 font-medium mr-1 w-6">Cc</span>
                     <input 
                       type="text" 
                       value={ccText}
                       onChange={(e) => setCcText(e.target.value)}
                       placeholder="Add Cc recipients"
-                      className="flex-1 px-2 py-1 border-none focus:outline-none text-sm text-gray-900 placeholder:text-gray-400"
+                      className="flex-1 px-2 py-1 border-none focus:outline-none text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400"
                     />
                   </div>
                   <div className="flex items-center gap-3 w-full border-t border-gray-50 pt-2 mt-1">
                     <div className="w-4 h-4 flex-shrink-0" />
-                    <span className="text-sm text-gray-500 font-medium mr-1 w-6">Bcc</span>
+                    <span className="text-sm text-gray-500 dark:text-gray-400 font-medium mr-1 w-6">Bcc</span>
                     <input 
                       type="text" 
                       value={bccText}
                       onChange={(e) => setBccText(e.target.value)}
                       placeholder="Add Bcc recipients"
-                      className="flex-1 px-2 py-1 border-none focus:outline-none text-sm text-gray-900 placeholder:text-gray-400"
+                      className="flex-1 px-2 py-1 border-none focus:outline-none text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400"
                     />
                   </div>
                 </>
               )}
             </div>
             
-            <div className="relative w-full bg-white">
+            <div className="relative w-full bg-white dark:bg-[#161616]">
               {draftText.length === 0 && (
                 <div className="absolute top-4 left-4 text-gray-400 pointer-events-none text-sm">
                   Write your reply...
@@ -777,15 +777,15 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
                 ref={replyRef}
                 contentEditable
                 onInput={(e) => setDraftText(e.currentTarget.innerHTML)}
-                className="w-full p-4 min-h-[200px] text-sm text-gray-900 focus:outline-none overflow-y-auto"
+                className="w-full p-4 min-h-[200px] text-sm text-gray-900 dark:text-gray-100 focus:outline-none overflow-y-auto"
               />
             </div>
             
-            <div className="p-3 bg-white flex justify-between items-center border-t border-gray-100 relative">
+            <div className="p-3 bg-white dark:bg-[#161616] flex justify-between items-center border-t border-gray-100 dark:border-white/5 relative">
               <div className="flex items-center gap-2">
                 <button 
                   onClick={handleDiscard}
-                  className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors" 
+                  className="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#202020] dark:bg-[#202020] rounded-md transition-colors" 
                   title="Discard draft"
                 >
                   <Trash2 className="w-4 h-4" />
@@ -799,7 +799,7 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
                         setDraftText(email.suggestedReply!);
                       }
                     }}
-                    className="flex items-center gap-2 px-3 py-1.5 ml-1 rounded-md bg-white border border-gray-200 shadow-sm hover:bg-gray-50 text-blue-600 text-sm font-medium transition-colors"
+                    className="flex items-center gap-2 px-3 py-1.5 ml-1 rounded-md bg-white dark:bg-[#161616] border border-gray-200 dark:border-white/10 shadow-sm hover:bg-gray-50 dark:hover:bg-[#1c1c1c] dark:bg-[#1c1c1c] text-blue-600 text-sm font-medium transition-colors"
                   >
                     Help me write
                   </button>
@@ -811,17 +811,17 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
                   
                   {/* Formatting Expanded Toolbar */}
                   {showFormatting && (
-                    <div className="flex items-center gap-1 bg-gray-50 border border-gray-200 rounded-md p-1 mr-2 animate-in fade-in slide-in-from-right-4 absolute right-full top-1/2 -translate-y-1/2">
-                      <button onClick={() => applyFormat('bold')} className="p-1 text-gray-600 hover:bg-gray-200 rounded transition-colors" title="Bold">
+                    <div className="flex items-center gap-1 bg-gray-50 dark:bg-[#1c1c1c] border border-gray-200 dark:border-white/10 rounded-md p-1 mr-2 animate-in fade-in slide-in-from-right-4 absolute right-full top-1/2 -translate-y-1/2">
+                      <button onClick={() => applyFormat('bold')} className="p-1 text-gray-600 hover:bg-gray-200 dark:hover:bg-[#262626] dark:bg-[#262626] rounded transition-colors" title="Bold">
                         <Bold className="w-4 h-4" />
                       </button>
-                      <button onClick={() => applyFormat('italic')} className="p-1 text-gray-600 hover:bg-gray-200 rounded transition-colors" title="Italic">
+                      <button onClick={() => applyFormat('italic')} className="p-1 text-gray-600 hover:bg-gray-200 dark:hover:bg-[#262626] dark:bg-[#262626] rounded transition-colors" title="Italic">
                         <Italic className="w-4 h-4" />
                       </button>
-                      <button onClick={() => applyFormat('underline')} className="p-1 text-gray-600 hover:bg-gray-200 rounded transition-colors" title="Underline">
+                      <button onClick={() => applyFormat('underline')} className="p-1 text-gray-600 hover:bg-gray-200 dark:hover:bg-[#262626] dark:bg-[#262626] rounded transition-colors" title="Underline">
                         <Underline className="w-4 h-4" />
                       </button>
-                      <button onClick={() => applyFormat('hiliteColor', 'yellow')} className="p-1 text-gray-600 hover:bg-gray-200 rounded transition-colors" title="Highlight">
+                      <button onClick={() => applyFormat('hiliteColor', 'yellow')} className="p-1 text-gray-600 hover:bg-gray-200 dark:hover:bg-[#262626] dark:bg-[#262626] rounded transition-colors" title="Highlight">
                         <Highlighter className="w-4 h-4" />
                       </button>
                     </div>
@@ -829,18 +829,18 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
 
                   <button 
                     onClick={() => setShowFormatting(!showFormatting)}
-                    className={`p-2 rounded-md transition-colors ${showFormatting ? 'bg-blue-50 text-blue-600' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'}`} 
+                    className={`p-2 rounded-md transition-colors ${showFormatting ? 'bg-blue-50 text-blue-600' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-[#202020] dark:bg-[#202020]'}`} 
                     title="Formatting options"
                   >
                     <Type className="w-4 h-4" />
                   </button>
-                  <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md transition-colors" title="Attach files">
+                  <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-[#202020] dark:bg-[#202020] rounded-md transition-colors" title="Attach files">
                     <Paperclip className="w-4 h-4" />
                   </button>
-                  <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md transition-colors" title="Insert link">
+                  <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-[#202020] dark:bg-[#202020] rounded-md transition-colors" title="Insert link">
                     <LinkIcon className="w-4 h-4" />
                   </button>
-                  <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md transition-colors" title="Insert photo">
+                  <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-[#202020] dark:bg-[#202020] rounded-md transition-colors" title="Insert photo">
                     <ImageIcon className="w-4 h-4" />
                   </button>
                 </div>

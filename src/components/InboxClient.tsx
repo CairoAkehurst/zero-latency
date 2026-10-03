@@ -404,11 +404,11 @@ export function InboxClient({ initialEmails, initialNextPageToken }: { initialEm
           className={`flex flex-col h-full flex-shrink-0 transition-all duration-300 ease-in-out ${(isFullView || isComposeFullView) ? 'border-0 overflow-hidden opacity-0' : ''}`}
           style={{ width: (isFullView || isComposeFullView) ? '0px' : (isComposing || isFiltersOpen) ? 'calc(100% - 500px)' : selectedEmailId ? '50%' : '100%' }}
         >
-          <header className={`h-[68px] ${isEmailSidebarOpen ? 'px-4' : 'px-6'} flex items-center justify-between border-b border-gray-100 flex-shrink-0 min-w-0`}>
+          <header className={`h-[68px] ${isEmailSidebarOpen ? 'px-4' : 'px-6'} flex items-center justify-between border-b border-gray-100 dark:border-white/5 flex-shrink-0 min-w-0`}>
             {checkedEmailIds.size > 0 ? (
               <div className="flex items-center gap-4 flex-1">
                 <div 
-                  className="cursor-pointer text-gray-300 hover:text-gray-500 transition-colors flex items-center justify-center"
+                  className="cursor-pointer text-gray-300 hover:text-gray-500 dark:text-gray-400 transition-colors flex items-center justify-center"
                   onClick={() => handleSelectAll(!(checkedEmailIds.size === filteredEmails.length && filteredEmails.length > 0))}
                 >
                   {checkedEmailIds.size === filteredEmails.length && filteredEmails.length > 0 ? (
@@ -421,9 +421,9 @@ export function InboxClient({ initialEmails, initialNextPageToken }: { initialEm
                     </svg>
                   )}
                 </div>
-                <span className="text-sm font-medium text-gray-700 whitespace-nowrap">{checkedEmailIds.size} selected</span>
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">{checkedEmailIds.size} selected</span>
                 
-                <div className="h-4 w-px bg-gray-200 mx-2" />
+                <div className="h-4 w-px bg-gray-200 dark:bg-[#262626] mx-2" />
                 
                 <button 
                   onClick={handleDeleteSelected}
@@ -435,7 +435,7 @@ export function InboxClient({ initialEmails, initialNextPageToken }: { initialEm
               </div>
             ) : (
               <div className="flex min-w-0 items-center gap-4">
-                <h1 className={`truncate font-semibold text-gray-900 leading-none ${isEmailSidebarOpen ? 'max-w-[82px] text-base' : 'text-xl'}`}>{activeCategory || "Inbox"}</h1>
+                <h1 className={`truncate font-semibold text-gray-900 dark:text-gray-100 leading-none ${isEmailSidebarOpen ? 'max-w-[82px] text-base' : 'text-xl'}`}>{activeCategory || "Inbox"}</h1>
               </div>
             )}
             
@@ -445,7 +445,7 @@ export function InboxClient({ initialEmails, initialNextPageToken }: { initialEm
                   <button 
                     onClick={handleSync}
                     disabled={isSyncing}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-50 text-gray-700 font-medium hover:bg-gray-100 transition-colors disabled:opacity-50 whitespace-nowrap"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-50 dark:bg-[#1c1c1c] text-gray-700 dark:text-gray-300 font-medium hover:bg-gray-100 dark:hover:bg-[#202020] dark:bg-[#202020] transition-colors disabled:opacity-50 whitespace-nowrap"
                   >
                     <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? "animate-spin" : ""}`} />
                     {isSyncing ? "Syncing..." : "Sync emails"}
@@ -470,19 +470,19 @@ export function InboxClient({ initialEmails, initialNextPageToken }: { initialEm
                   placeholder="Search emails..." 
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-9 pr-4 py-1.5 bg-gray-50 border border-gray-200 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all leading-normal"
+                  className="w-full pl-9 pr-4 py-1.5 bg-gray-50 dark:bg-[#1c1c1c] border border-gray-200 dark:border-white/10 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all leading-normal"
                 />
               </div>
               
               {!isEmailSidebarOpen && <>
-              <div className="h-4 w-px bg-gray-200 mx-1" />
+              <div className="h-4 w-px bg-gray-200 dark:bg-[#262626] mx-1" />
               <button 
                 onClick={() => {
                   setIsFiltersOpen(true);
                   setIsComposing(false);
                   setSelectedEmailId(null);
                 }}
-                className={`p-1.5 transition-colors rounded-full ${isFiltersOpen ? "bg-gray-100 text-gray-900" : "text-gray-400 hover:text-gray-600 hover:bg-gray-50"}`}
+                className={`p-1.5 transition-colors rounded-full ${isFiltersOpen ? "bg-gray-100 dark:bg-[#202020] text-gray-900 dark:text-gray-100" : "text-gray-400 hover:text-gray-600 hover:bg-gray-50 dark:hover:bg-[#1c1c1c] dark:bg-[#1c1c1c]"}`}
               >
                 <SlidersHorizontal className="w-4 h-4" />
               </button>
@@ -502,7 +502,7 @@ export function InboxClient({ initialEmails, initialNextPageToken }: { initialEm
 
           <div ref={emailListRef} className="flex-1 overflow-y-auto pb-8" onScroll={handleScroll}>
             {filteredEmails.length === 0 ? (
-              <div className="p-12 text-center text-gray-500 text-sm flex flex-col items-center justify-center gap-3">
+              <div className="p-12 text-center text-gray-500 dark:text-gray-400 text-sm flex flex-col items-center justify-center gap-3">
                 {isSyncing ? (
                   <span>Loading emails...</span>
                 ) : (
@@ -537,11 +537,11 @@ export function InboxClient({ initialEmails, initialNextPageToken }: { initialEm
               </>
             )}
             {nextPageToken && !searchQuery && (
-              <div className="p-4 flex justify-center border-t border-gray-100">
+              <div className="p-4 flex justify-center border-t border-gray-100 dark:border-white/5">
                 <button
                   onClick={loadMore}
                   disabled={isLoadingMore}
-                  className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-full text-sm font-medium transition-colors disabled:opacity-50"
+                  className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-[#202020] hover:bg-gray-200 dark:hover:bg-[#262626] dark:bg-[#262626] text-gray-700 dark:text-gray-300 rounded-full text-sm font-medium transition-colors disabled:opacity-50"
                 >
                   Load more emails
                 </button>

@@ -16,10 +16,10 @@ function LoginForm() {
   };
 
   return (
-    <div className="flex h-full w-full items-center justify-center bg-[#f7f7f5]">
-      <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 max-w-sm w-full text-center">
-        <h1 className="text-2xl font-semibold text-gray-900 mb-2">AgentMail</h1>
-        <p className="text-sm text-gray-500 mb-8">Sign in to connect your Gmail and Calendar.</p>
+    <div className="flex h-full w-full items-center justify-center bg-[#f7f7f5] dark:bg-[#161616]">
+      <div className="bg-white dark:bg-[#161616] p-8 rounded-2xl shadow-sm border border-gray-100 dark:border-white/5 max-w-sm w-full text-center">
+        <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-2">AgentMail</h1>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-8">Sign in to connect your Gmail and Calendar.</p>
         
         {error && (
           <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700 text-left">
@@ -30,7 +30,7 @@ function LoginForm() {
         <button
           onClick={handleLogin}
           disabled={isLoading}
-          className="w-full bg-gray-900 text-white rounded-lg py-2.5 px-4 font-medium hover:bg-gray-800 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+          className="w-full bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900 rounded-lg py-2.5 px-4 font-medium hover:bg-gray-800 dark:hover:bg-white transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
         >
           <svg className="w-5 h-5" viewBox="0 0 24 24">
             <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -48,10 +48,10 @@ function LoginForm() {
 export default function LoginPage() {
   return (
     <Suspense fallback={
-      <div className="flex h-full w-full items-center justify-center bg-[#f7f7f5]">
-        <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 max-w-sm w-full text-center">
-          <h1 className="text-2xl font-semibold text-gray-900 mb-2">AgentMail</h1>
-          <p className="text-sm text-gray-500 mb-8">Loading...</p>
+      <div className="flex h-full w-full items-center justify-center bg-[#f7f7f5] dark:bg-[#161616]">
+        <div className="bg-white dark:bg-[#161616] p-8 rounded-2xl shadow-sm border border-gray-100 dark:border-white/5 max-w-sm w-full text-center">
+          <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-2">AgentMail</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-8">Loading...</p>
         </div>
       </div>
     }>

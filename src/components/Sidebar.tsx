@@ -82,11 +82,11 @@ export function Sidebar() {
   };
 
   return (
-    <aside className="w-64 flex-shrink-0 flex flex-col h-full bg-transparent text-sm text-gray-700 relative z-10">
+    <aside className="w-64 flex-shrink-0 flex flex-col h-full bg-transparent text-sm text-gray-700 dark:text-gray-300 relative z-10">
       <div className="h-[68px] px-4 flex items-center justify-between relative flex-shrink-0 pt-[6px]">
         <div 
           onClick={() => setShowDropdown(!showDropdown)}
-          className="flex items-center gap-2 font-medium cursor-pointer hover:bg-gray-200/50 px-2 py-1 rounded-md transition-colors"
+          className="flex items-center gap-2 font-medium cursor-pointer hover:bg-gray-200/50 dark:bg-white/5 dark:hover:bg-white/10 px-2 py-1 rounded-md transition-colors"
         >
           {user?.user_metadata?.avatar_url ? (
             <img src={user.user_metadata.avatar_url} alt="Avatar" className="w-5 h-5 rounded-full shrink-0" />
@@ -94,13 +94,13 @@ export function Sidebar() {
             <div className="w-5 h-5 rounded-full bg-gradient-to-tr from-gray-300 to-gray-400 shrink-0" />
           )}
           <span className="truncate max-w-[120px]">{user?.user_metadata?.full_name || user?.email || "Account"}</span>
-          <ChevronDown className="w-3 h-3 text-gray-500" />
+          <ChevronDown className="w-3 h-3 text-gray-500 dark:text-gray-400" />
         </div>
 
         {showDropdown && (
-          <div className="absolute top-12 left-4 w-56 bg-white border border-gray-100 rounded-lg shadow-lg py-1 z-50">
-            <div className="px-3 py-2 border-b border-gray-100 mb-1">
-              <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Accounts</div>
+          <div className="absolute top-12 left-4 w-56 bg-white dark:bg-[#161616] border border-gray-100 dark:border-white/5 rounded-lg shadow-lg dark:shadow-none py-1 z-50">
+            <div className="px-3 py-2 border-b border-gray-100 dark:border-white/5 mb-1">
+              <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Accounts</div>
               <div className="flex items-center gap-2 mt-2">
                 {user?.user_metadata?.avatar_url ? (
                   <img src={user.user_metadata.avatar_url} alt="Avatar" className="w-6 h-6 rounded-full" />
@@ -113,7 +113,7 @@ export function Sidebar() {
             
             <button 
               onClick={() => openSettings('inbox')}
-              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors text-left"
+              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#1c1c1c] dark:bg-[#1c1c1c] transition-colors text-left"
             >
               <Settings className="w-4 h-4" />
               Settings
@@ -121,7 +121,7 @@ export function Sidebar() {
             
             <button 
               onClick={() => openSettings('inbox')}
-              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors text-left"
+              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#1c1c1c] dark:bg-[#1c1c1c] transition-colors text-left"
             >
               <LayoutTemplate className="w-4 h-4" />
               Appearance
@@ -129,13 +129,13 @@ export function Sidebar() {
 
             <button 
               onClick={() => openSettings('shortcuts')}
-              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors text-left"
+              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#1c1c1c] dark:bg-[#1c1c1c] transition-colors text-left"
             >
               <Keyboard className="w-4 h-4" />
               Keyboard shortcuts
             </button>
             
-            <div className="h-px bg-gray-100 my-1" />
+            <div className="h-px bg-gray-100 dark:bg-[#202020] my-1" />
             
             <button 
               onClick={handleSignOut}
@@ -149,7 +149,7 @@ export function Sidebar() {
 
         <button 
           onClick={() => window.dispatchEvent(new CustomEvent('open-compose'))}
-          className="p-1.5 hover:bg-gray-200/50 rounded-md text-gray-500 transition-colors"
+          className="p-1.5 hover:bg-gray-200/50 dark:bg-white/5 dark:hover:bg-white/10 rounded-md text-gray-500 dark:text-gray-400 transition-colors"
           title="Compose"
         >
           <Edit className="w-4 h-4" />
@@ -173,8 +173,8 @@ export function Sidebar() {
             href="/"
             onClick={() => window.dispatchEvent(new CustomEvent('filter-category', { detail: 'Inbox' }))}
             className={clsx(
-              "sidebar-link cursor-pointer hover:bg-gray-200/50",
-              pathname === '/' && !activeCategoryCheck() ? "bg-gray-200/50 font-medium" : ""
+              "sidebar-link cursor-pointer hover:bg-gray-200/50 dark:bg-white/5 dark:hover:bg-white/10",
+              pathname === '/' && !activeCategoryCheck() ? "bg-gray-200/50 dark:bg-white/5 font-medium" : ""
             )}
           >
             <Inbox className="w-4 h-4" />
@@ -192,7 +192,7 @@ export function Sidebar() {
           </Link>
           <Link
             href="/calendar"
-            className={clsx("sidebar-link cursor-pointer hover:bg-gray-200/50", pathname === '/calendar' ? "bg-gray-200/50 font-medium" : "")}
+            className={clsx("sidebar-link cursor-pointer hover:bg-gray-200/50 dark:bg-white/5 dark:hover:bg-white/10", pathname === '/calendar' ? "bg-gray-200/50 dark:bg-white/5 font-medium" : "")}
           >
             <CalendarDays className="w-4 h-4" />
             <span>Calendar</span>
@@ -203,15 +203,15 @@ export function Sidebar() {
           <div className="pt-2 pb-1 px-3 text-xs font-semibold text-gray-400 tracking-wider">
             MAIL
           </div>
-          <Link href="/" onClick={() => window.dispatchEvent(new CustomEvent('filter-category', { detail: 'All Mail' }))} className="sidebar-link hover:bg-gray-200/50">
+          <Link href="/" onClick={() => window.dispatchEvent(new CustomEvent('filter-category', { detail: 'All Mail' }))} className="sidebar-link hover:bg-gray-200/50 dark:bg-white/5 dark:hover:bg-white/10">
             <Inbox className="w-4 h-4" />
             <span>All Mail</span>
           </Link>
-          <Link href="/" onClick={() => window.dispatchEvent(new CustomEvent('filter-category', { detail: 'Sent' }))} className="sidebar-link hover:bg-gray-200/50">
+          <Link href="/" onClick={() => window.dispatchEvent(new CustomEvent('filter-category', { detail: 'Sent' }))} className="sidebar-link hover:bg-gray-200/50 dark:bg-white/5 dark:hover:bg-white/10">
             <Send className="w-4 h-4" />
             <span>Sent</span>
           </Link>
-          <Link href="/" onClick={() => window.dispatchEvent(new CustomEvent('filter-category', { detail: 'Drafts' }))} className="sidebar-link hover:bg-gray-200/50">
+          <Link href="/" onClick={() => window.dispatchEvent(new CustomEvent('filter-category', { detail: 'Drafts' }))} className="sidebar-link hover:bg-gray-200/50 dark:bg-white/5 dark:hover:bg-white/10">
             <File className="w-4 h-4" />
             <span>Drafts</span>
           </Link>
@@ -222,7 +222,7 @@ export function Sidebar() {
             <span>LABELS</span>
             <button 
               onClick={() => setIsAddingLabel(true)}
-              className="p-1 hover:bg-gray-200/50 rounded transition-colors text-gray-400 hover:text-gray-600"
+              className="p-1 hover:bg-gray-200/50 dark:bg-white/5 dark:hover:bg-white/10 rounded transition-colors text-gray-400 hover:text-gray-600"
             >
               <Plus className="w-3.5 h-3.5" />
             </button>
@@ -233,7 +233,7 @@ export function Sidebar() {
               <Link 
                 href="/"
                 onClick={() => window.dispatchEvent(new CustomEvent('filter-category', { detail: folder.name }))}
-                className="sidebar-link cursor-pointer hover:bg-gray-200/50 pr-8"
+                className="sidebar-link cursor-pointer hover:bg-gray-200/50 dark:bg-white/5 dark:hover:bg-white/10 pr-8"
               >
                 <div 
                   className="w-2.5 h-2.5 rounded-full flex-shrink-0 shadow-xs" 

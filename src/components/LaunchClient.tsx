@@ -165,40 +165,40 @@ export function LaunchClient() {
   const activeTask = tasks.find(t => t.id === activeTaskId);
 
   return (
-    <div className="flex h-full relative overflow-hidden min-h-0 bg-white">
+    <div className="flex h-full relative overflow-hidden min-h-0 bg-white dark:bg-[#161616]">
       {/* Main Area */}
       <div 
         className="flex flex-col h-full flex-shrink-0 transition-all duration-300 ease-in-out min-w-0 overflow-hidden"
         style={{ width: activeTask ? 'calc(100% - 400px)' : '100%' }}
       >
-        <header className="h-[68px] px-6 flex items-center justify-between border-b border-gray-100 flex-shrink-0">
+        <header className="h-[68px] px-6 flex items-center justify-between border-b border-gray-100 dark:border-white/5 flex-shrink-0">
           <div className="flex items-center gap-4">
-            <h1 className="text-xl font-semibold text-gray-900 leading-none flex items-center gap-2">
+            <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100 leading-none flex items-center gap-2">
               <Mail className="w-5 h-5 text-purple-600" />
               Launch Queue
             </h1>
           </div>
         </header>
 
-        <div className="flex-1 overflow-y-auto p-6 bg-gray-50/30 flex flex-col">
+        <div className="flex-1 overflow-y-auto p-6 bg-gray-50/30 dark:bg-[#1c1c1c]/50 flex flex-col">
           {tasks.length === 0 ? (
-            <div className="max-w-xl mx-auto w-full mt-12 bg-white p-8 rounded-2xl shadow-sm border border-gray-200">
-              <h2 className="text-lg font-semibold text-gray-900 mb-2">Mass Email Writer</h2>
+            <div className="max-w-xl mx-auto w-full mt-12 bg-white dark:bg-[#161616] p-8 rounded-2xl shadow-sm border border-gray-200 dark:border-white/10">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">Mass Email Writer</h2>
               <p className="text-sm text-gray-600 mb-6">Upload a CSV file containing your contacts. We&apos;ll analyze each row and generate a custom email draft based on your instructions.</p>
               
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Instructions for AI</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Instructions for AI</label>
                   <textarea 
                     value={instruction}
                     onChange={e => setInstruction(e.target.value)}
                     placeholder="e.g. Write a cold outreach email pitching our new software. Mention their company name and their role. Keep it short."
-                    className="w-full h-32 p-3 text-sm bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all resize-none"
+                    className="w-full h-32 p-3 text-sm bg-gray-50 dark:bg-[#1c1c1c] border border-gray-200 dark:border-white/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all resize-none"
                   />
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Upload CSV</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Upload CSV</label>
                   <input 
                     type="file" 
                     accept=".csv"
@@ -209,7 +209,7 @@ export function LaunchClient() {
                   <button 
                     onClick={() => fileInputRef.current?.click()}
                     disabled={isUploading || !instruction.trim()}
-                    className="w-full py-4 border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center justify-center gap-2 text-gray-500 hover:text-purple-600 hover:border-purple-300 hover:bg-purple-50/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full py-4 border-2 border-dashed border-gray-300 dark:border-white/20 rounded-xl flex flex-col items-center justify-center gap-2 text-gray-500 dark:text-gray-400 hover:text-purple-600 hover:border-purple-300 hover:bg-purple-50/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {isUploading ? (
                       <Loader2 className="w-6 h-6 animate-spin text-purple-600" />
@@ -227,7 +227,7 @@ export function LaunchClient() {
                 <div 
                   key={task.id} 
                   onClick={() => setActiveTaskId(task.id)}
-                  className={`bg-white rounded-xl shadow-sm border p-5 flex flex-col transition-all cursor-pointer group ${activeTaskId === task.id ? 'border-purple-500 ring-1 ring-purple-500 shadow-md' : 'border-gray-200 hover:shadow-md hover:border-gray-300'}`}
+                  className={`bg-white dark:bg-[#161616] rounded-xl shadow-sm border p-5 flex flex-col transition-all cursor-pointer group ${activeTaskId === task.id ? 'border-purple-500 ring-1 ring-purple-500 shadow-md' : 'border-gray-200 dark:border-white/10 hover:shadow-md hover:border-gray-300 dark:border-white/20'}`}
                 >
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex items-center gap-3 overflow-hidden flex-1 min-w-0 pr-2">
@@ -235,13 +235,13 @@ export function LaunchClient() {
                         name={task.guessedName || 'Unknown'} 
                         email={task.guessedEmail || 'no-email'} 
                         size="md" 
-                        className="w-9 h-9 border border-gray-100 shadow-xs" 
+                        className="w-9 h-9 border border-gray-100 dark:border-white/5 shadow-xs" 
                       />
                       <div className="min-w-0 flex-1">
-                        <h3 className="font-semibold text-gray-900 text-sm truncate">
+                        <h3 className="font-semibold text-gray-900 dark:text-gray-100 text-sm truncate">
                           {task.guessedName || task.guessedEmail || 'Unknown Contact'}
                         </h3>
-                        <p className="text-xs text-gray-500 truncate">
+                        <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
                           {task.guessedEmail || 'Missing email address'}
                         </p>
                       </div>
@@ -267,7 +267,7 @@ export function LaunchClient() {
                     </div>
                   </div>
                   
-                  <div className="flex-1 text-sm text-gray-700 leading-relaxed line-clamp-3 mb-2 opacity-80">
+                  <div className="flex-1 text-sm text-gray-700 dark:text-gray-300 leading-relaxed line-clamp-3 mb-2 opacity-80">
                     {task.draft ? task.draft : task.status === 'drafting' ? 'Drafting custom email...' : 'Waiting...'}
                   </div>
                 </div>
@@ -279,15 +279,15 @@ export function LaunchClient() {
 
       {/* Right Sidebar for Review */}
       {activeTask && (
-        <div className="flex flex-col h-full bg-white z-10 relative overflow-hidden transition-all duration-300 ease-in-out flex-shrink-0 w-[400px] border-l border-gray-200">
-          <div className="h-[68px] px-5 flex items-center justify-between border-b border-gray-100 flex-shrink-0 bg-gray-50/50">
-            <h2 className="font-semibold text-gray-900 flex items-center gap-2">
+        <div className="flex flex-col h-full bg-white dark:bg-[#161616] z-10 relative overflow-hidden transition-all duration-300 ease-in-out flex-shrink-0 w-[400px] border-l border-gray-200 dark:border-white/10">
+          <div className="h-[68px] px-5 flex items-center justify-between border-b border-gray-100 dark:border-white/5 flex-shrink-0 bg-gray-50/50">
+            <h2 className="font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
               <FileText className="w-4 h-4 text-purple-600" />
               Review Draft
             </h2>
             <button 
               onClick={() => setActiveTaskId(null)}
-              className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+              className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-[#202020] dark:bg-[#202020] rounded-full transition-colors"
             >
               <X className="w-4 h-4" />
             </button>
@@ -295,22 +295,22 @@ export function LaunchClient() {
 
           <div className="flex-1 overflow-y-auto flex flex-col">
             {/* Person Details at Top */}
-            <div className="p-5 border-b border-gray-100 bg-gray-50/30">
-              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Contact Details</h3>
+            <div className="p-5 border-b border-gray-100 dark:border-white/5 bg-gray-50/30 dark:bg-[#1c1c1c]/50">
+              <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Contact Details</h3>
               <div className="space-y-2">
                 {Object.entries(activeTask.data).map(([key, value]) => (
                   <div key={key} className="flex flex-col">
-                    <span className="text-[10px] text-gray-500 uppercase">{key}</span>
-                    <span className="text-sm text-gray-900 font-medium break-words">{String(value)}</span>
+                    <span className="text-[10px] text-gray-500 dark:text-gray-400 uppercase">{key}</span>
+                    <span className="text-sm text-gray-900 dark:text-gray-100 font-medium break-words">{String(value)}</span>
                   </div>
                 ))}
               </div>
             </div>
 
             {/* Draft Below */}
-            <div className="p-5 flex-1 flex flex-col bg-white">
+            <div className="p-5 flex-1 flex flex-col bg-white dark:bg-[#161616]">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Email Draft</h3>
+                <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Email Draft</h3>
                 {activeTask.status === 'drafted' && (
                   <button
                     onClick={() => setIsEditingDraft(!isEditingDraft)}
@@ -323,7 +323,7 @@ export function LaunchClient() {
               </div>
 
               {activeTask.status === 'drafting' ? (
-                <div className="flex-1 flex flex-col items-center justify-center text-gray-500 space-y-3">
+                <div className="flex-1 flex flex-col items-center justify-center text-gray-500 dark:text-gray-400 space-y-3">
                   <Loader2 className="w-6 h-6 animate-spin text-purple-600" />
                   <span className="text-sm">Generating personalized draft...</span>
                 </div>
@@ -340,10 +340,10 @@ export function LaunchClient() {
                         const val = e.target.value;
                         setTasks(prev => prev.map(t => t.id === activeTask.id ? { ...t, draft: val } : t));
                       }}
-                      className="flex-1 w-full text-sm text-gray-800 p-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 resize-none font-sans leading-relaxed"
+                      className="flex-1 w-full text-sm text-gray-800 dark:text-gray-200 p-3 bg-gray-50 dark:bg-[#1c1c1c] border border-gray-200 dark:border-white/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 resize-none font-sans leading-relaxed"
                     />
                   ) : (
-                    <div className="flex-1 text-sm text-gray-800 leading-relaxed whitespace-pre-wrap font-sans p-4 bg-gray-50 rounded-xl border border-gray-100 overflow-y-auto">
+                    <div className="flex-1 text-sm text-gray-800 dark:text-gray-200 leading-relaxed whitespace-pre-wrap font-sans p-4 bg-gray-50 dark:bg-[#1c1c1c] rounded-xl border border-gray-100 dark:border-white/5 overflow-y-auto">
                       {activeTask.draft}
                     </div>
                   )}
