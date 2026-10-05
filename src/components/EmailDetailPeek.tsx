@@ -56,12 +56,18 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
   const [expandedMessageIds, setExpandedMessageIds] = useState<Set<string>>(new Set());
   const [detectedCalendarEvent, setDetectedCalendarEvent] = useState<{
     created: boolean;
+    isDraft?: boolean;
     summary?: string;
     fullTimeStr?: string;
     meetLink?: string;
     htmlLink?: string;
     inviteCardHtml?: string;
+    parsed?: any;
+    location?: string;
+    start?: string;
+    end?: string;
   } | null>(null);
+  const [isCreatingInvite, setIsCreatingInvite] = useState(false);
   const [isDetectingCalendar, setIsDetectingCalendar] = useState(false);
 
   useEffect(() => {
@@ -158,6 +164,7 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
+                  action: 'detect',
                   emailSubject: email.subject || '',
                   emailBody: allText,
                   recipientEmail: email.sender_email || '',
@@ -168,7 +175,7 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
               })
                 .then(r => r.json())
                 .then(calData => {
-                  if (calData.created && calData.inviteCardHtml) {
+                  if (calData.isDraft) {
                     setDetectedCalendarEvent(calData);
                   }
                 })
@@ -193,6 +200,7 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
+            action: 'detect',
             emailSubject: email.subject || '',
             emailBody: email.body_text || email.snippet || '',
             recipientEmail: email.sender_email || '',
@@ -203,7 +211,7 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
         })
           .then(r => r.json())
           .then(calData => {
-            if (calData.created && calData.inviteCardHtml) {
+            if (calData.isDraft) {
               setDetectedCalendarEvent(calData);
             }
           })
@@ -235,6 +243,38 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
 
 
   if (!email) return null;
+
+  const handleCreateInvite = async () => {
+    if (!detectedCalendarEvent?.parsed) return;
+    setIsCreatingInvite(true);
+    try {
+      const res = await fetch('/api/calendar/invite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'create',
+          emailSubject: email.subject || '',
+          emailBody: '',
+          recipientEmail: email.sender_email || '',
+          recipientName: email.sender_name || '',
+          replyText: '',
+          dedupeKey: email.google_thread_id || email.google_message_id,
+          draftDetails: detectedCalendarEvent.parsed
+        })
+      });
+      const calData = await res.json();
+      if (calData.created && calData.inviteCardHtml) {
+        setDetectedCalendarEvent(calData);
+      } else if (calData.error) {
+        alert("Failed to create invite: " + calData.error);
+      }
+    } catch (e) {
+      console.error("Failed to create invite:", e);
+    } finally {
+      setIsCreatingInvite(false);
+    }
+  };
+
 
   const handleScrollToReply = () => {
     replyRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -535,10 +575,12 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
         )}
 
         {/* Auto-Detected Google Calendar Invite Card */}
-        {detectedCalendarEvent?.created && detectedCalendarEvent.inviteCardHtml && (
+        {detectedCalendarEvent && (detectedCalendarEvent.created || detectedCalendarEvent.isDraft) && (
           <div className="w-full rounded-xl border border-emerald-200 bg-emerald-50 px-5 py-4">
             <div className="flex items-center gap-2 mb-3">
-              <span className="text-sm font-semibold text-emerald-700">📅 Calendar event auto-created</span>
+              <span className="text-sm font-semibold text-emerald-700">
+                {detectedCalendarEvent.created ? '📅 Calendar event auto-created' : '📅 Proposed Calendar Event'}
+              </span>
               <span className="text-xs bg-emerald-100 text-emerald-600 px-2 py-0.5 rounded-full font-medium">Google Calendar</span>
             </div>
             <div className="text-sm text-emerald-800 font-medium mb-1">{detectedCalendarEvent.summary}</div>
@@ -546,25 +588,38 @@ export function EmailDetailPeek({ email, onClose, onExpand, isFullView = false }
               <div className="text-xs text-emerald-600 mb-3">{detectedCalendarEvent.fullTimeStr}</div>
             )}
             <div className="flex items-center gap-2">
-              {detectedCalendarEvent.htmlLink && (
-                <a
-                  href={detectedCalendarEvent.htmlLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg transition-colors"
+              {detectedCalendarEvent.isDraft ? (
+                <button
+                  onClick={handleCreateInvite}
+                  disabled={isCreatingInvite}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-semibold rounded-lg transition-colors"
                 >
-                  View on Calendar
-                </a>
-              )}
-              {detectedCalendarEvent.meetLink && (
-                <a
-                  href={detectedCalendarEvent.meetLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-[#161616] border border-emerald-200 text-emerald-700 text-xs font-semibold rounded-lg hover:bg-emerald-50 transition-colors"
-                >
-                  Join Google Meet
-                </a>
+                  {isCreatingInvite && <Loader2 className="w-3 h-3 animate-spin" />}
+                  Send Invite
+                </button>
+              ) : (
+                <>
+                  {detectedCalendarEvent.htmlLink && (
+                    <a
+                      href={detectedCalendarEvent.htmlLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg transition-colors"
+                    >
+                      View on Calendar
+                    </a>
+                  )}
+                  {detectedCalendarEvent.meetLink && (
+                    <a
+                      href={detectedCalendarEvent.meetLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-[#161616] border border-emerald-200 text-emerald-700 text-xs font-semibold rounded-lg hover:bg-emerald-50 transition-colors"
+                    >
+                      Join Google Meet
+                    </a>
+                  )}
+                </>
               )}
               <button
                 onClick={() => setDetectedCalendarEvent(null)}

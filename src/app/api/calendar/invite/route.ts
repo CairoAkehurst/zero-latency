@@ -35,13 +35,15 @@ export async function POST(request: Request) {
       attendeeEmails = [],
       forceCreate = false,
       timeZone: requestedTimeZone,
+      action = 'create',
+      draftDetails = null
     } = await request.json();
 
-    if (!recipientEmail) {
+    if (!recipientEmail && !draftDetails) {
       return NextResponse.json({ error: 'recipientEmail is required' }, { status: 400 });
     }
-    const attendeeEmail = String(recipientEmail).match(EMAIL_PATTERN)?.[0];
-    if (!attendeeEmail) {
+    const attendeeEmail = recipientEmail ? String(recipientEmail).match(EMAIL_PATTERN)?.[0] : null;
+    if (!attendeeEmail && !draftDetails) {
       return NextResponse.json({ error: 'A valid recipient email is required' }, { status: 400 });
     }
 
@@ -59,11 +61,11 @@ export async function POST(request: Request) {
         }
       }
     };
-    addAddresses(attendeeEmail, recipientName || '');
+    if (attendeeEmail) addAddresses(attendeeEmail, recipientName || '');
     for (const address of Array.isArray(attendeeEmails) ? attendeeEmails : []) addAddresses(String(address));
 
     let fullThreadText = String(emailBody || '');
-    if (threadId) {
+    if (threadId && action === 'detect' && !draftDetails) {
       const thread = await gmail.users.threads.get({ userId: 'me', id: String(threadId), format: 'full' });
       const messages = thread.data.messages || [];
       const threadParts = messages.map(message => {
@@ -76,7 +78,7 @@ export async function POST(request: Request) {
       if (threadParts.length) fullThreadText = threadParts.join('\n\n--- Earlier/Later Message ---\n\n');
     }
     const attendees = [...participants].map(([email, displayName]) => ({ email, displayName: displayName || undefined }));
-    if (attendees.length === 0) attendees.push({ email: attendeeEmail.toLowerCase(), displayName: recipientName || undefined });
+    if (attendees.length === 0 && attendeeEmail) attendees.push({ email: attendeeEmail.toLowerCase(), displayName: recipientName || undefined });
 
     const timeZone = typeof requestedTimeZone === 'string' && requestedTimeZone
       ? requestedTimeZone
@@ -84,9 +86,12 @@ export async function POST(request: Request) {
     const now = new Date();
     const isoNow = now.toISOString();
     const localNow = now.toLocaleString('en-US', { timeZone, dateStyle: 'full', timeStyle: 'long' });
-    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    
+    let parsed = draftDetails;
 
-    const systemPrompt = `You are an intelligent calendar assistant for Zero Latency. You must respond only with one valid JSON object (JSON format), with no markdown or surrounding text.
+    if (!parsed) {
+      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const systemPrompt = `You are an intelligent calendar assistant for Zero Latency. You must respond only with one valid JSON object (JSON format), with no markdown or surrounding text.
 Analyze the email to detect if a meeting, call, appointment, or calendar event is being scheduled, accepted, confirmed, or agreed upon.
 Current date/time (UTC ISO): ${isoNow}.
 Current local date/time in ${timeZone}: ${localNow}.
@@ -108,13 +113,13 @@ Extract:
 
 If no meeting, return this JSON object: { "shouldCreateInvite": false }`;
 
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        {
-          role: 'user',
-          content: `Return the result as a JSON object only.
+      const completion = await openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          {
+            role: 'user',
+            content: `Return the result as a JSON object only.
 Subject: ${emailSubject || ''}
 Known participants: ${attendees.map(person => person.email).join(', ')}
 Full email thread:
@@ -122,14 +127,15 @@ ${fullThreadText}
 
 Reply Being Sent:
 ${replyText || ''}`
-        }
-      ],
-      response_format: { type: 'json_object' },
-      temperature: 0.2,
-      max_tokens: 400,
-    });
+          }
+        ],
+        response_format: { type: 'json_object' },
+        temperature: 0.2,
+        max_tokens: 400,
+      });
 
-    const parsed = JSON.parse(completion.choices[0]?.message?.content || '{}');
+      parsed = JSON.parse(completion.choices[0]?.message?.content || '{}');
+    }
 
     if (!parsed.shouldCreateInvite || !parsed.startTime) {
       return NextResponse.json({
@@ -139,7 +145,6 @@ ${replyText || ''}`
       }, { status: forceCreate ? 422 : 200 });
     }
 
-    // Default duration to 30 mins if endTime is missing or invalid
     const startDt = new Date(parsed.startTime);
     if (isNaN(startDt.getTime())) {
       return NextResponse.json({ created: false, message: 'Invalid start time generated.' });
@@ -150,6 +155,33 @@ ${replyText || ''}`
       endDt = new Date(startDt.getTime() + 30 * 60 * 1000);
     }
 
+    // Format human-friendly meeting date/time
+    const dateOptions: Intl.DateTimeFormatOptions = { 
+      weekday: 'short', month: 'short', day: 'numeric', year: 'numeric'
+    };
+    const timeOptions: Intl.DateTimeFormatOptions = {
+      hour: 'numeric', minute: '2-digit', hour12: true
+    };
+    const dateFormatted = startDt.toLocaleDateString('en-US', { ...dateOptions, timeZone });
+    const startTimeFormatted = startDt.toLocaleTimeString('en-US', { ...timeOptions, timeZone });
+    const endTimeFormatted = endDt.toLocaleTimeString('en-US', { ...timeOptions, timeZone });
+    const fullTimeStr = `${dateFormatted} · ${startTimeFormatted} - ${endTimeFormatted}`;
+
+    if (action === 'detect') {
+      return NextResponse.json({
+        created: false,
+        isDraft: true,
+        summary: parsed.summary || emailSubject || 'Meeting',
+        description: parsed.description,
+        location: parsed.location,
+        start: startDt.toISOString(),
+        end: endDt.toISOString(),
+        fullTimeStr,
+        parsed // Pass raw parsed back so it can be passed to create
+      });
+    }
+
+    // action === 'create'
     const event = {
       summary: parsed.summary || emailSubject || 'Meeting',
       description: `${parsed.description || ''}\n\nScheduled via Zero Latency AI`,
@@ -174,9 +206,7 @@ ${replyText || ''}`
       },
     };
 
-    // Google event IDs make thread-level retries safe when an email is reopened or
-    // the send flow retries after the calendar insert succeeded.
-    const eventId = googleEventId(`${dedupeKey || `${emailSubject || ''}:${emailBody || ''}:${replyText || ''}`}|${startDt.toISOString()}|${attendeeEmail.toLowerCase()}`);
+    const eventId = googleEventId(`${dedupeKey || `${emailSubject || ''}:${emailBody || ''}:${replyText || ''}`}|${startDt.toISOString()}|${(attendeeEmail || '').toLowerCase()}`);
     let eventData: calendar_v3.Schema$Event;
     try {
       const result = await calendar.events.insert({
@@ -202,24 +232,6 @@ ${replyText || ''}`
     if (!meetLink) {
       throw new Error('Google Calendar created the event but did not return a Google Meet link. Retry the send to finish creating the invite.');
     }
-
-    // Format human-friendly meeting date/time (e.g., "Friday, Oct 24, 2026, 3:00 PM – 3:30 PM")
-    const dateOptions: Intl.DateTimeFormatOptions = { 
-      weekday: 'short', 
-      month: 'short', 
-      day: 'numeric',
-      year: 'numeric'
-    };
-    const timeOptions: Intl.DateTimeFormatOptions = {
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true
-    };
-
-    const dateFormatted = startDt.toLocaleDateString('en-US', { ...dateOptions, timeZone });
-    const startTimeFormatted = startDt.toLocaleTimeString('en-US', { ...timeOptions, timeZone });
-    const endTimeFormatted = endDt.toLocaleTimeString('en-US', { ...timeOptions, timeZone });
-    const fullTimeStr = `${dateFormatted} · ${startTimeFormatted} - ${endTimeFormatted}`;
 
     const inviteCardHtml = `
 <div style="margin-top: 24px; margin-bottom: 24px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 520px; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.06); background-color: #ffffff;">
@@ -270,3 +282,4 @@ ${replyText || ''}`
     }, { status: 500 });
   }
 }
+
