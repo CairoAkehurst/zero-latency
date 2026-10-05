@@ -87,3 +87,33 @@ alter table if exists public.email_ai_metadata drop constraint if exists email_a
 drop table if exists public.email_ai_metadata;
 drop table if exists public.emails cascade;
 */
+
+-- 8. CRM Table
+create table if not exists public.crm (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references public.users(id) on delete cascade not null,
+  name text not null,
+  email text,
+  phone text,
+  company text,
+  notes text,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+alter table public.crm enable row level security;
+
+create policy "Users can view their own crm contacts"
+  on public.crm for select
+  using (auth.uid() = user_id);
+
+create policy "Users can insert their own crm contacts"
+  on public.crm for insert
+  with check (auth.uid() = user_id);
+
+create policy "Users can update their own crm contacts"
+  on public.crm for update
+  using (auth.uid() = user_id);
+
+create policy "Users can delete their own crm contacts"
+  on public.crm for delete
+  using (auth.uid() = user_id);
