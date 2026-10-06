@@ -86,7 +86,7 @@ export function Sidebar() {
       <div className="h-[68px] px-4 flex items-center justify-between relative flex-shrink-0 pt-[6px]">
         <div 
           onClick={() => setShowDropdown(!showDropdown)}
-          className="flex items-center gap-2 font-medium cursor-pointer hover:bg-gray-200/50 dark:bg-white/5 dark:hover:bg-white/10 px-2 py-1 rounded-md transition-colors"
+          className="flex items-center gap-2 font-medium cursor-pointer hover:bg-gray-200/50 dark:hover:bg-white/10 px-2 py-1 rounded-md transition-colors"
         >
           {user?.user_metadata?.avatar_url ? (
             <img src={user.user_metadata.avatar_url} alt="Avatar" className="w-5 h-5 rounded-full shrink-0" />
@@ -98,7 +98,7 @@ export function Sidebar() {
         </div>
 
         {showDropdown && (
-          <div className="absolute top-12 left-4 w-56 bg-white dark:bg-[#161616] border border-gray-100 dark:border-white/5 rounded-lg shadow-lg dark:shadow-none py-1 z-50">
+          <div className="absolute top-12 left-4 w-56 bg-white dark:bg-[#2a2a2a] border border-gray-100 dark:border-transparent rounded-lg shadow-lg dark:shadow-lg py-1 z-50">
             <div className="px-3 py-2 border-b border-gray-100 dark:border-white/5 mb-1">
               <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Accounts</div>
               <div className="flex items-center gap-2 mt-2">
@@ -113,7 +113,7 @@ export function Sidebar() {
             
             <button 
               onClick={() => openSettings('inbox')}
-              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#1c1c1c] dark:bg-[#1c1c1c] transition-colors text-left"
+              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors text-left"
             >
               <Settings className="w-4 h-4" />
               Settings
@@ -121,7 +121,7 @@ export function Sidebar() {
             
             <button 
               onClick={() => openSettings('inbox')}
-              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#1c1c1c] dark:bg-[#1c1c1c] transition-colors text-left"
+              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors text-left"
             >
               <LayoutTemplate className="w-4 h-4" />
               Appearance
@@ -129,7 +129,7 @@ export function Sidebar() {
 
             <button 
               onClick={() => openSettings('shortcuts')}
-              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#1c1c1c] dark:bg-[#1c1c1c] transition-colors text-left"
+              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors text-left"
             >
               <Keyboard className="w-4 h-4" />
               Keyboard shortcuts
@@ -139,7 +139,7 @@ export function Sidebar() {
             
             <button 
               onClick={handleSignOut}
-              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors text-left"
+              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors text-left"
             >
               <LogOut className="w-4 h-4" />
               Sign Out
@@ -149,7 +149,7 @@ export function Sidebar() {
 
         <button 
           onClick={() => window.dispatchEvent(new CustomEvent('open-compose'))}
-          className="p-1.5 hover:bg-gray-200/50 dark:bg-white/5 dark:hover:bg-white/10 rounded-md text-gray-500 dark:text-gray-400 transition-colors"
+          className="p-1.5 hover:bg-gray-200/50 dark:hover:bg-white/10 rounded-md text-gray-500 dark:text-gray-400 transition-colors"
           title="Compose"
         >
           <Edit className="w-4 h-4" />
@@ -161,11 +161,11 @@ export function Sidebar() {
           <Link
             href="/ai-summary"
             className={clsx(
-              "sidebar-link cursor-pointer hover:bg-blue-50/70 text-blue-700 font-medium",
-              pathname === '/ai-summary' ? "bg-blue-50/70 font-semibold" : ""
+              "sidebar-link cursor-pointer hover:bg-blue-50/70 dark:hover:bg-blue-500/10 text-blue-700 dark:text-blue-400 font-medium",
+              pathname === '/ai-summary' ? "bg-blue-50/70 dark:bg-blue-500/10 font-semibold" : ""
             )}
           >
-            <Sparkles className="w-4 h-4 text-blue-600" />
+            <Sparkles className="w-4 h-4 text-blue-600 dark:text-blue-400" />
             <span>Priority</span>
           </Link>
           
@@ -173,8 +173,8 @@ export function Sidebar() {
             href="/"
             onClick={() => window.dispatchEvent(new CustomEvent('filter-category', { detail: 'Inbox' }))}
             className={clsx(
-              "sidebar-link cursor-pointer hover:bg-gray-200/50 dark:bg-white/5 dark:hover:bg-white/10",
-              pathname === '/' && !activeCategoryCheck() ? "bg-gray-200/50 dark:bg-white/5 font-medium" : ""
+              "sidebar-link cursor-pointer hover:bg-gray-200/50 dark:hover:bg-white/10",
+              pathname === '/' && !activeCategoryCheck() ? "bg-gray-200/50 dark:bg-white/10 font-medium" : ""
             )}
           >
             <Inbox className="w-4 h-4" />
@@ -183,30 +183,30 @@ export function Sidebar() {
           <Link
             href="/launch"
             className={clsx(
-              "sidebar-link cursor-pointer hover:bg-purple-50/70 text-purple-700 font-medium",
-              pathname === '/launch' ? "bg-purple-50/70 font-semibold" : ""
+              "sidebar-link cursor-pointer hover:bg-purple-50/70 dark:hover:bg-purple-500/10 text-purple-700 dark:text-purple-400 font-medium",
+              pathname === '/launch' ? "bg-purple-50/70 dark:bg-purple-500/10 font-semibold" : ""
             )}
           >
-            <Send className="w-4 h-4 text-purple-600" />
+            <Send className="w-4 h-4 text-purple-600 dark:text-purple-400" />
             <span>Launch</span>
           </Link>
           <Link
             href="/calendar"
-            className={clsx("sidebar-link cursor-pointer hover:bg-gray-200/50 dark:bg-white/5 dark:hover:bg-white/10", pathname === '/calendar' ? "bg-gray-200/50 dark:bg-white/5 font-medium" : "")}
+            className={clsx("sidebar-link cursor-pointer hover:bg-gray-200/50 dark:hover:bg-white/10", pathname === '/calendar' ? "bg-gray-200/50 dark:bg-white/10 font-medium" : "")}
           >
             <CalendarDays className="w-4 h-4" />
             <span>Calendar</span>
           </Link>
           <Link
             href="/bookings"
-            className={clsx("sidebar-link cursor-pointer hover:bg-gray-200/50 dark:bg-white/5 dark:hover:bg-white/10", pathname === '/bookings' ? "bg-gray-200/50 dark:bg-white/5 font-medium" : "")}
+            className={clsx("sidebar-link cursor-pointer hover:bg-gray-200/50 dark:hover:bg-white/10", pathname === '/bookings' ? "bg-gray-200/50 dark:bg-white/10 font-medium" : "")}
           >
             <CalendarDays className="w-4 h-4" />
             <span>Bookings</span>
           </Link>
           <Link
             href="/crm"
-            className={clsx("sidebar-link cursor-pointer hover:bg-gray-200/50 dark:bg-white/5 dark:hover:bg-white/10", pathname === '/crm' ? "bg-gray-200/50 dark:bg-white/5 font-medium" : "")}
+            className={clsx("sidebar-link cursor-pointer hover:bg-gray-200/50 dark:hover:bg-white/10", pathname === '/crm' ? "bg-gray-200/50 dark:bg-white/10 font-medium" : "")}
           >
             <Users className="w-4 h-4" />
             <span>CRM</span>
@@ -217,15 +217,15 @@ export function Sidebar() {
           <div className="pt-2 pb-1 px-3 text-xs font-semibold text-gray-400 tracking-wider">
             MAIL
           </div>
-          <Link prefetch={true} href="/" onClick={() => window.dispatchEvent(new CustomEvent('filter-category', { detail: 'All Mail' }))} className="sidebar-link hover:bg-gray-200/50 dark:bg-white/5 dark:hover:bg-white/10">
+          <Link prefetch={true} href="/" onClick={() => window.dispatchEvent(new CustomEvent('filter-category', { detail: 'All Mail' }))} className="sidebar-link hover:bg-gray-200/50 dark:hover:bg-white/10">
             <Inbox className="w-4 h-4" />
             <span>All Mail</span>
           </Link>
-          <Link prefetch={true} href="/" onClick={() => window.dispatchEvent(new CustomEvent('filter-category', { detail: 'Sent' }))} className="sidebar-link hover:bg-gray-200/50 dark:bg-white/5 dark:hover:bg-white/10">
+          <Link prefetch={true} href="/" onClick={() => window.dispatchEvent(new CustomEvent('filter-category', { detail: 'Sent' }))} className="sidebar-link hover:bg-gray-200/50 dark:hover:bg-white/10">
             <Send className="w-4 h-4" />
             <span>Sent</span>
           </Link>
-          <Link prefetch={true} href="/" onClick={() => window.dispatchEvent(new CustomEvent('filter-category', { detail: 'Drafts' }))} className="sidebar-link hover:bg-gray-200/50 dark:bg-white/5 dark:hover:bg-white/10">
+          <Link prefetch={true} href="/" onClick={() => window.dispatchEvent(new CustomEvent('filter-category', { detail: 'Drafts' }))} className="sidebar-link hover:bg-gray-200/50 dark:hover:bg-white/10">
             <File className="w-4 h-4" />
             <span>Drafts</span>
           </Link>
@@ -236,7 +236,7 @@ export function Sidebar() {
             <span>LABELS</span>
             <button 
               onClick={() => setIsAddingLabel(true)}
-              className="p-1 hover:bg-gray-200/50 dark:bg-white/5 dark:hover:bg-white/10 rounded transition-colors text-gray-400 hover:text-gray-600"
+              className="p-1 hover:bg-gray-200/50 dark:hover:bg-white/10 rounded transition-colors text-gray-400 hover:text-gray-600"
             >
               <Plus className="w-3.5 h-3.5" />
             </button>
@@ -247,7 +247,7 @@ export function Sidebar() {
               <Link 
                 href="/"
                 onClick={() => window.dispatchEvent(new CustomEvent('filter-category', { detail: folder.name }))}
-                className="sidebar-link cursor-pointer hover:bg-gray-200/50 dark:bg-white/5 dark:hover:bg-white/10 pr-8"
+                className="sidebar-link cursor-pointer hover:bg-gray-200/50 dark:hover:bg-white/10 pr-8"
               >
                 <div 
                   className="w-2.5 h-2.5 rounded-full flex-shrink-0 shadow-xs" 

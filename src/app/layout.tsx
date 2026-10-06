@@ -14,7 +14,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className="antialiased h-[100dvh] flex overflow-hidden bg-[#f7f7f5] dark:bg-[#161616] dark:text-gray-100">
+      <body className="antialiased h-[100dvh] flex overflow-hidden bg-[#f7f7f5] dark:bg-[#202020] dark:text-gray-300">
         {children}
         <ShortcutHandler />
       </body>
