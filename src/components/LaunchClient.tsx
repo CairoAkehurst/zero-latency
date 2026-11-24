@@ -10,11 +10,12 @@ import { formatDistanceToNow } from "date-fns";
 interface LaunchTask {
   id: string;
   data: Record<string, unknown>;
-  status: 'pending' | 'drafting' | 'drafted' | 'sending' | 'sent' | 'error';
+  status: 'pending' | 'drafting' | 'drafted' | 'sending' | 'sent' | 'saved' | 'error';
   draft: string;
   error?: string;
   guessedEmail?: string;
   guessedName?: string;
+  subject?: string;
 }
 
 interface Workspace {
@@ -24,6 +25,7 @@ interface Workspace {
   tasks: LaunchTask[];
   headers: string[];
   instruction: string;
+  subject?: string;
   phase: 'table' | 'queue';
 }
 
@@ -37,6 +39,7 @@ export function LaunchClient() {
   
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
   const [instruction, setInstruction] = useState("");
+  const [subject, setSubject] = useState("");
   const [isUploading, setIsUploading] = useState(false);
   const [isEditingDraft, setIsEditingDraft] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
@@ -97,6 +100,7 @@ export function LaunchClient() {
             tasks,
             headers,
             instruction,
+            subject,
             phase: phase === 'upload' ? 'table' : phase,
             updatedAt: Date.now()
           };
@@ -106,13 +110,14 @@ export function LaunchClient() {
       localStorage.setItem('zero-latency-workspaces', JSON.stringify(newWs));
       return newWs;
     });
-  }, [tasks, headers, instruction, phase, activeWorkspaceId, isLoaded]);
+  }, [tasks, headers, instruction, subject, phase, activeWorkspaceId, isLoaded]);
 
   const loadWorkspace = (ws: Workspace) => {
     setActiveWorkspaceId(ws.id);
     setTasks(ws.tasks);
     setHeaders(ws.headers);
     setInstruction(ws.instruction);
+    setSubject(ws.subject || '');
     setPhase(ws.phase);
     setActiveTaskId(null);
   };
@@ -137,6 +142,7 @@ export function LaunchClient() {
     setHeaders([]);
     setPhase('upload');
     setInstruction("");
+    setSubject("");
     setActiveTaskId(null);
   };
 
@@ -195,6 +201,7 @@ export function LaunchClient() {
           tasks: parsedTasks,
           headers: extractedHeaders,
           instruction: "",
+          subject: "",
           phase: 'table'
         };
         
@@ -248,13 +255,14 @@ export function LaunchClient() {
           toneInstructions: getEffectiveToneInstruction(),
           emailContext,
           signature: signatureText,
-          signatureEnabled
+          signatureEnabled,
+          generateSubject: !subject.trim()
         })
       });
 
       if (res.ok) {
         const data = await res.json();
-        setTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: 'drafted', draft: data.text?.trim() || '' } : t));
+        setTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: 'drafted', draft: data.text?.trim() || '', subject: data.subject || '' } : t));
       } else {
         throw new Error("Failed to generate draft");
       }
@@ -263,7 +271,7 @@ export function LaunchClient() {
     }
   };
 
-  const handleSend = (task: LaunchTask) => {
+  const handleSend = (task: LaunchTask, asDraft = false) => {
     if (!task.guessedEmail) {
       alert("No email address found for this person.");
       return;
@@ -285,12 +293,13 @@ export function LaunchClient() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         toEmail: task.guessedEmail,
-        subject: instruction.substring(0, 50) + "...", 
+        subject: subject.trim() || task.subject || "Quick note",
+        draft: asDraft,
         body: `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 14px; line-height: 1.6; color: #111827;">${task.draft.replace(/\n/g, '<br/>')}</div>`,
       }),
     }).then(async (res) => {
       if (res.ok) {
-        setTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: 'sent' } : t));
+        setTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: asDraft ? 'saved' : 'sent' } : t));
       } else {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error || 'Failed to send');
@@ -441,6 +450,14 @@ export function LaunchClient() {
                         placeholder="e.g. Write a cold outreach email pitching our new software. Mention their company name and their role. Keep it short."
                         className="w-full h-24 p-3 text-sm bg-gray-50 dark:bg-[#202020] border border-gray-200 dark:border-white/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all resize-none text-gray-900 dark:text-gray-100"
                     />
+                    <label className="block text-sm font-medium text-gray-900 dark:text-gray-100 mt-4 mb-2">Subject line <span className="font-normal text-gray-500 dark:text-gray-400">(optional)</span></label>
+                    <input
+                        type="text"
+                        value={subject}
+                        onChange={e => setSubject(e.target.value)}
+                        placeholder="Used for every email. Leave blank to let the AI write a subject for each one."
+                        className="w-full p-3 text-sm bg-gray-50 dark:bg-[#202020] border border-gray-200 dark:border-white/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-gray-900 dark:text-gray-100"
+                    />
                 </div>
 
                 <div className="flex-1 bg-white dark:bg-[#1c1c1c] rounded-xl border border-gray-200 dark:border-white/10 shadow-sm dark:shadow-none overflow-hidden flex flex-col min-h-[300px]">
@@ -510,7 +527,7 @@ export function LaunchClient() {
                       task.status === 'drafting' ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' :
                       task.status === 'drafted' ? 'bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400' :
                       task.status === 'sending' ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' :
-                      task.status === 'sent' ? 'bg-green-50 text-green-600 dark:bg-green-900/30 dark:text-green-400' :
+                      (task.status === 'sent' || task.status === 'saved') ? 'bg-green-50 text-green-600 dark:bg-green-900/30 dark:text-green-400' :
                       'bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400'
                       }`}>
                       {task.status}
@@ -612,13 +629,25 @@ export function LaunchClient() {
           {/* Sticky Send Button at Bottom */}
           {activeTask.status !== 'drafting' && activeTask.status !== 'pending' && activeTask.status !== 'error' && (
             <div className="p-4 border-t border-gray-100 dark:border-white/5 bg-gray-50 dark:bg-[#161616] flex-shrink-0 z-20 shadow-[0_-4px_12px_rgba(0,0,0,0.02)] dark:shadow-[0_-4px_12px_rgba(0,0,0,0.2)]">
+              <div className="flex items-stretch gap-2">
+              <button
+                onClick={() => {
+                  setIsEditingDraft(false);
+                  handleSend(activeTask, true);
+                }}
+                disabled={activeTask.status === 'sending' || activeTask.status === 'sent' || activeTask.status === 'saved' || !activeTask.guessedEmail}
+                className="px-4 text-sm font-medium rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-[#202020] text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-white/10 transition-all disabled:opacity-50 whitespace-nowrap"
+                title="Save to Gmail drafts without sending"
+              >
+                {activeTask.status === 'saved' ? 'Draft saved' : 'Save draft'}
+              </button>
               <button
                 onClick={() => {
                   setIsEditingDraft(false);
                   handleSend(activeTask);
                 }}
-                disabled={activeTask.status === 'sending' || activeTask.status === 'sent' || !activeTask.guessedEmail}
-                className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white text-base font-semibold rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-blue-600/20 transition-all disabled:opacity-50"
+                disabled={activeTask.status === 'sending' || activeTask.status === 'sent' || activeTask.status === 'saved' || !activeTask.guessedEmail}
+                className="flex-1 py-3.5 bg-blue-600 hover:bg-blue-700 text-white text-base font-semibold rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-blue-600/20 transition-all disabled:opacity-50"
               >
                 {activeTask.status === 'sending' ? (
                   <>
@@ -637,6 +666,7 @@ export function LaunchClient() {
                   </>
                 )}
               </button>
+              </div>
               {!activeTask.guessedEmail && (
                   <p className="text-xs text-red-500 dark:text-red-400 text-center mt-2">Cannot send: No email address found in CSV data.</p>
               )}

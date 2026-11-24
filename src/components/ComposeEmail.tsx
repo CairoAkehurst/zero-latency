@@ -186,9 +186,10 @@ export function ComposeEmail({ onClose, onExpand, isFullView = false }: ComposeE
                         const res = await fetch('/api/ai/write', {
                           method: 'POST',
                           headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ instruction })
+                          body: JSON.stringify({ instruction, generateSubject: !subject.trim() })
                         });
                         const data = await res.json();
+                        if (data.subject && !subject.trim()) setSubject(data.subject);
                         if (data.text) {
                           document.execCommand('insertHTML', false, data.text.replace(/\n/g, '<br>'));
                         }

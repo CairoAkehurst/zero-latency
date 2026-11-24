@@ -21,7 +21,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const { toEmail, ccEmail, bccEmail, subject, body, threadId, messageId, references } = await request.json();
+    const { toEmail, ccEmail, bccEmail, subject, body, threadId, messageId, references, draft } = await request.json();
 
     if (!toEmail || !body) {
       return NextResponse.json({ error: 'Missing toEmail or body' }, { status: 400 });
@@ -72,6 +72,14 @@ export async function POST(request: Request) {
       .replace(/\+/g, '-')
       .replace(/\//g, '_')
       .replace(/=+$/, '');
+
+    if (draft) {
+      const draftRes = await gmail.users.drafts.create({
+        userId: 'me',
+        requestBody: { message: { raw: encodedMessage, threadId: threadId || undefined } },
+      });
+      return NextResponse.json({ success: true, draftId: draftRes.data.id });
+    }
 
     const sendRes = await gmail.users.messages.send({
       userId: 'me',

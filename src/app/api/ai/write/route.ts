@@ -3,7 +3,7 @@ import { aiComplete } from '@/lib/server/ai';
 
 export async function POST(request: Request) {
   try {
-    const { instruction, tone, toneInstructions, emailContext, signature, signatureEnabled } = await request.json();
+    const { instruction, tone, toneInstructions, emailContext, signature, signatureEnabled, generateSubject } = await request.json();
     if (!instruction) return NextResponse.json({ error: 'Missing instruction' }, { status: 400 });
 
     let systemPrompt = `You are Zero, an intelligent email assistant drafting high-quality, fully fledged email replies.
@@ -30,6 +30,10 @@ CRITICAL INSTRUCTIONS FOR REPLY DRAFTING:
       systemPrompt += "\n\nTone: Professional, courteous, articulate, and well-structured.";
     }
 
+    if (generateSubject) {
+      systemPrompt += `\n\nSUBJECT LINE: Begin your output with exactly one line in the form "Subject: <short, specific subject under 8 words, no quotes>", then a blank line, then the email body. This overrides the rule above about not outputting subject lines.`;
+    }
+
     const messages: { role: 'system' | 'user'; content: string }[] = [
       { role: "system", content: systemPrompt }
     ];
@@ -45,12 +49,21 @@ CRITICAL INSTRUCTIONS FOR REPLY DRAFTING:
 
     let text = (await aiComplete({ messages, temperature: 0.7, maxTokens: 900 })).trim();
 
+    let subject: string | undefined;
+    if (generateSubject) {
+      const m = text.match(/^\s*Subject:\s*(.+?)\s*(?:\r?\n)+/i);
+      if (m) {
+        subject = m[1].replace(/^["']|["']$/g, '').trim();
+        text = text.slice(m[0].length).trim();
+      }
+    }
+
     // Append the user's real signature if provided and enabled
     if (signatureEnabled && signature && signature.trim()) {
       text = `${text}\n\n${signature.trim()}`;
     }
 
-    return NextResponse.json({ text });
+    return NextResponse.json({ text, subject });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
