@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { extractEmailDetails, getGmailClient } from '@/lib/server/gmail';
-import OpenAI from 'openai';
+import { aiComplete } from '@/lib/server/ai';
 import { createHash } from 'node:crypto';
 import type { calendar_v3 } from 'googleapis';
 
@@ -90,7 +90,6 @@ export async function POST(request: Request) {
     let parsed = draftDetails;
 
     if (!parsed) {
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
       const systemPrompt = `You are an intelligent calendar assistant for Zero Latency. You must respond only with one valid JSON object (JSON format), with no markdown or surrounding text.
 Analyze the email to detect if a meeting, call, appointment, or calendar event is being scheduled, accepted, confirmed, or agreed upon.
 Current date/time (UTC ISO): ${isoNow}.
@@ -113,8 +112,7 @@ Extract:
 
 If no meeting, return this JSON object: { "shouldCreateInvite": false }`;
 
-      const completion = await openai.chat.completions.create({
-        model: 'gpt-4o-mini',
+      const completionText = await aiComplete({
         messages: [
           { role: 'system', content: systemPrompt },
           {
@@ -129,12 +127,12 @@ Reply Being Sent:
 ${replyText || ''}`
           }
         ],
-        response_format: { type: 'json_object' },
+        json: true,
         temperature: 0.2,
-        max_tokens: 400,
+        maxTokens: 400,
       });
 
-      parsed = JSON.parse(completion.choices[0]?.message?.content || '{}');
+      parsed = JSON.parse(completionText || '{}');
     }
 
     if (!parsed.shouldCreateInvite || !parsed.startTime) {

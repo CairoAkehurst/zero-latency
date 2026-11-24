@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import OpenAI from 'openai';
+import { aiComplete } from '@/lib/server/ai';
 
 export async function POST(request: Request) {
   try {
@@ -7,8 +7,6 @@ export async function POST(request: Request) {
     if (!emails || !Array.isArray(emails) || emails.length === 0) {
       return NextResponse.json({ actions: {} });
     }
-
-    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
     const systemPrompt = `You are Zero, an intelligent email assistant.
 Your task is to analyze incoming emails and propose two tailored, distinct reply intents for each email:
@@ -47,18 +45,17 @@ Return a JSON object where keys are the email IDs:
       snippet: (e.snippet || e.summary || '').slice(0, 300)
     }));
 
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+    const responseText = await aiComplete({
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: `Generate 2-3 word custom action intents for these emails:\n${JSON.stringify(emailSummaries, null, 2)}` }
       ],
-      response_format: { type: "json_object" },
+      json: true,
       temperature: 0.5,
-      max_tokens: 800,
+      maxTokens: 800,
     });
 
-    const parsed = JSON.parse(response.choices[0]?.message?.content || '{}');
+    const parsed = JSON.parse(responseText || '{}');
     return NextResponse.json({ actions: parsed.actions || parsed });
   } catch (error: any) {
     console.error("Error in /api/ai/actions:", error);

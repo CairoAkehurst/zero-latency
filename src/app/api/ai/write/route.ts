@@ -1,12 +1,10 @@
 import { NextResponse } from 'next/server';
-import OpenAI from 'openai';
+import { aiComplete } from '@/lib/server/ai';
 
 export async function POST(request: Request) {
   try {
     const { instruction, tone, toneInstructions, emailContext, signature, signatureEnabled } = await request.json();
     if (!instruction) return NextResponse.json({ error: 'Missing instruction' }, { status: 400 });
-
-    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
     let systemPrompt = `You are Zero, an intelligent email assistant drafting high-quality, fully fledged email replies.
 Output only the body of the email in clean, well-spaced text.
@@ -32,7 +30,7 @@ CRITICAL INSTRUCTIONS FOR REPLY DRAFTING:
       systemPrompt += "\n\nTone: Professional, courteous, articulate, and well-structured.";
     }
 
-    const messages: any[] = [
+    const messages: { role: 'system' | 'user'; content: string }[] = [
       { role: "system", content: systemPrompt }
     ];
 
@@ -45,14 +43,7 @@ CRITICAL INSTRUCTIONS FOR REPLY DRAFTING:
       messages.push({ role: "user", content: instruction });
     }
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages,
-      temperature: 0.7,
-      max_tokens: 900,
-    });
-
-    let text = (completion.choices[0].message.content || '').trim();
+    let text = (await aiComplete({ messages, temperature: 0.7, maxTokens: 900 })).trim();
 
     // Append the user's real signature if provided and enabled
     if (signatureEnabled && signature && signature.trim()) {

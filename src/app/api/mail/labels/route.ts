@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getGmailClient } from '@/lib/server/gmail';
-import OpenAI from 'openai';
+import { aiComplete } from '@/lib/server/ai';
 
 export async function GET() {
   try {
@@ -84,9 +84,8 @@ export async function POST(request: Request) {
     }
 
     // 2. If an instruction or prompt is given, auto-label matching past emails
-    if (instruction && instruction.trim() && process.env.OPENAI_API_KEY) {
+    if (instruction && instruction.trim()) {
       try {
-        const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
         const msgsRes = await gmail.users.messages.list({ userId: 'me', maxResults: 50, q: 'in:inbox' });
         const messageSummaries = msgsRes.data.messages || [];
 
@@ -119,13 +118,11 @@ ${validDetails.map((e) => `[ID: ${e!.id}] From: ${e!.from} | Subj: ${e!.subject}
 
 Return a JSON object with a single key "ids" containing an array of message IDs that should have this label applied according to the description. If none match, return an empty array [].`;
 
-          const completion = await openai.chat.completions.create({
-            model: 'gpt-4o-mini',
+          const resContent = await aiComplete({
             messages: [{ role: 'user', content: prompt }],
-            response_format: { type: 'json_object' }
+            json: true,
+            maxTokens: 1500,
           });
-
-          const resContent = completion.choices[0]?.message?.content;
           if (resContent) {
             const parsed = JSON.parse(resContent);
             const matchedIds: string[] = Array.isArray(parsed) ? parsed : (parsed.ids || parsed.matchedIds || []);

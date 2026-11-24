@@ -1,13 +1,9 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
-import OpenAI from 'openai';
+import { aiComplete } from '@/lib/server/ai';
 import { getGmailClient, extractEmailDetails } from '@/lib/server/gmail';
 
 export async function POST() {
-  const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY || 'dummy-key-for-build',
-  });
-
   const supabase = await createClient();
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) {
@@ -97,16 +93,14 @@ Respond with a JSON object with a single key "classifications" containing an arr
   ]
 }`;
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+    const responseText = await aiComplete({
       messages: [
         { role: "system", content: "You categorize emails using ONLY the allowed labels provided, returning strict JSON." },
         { role: "user", content: prompt }
       ],
-      response_format: { type: "json_object" },
+      json: true,
+      maxTokens: 2000,
     });
-
-    const responseText = completion.choices[0]?.message?.content;
     let classifications: Array<{ id: string; label: string | null; tldr?: string }> = [];
     if (responseText) {
       try {

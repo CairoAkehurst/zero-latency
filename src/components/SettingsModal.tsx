@@ -53,6 +53,78 @@ function Row({ title, desc, children }: { title: string; desc?: React.ReactNode;
   );
 }
 
+const PROVIDER_OPTIONS = [
+  { value: 'openai', label: 'OpenAI' },
+  { value: 'anthropic', label: 'Anthropic (Claude)' },
+  { value: 'google', label: 'Google (Gemini)' },
+] as const;
+type ProviderId = typeof PROVIDER_OPTIONS[number]['value'];
+
+function AiKeySettings() {
+  const [provider, setProvider] = useState<ProviderId>('openai');
+  const [model, setModel] = useState('');
+  const [apiKey, setApiKey] = useState('');
+  const [hasKey, setHasKey] = useState(false);
+  const [maskedKey, setMaskedKey] = useState('');
+  const [defaults, setDefaults] = useState<Record<string, string>>({});
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
+  useEffect(() => {
+    fetch('/api/ai/settings').then(r => r.json()).then(d => {
+      if (d.error) return;
+      setProvider(d.provider); setModel(d.model || ''); setHasKey(d.hasKey); setMaskedKey(d.maskedKey || ''); setDefaults(d.defaults || {});
+    }).catch(() => {});
+  }, []);
+
+  const save = async () => {
+    setBusy(true); setMsg(null);
+    try {
+      const res = await fetch('/api/ai/settings', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ provider, model, apiKey, test: true }),
+      });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error || 'Failed to save');
+      setHasKey(true); setMaskedKey(d.maskedKey); setApiKey('');
+      setMsg({ ok: true, text: 'Key verified and saved.' });
+    } catch (e: any) {
+      setMsg({ ok: false, text: e.message });
+    } finally { setBusy(false); }
+  };
+
+  const remove = async () => {
+    setBusy(true); setMsg(null);
+    await fetch('/api/ai/settings', { method: 'DELETE' });
+    setHasKey(false); setMaskedKey(''); setApiKey(''); setBusy(false);
+    setMsg({ ok: true, text: 'Key removed.' });
+  };
+
+  return (
+    <div className="zl-form-grid" style={{ marginBottom: 24 }}>
+      <Row title="AI provider" desc="Used for summaries, replies, auto-labeling and calendar invites.">
+        <Choice label="AI provider" value={provider} onChange={(v) => { setProvider(v as ProviderId); setModel(''); }} options={[...PROVIDER_OPTIONS]} />
+      </Row>
+      <div className="zl-field">
+        <label className="zl-field-label">API key</label>
+        <p className="zl-field-hint">
+          {hasKey ? `Saved key: ${maskedKey}. Enter a new one to replace it.` : 'Paste your API key. It is stored in your account and only used server-side.'}
+        </p>
+        <input type="password" autoComplete="off" className="zl-input" value={apiKey} onChange={e => setApiKey(e.target.value)} placeholder={hasKey ? '••••••••••••' : 'sk-… / sk-ant-… / AIza…'} />
+      </div>
+      <div className="zl-field">
+        <label className="zl-field-label">Model (optional)</label>
+        <input className="zl-input" value={model} onChange={e => setModel(e.target.value)} placeholder={defaults[provider] || ''} />
+      </div>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        <button className="zl-btn zl-btn--primary" disabled={busy || (!apiKey && !hasKey)} onClick={save}>{busy ? 'Checking…' : 'Save & test'}</button>
+        {hasKey ? <button className="zl-btn zl-btn--ghost" disabled={busy} onClick={remove}>Remove key</button> : null}
+        {msg ? <small style={{ color: msg.ok ? 'inherit' : '#d33' }}>{msg.text}</small> : null}
+      </div>
+    </div>
+  );
+}
+
 export function SettingsModal({ section, setSection, onClose }: { section: string; setSection: (s: string) => void; onClose: () => void }) {
   const ref = useRef<HTMLDivElement>(null);
   const { theme, setTheme, threadStyle, setThreadStyle, autoAdvance, setAutoAdvance, fontSize, setFontSize } = useSettingsStore();
@@ -201,6 +273,7 @@ export function SettingsModal({ section, setSection, onClose }: { section: strin
             )}
                 {current.id === 'ai' && (
               <>
+                <AiKeySettings />
                 <Row 
                   title="Default AI Tone" 
                   desc="Select how Zero AI assistant writes emails and generates suggested replies."

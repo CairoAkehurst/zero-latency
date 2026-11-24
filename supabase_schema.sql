@@ -117,3 +117,8 @@ create policy "Users can update their own crm contacts"
 create policy "Users can delete their own crm contacts"
   on public.crm for delete
   using (auth.uid() = user_id);
+
+-- 7. AI provider settings (per-user API key; openai | anthropic | google)
+alter table public.users add column if not exists ai_provider text;
+alter table public.users add column if not exists ai_api_key text;
+alter table public.users add column if not exists ai_model text;
