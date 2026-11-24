@@ -209,7 +209,6 @@ export function InboxClient({ initialEmails, initialNextPageToken }: { initialEm
     return () => {
       window.removeEventListener('open-compose', handleOpenCompose);
       window.removeEventListener('filter-category', handleFilterCategory);
-      window.removeEventListener('open-settings', handleOpenSettings);
       window.removeEventListener('refresh-inbox', handleRefreshInbox);
       window.removeEventListener('optimistic-action', handleOptimisticAction);
 
