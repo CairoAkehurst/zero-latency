@@ -6,7 +6,6 @@ import { EmailRow } from "@/components/EmailRow";
 import { EmailDetailPeek } from "@/components/EmailDetailPeek";
 import { ComposeEmail } from "@/components/ComposeEmail";
 import { FiltersPeek } from "@/components/FiltersPeek";
-import { SettingsModal } from "@/components/SettingsModal";
 import { createClient } from "@/utils/supabase/client";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -22,8 +21,6 @@ export function InboxClient({ initialEmails, initialNextPageToken }: { initialEm
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   
   // Settings Modal State
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [settingsSection, setSettingsSection] = useState('inbox');
 
   const [searchQuery, setSearchQuery] = useState("");
   const [isSyncing, setIsSyncing] = useState(false);
@@ -194,15 +191,10 @@ export function InboxClient({ initialEmails, initialNextPageToken }: { initialEm
       setIsComposing(false);
       setIsFiltersOpen(false);
     };
-    const handleOpenSettings = (e: any) => {
-      setSettingsSection(e.detail || 'inbox');
-      setIsSettingsOpen(true);
-    };
     const handleRefreshInbox = () => setRefreshKey(key => key + 1);
 
     window.addEventListener('open-compose', handleOpenCompose);
     window.addEventListener('filter-category', handleFilterCategory);
-    window.addEventListener('open-settings', handleOpenSettings);
     window.addEventListener('refresh-inbox', handleRefreshInbox);
     const handleOptimisticAction = (e: any) => {
       const { messageIds, action } = e.detail;
@@ -587,13 +579,6 @@ export function InboxClient({ initialEmails, initialNextPageToken }: { initialEm
           />
         ) : null}
       </div>
-
-      {isSettingsOpen && (
-        <SettingsModal 
-          section={settingsSection} setSection={setSettingsSection} 
-          onClose={() => setIsSettingsOpen(false)} 
-        />
-      )}
     </>
   );
 }

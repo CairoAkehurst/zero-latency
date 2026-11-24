@@ -1,4 +1,5 @@
 import { Sidebar } from "@/components/Sidebar";
+import { GlobalSettings } from "@/components/GlobalSettings";
 
 export default function InboxLayout({
   children,
@@ -8,6 +9,7 @@ export default function InboxLayout({
   return (
     <>
       <Sidebar />
+      <GlobalSettings />
       <main className="flex-1 flex flex-col overflow-hidden bg-white dark:bg-[#191919] rounded-2xl shadow-sm border border-gray-200/50 dark:border-transparent my-2 mr-2">
         {children}
       </main>
